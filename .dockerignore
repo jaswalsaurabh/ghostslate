@@ -1,0 +1,79 @@
+# ---------------------------------------------------------------------------
+# Secrets & Credentials — NEVER bake into Docker layers
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*-service-account*.json
+*-sa-key*.json
+gcp-key*.json
+application_default_credentials.json
+.gcloud/
+secrets/
+clickhouse-*.crt
+.clickhouse/
+
+# ---------------------------------------------------------------------------
+# Node dependencies & local build caches
+# ---------------------------------------------------------------------------
+node_modules/
+.pnpm-store/
+.pnpm-debug.log*
+npm-debug.log*
+yarn-error.log*
+*.tsbuildinfo
+.eslintcache
+dist/
+build/
+web/dist/
+server/dist/
+.vite/
+
+# ---------------------------------------------------------------------------
+# Git & tooling metadata
+# ---------------------------------------------------------------------------
+.git/
+.github/
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store
+._*
+
+# ---------------------------------------------------------------------------
+# Test, coverage & reports
+# ---------------------------------------------------------------------------
+coverage/
+.vitest/
+*.lcov
+eval/results/
+benchmarks/*.json
+
+# ---------------------------------------------------------------------------
+# Python & local scratch environments
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# ---------------------------------------------------------------------------
+# Media & runtime cache artifacts
+# ---------------------------------------------------------------------------
+media/
+frames/
+*.mp4
+*.m3u8
+*.mpd
+.cache/
+.frame-cache/
+logs/
+*.log
