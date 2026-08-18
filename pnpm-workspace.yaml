@@ -2,6 +2,21 @@ packages:
   - web
   - server
 
+allowBuilds:
+  '@google/genai': true
+  esbuild: true
+  protobufjs: true
+
+overrides:
+  typescript: 6.0.3
+  react: 19.2.8
+  react-dom: 19.2.8
+  zod: 4.4.3
+
+peerDependencyRules:
+  allowAny:
+    - typescript
+
 # Single source of truth for every shared dependency version.
 # Packages reference these with "catalog:" instead of a literal range,
 # so the same technology can never drift to two versions across the repo.
@@ -19,3 +34,13 @@ catalog:
   react-dom: 19.2.8
   '@types/react': 19.2.18
   '@types/react-dom': 19.2.4
+
+minimumReleaseAgeExclude:
+  - '@vitest/expect@4.1.11'
+  - '@vitest/mocker@4.1.11'
+  - '@vitest/pretty-format@4.1.11'
+  - '@vitest/runner@4.1.11'
+  - '@vitest/snapshot@4.1.11'
+  - '@vitest/spy@4.1.11'
+  - '@vitest/utils@4.1.11'
+  - vitest@4.1.11

@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --surface-base: #090d16;
+    --surface-panel: #0f172a;
+    --surface-card: #1e293b;
+    --surface-hover: #334155;
+    --border-subtle: #1e293b;
+    --border-strong: #334155;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --accent-primary: #38bdf8;
+    --accent-warn: #fbbf24;
+    --accent-danger: #f87171;
+    --accent-success: #34d399;
+  }
+}

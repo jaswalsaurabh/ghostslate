@@ -19,18 +19,9 @@
     "deps:outdated": "pnpm -r outdated"
   },
   "devDependencies": {
+    "eslint": "catalog:",
     "prettier": "catalog:",
-    "typescript": "catalog:"
-  },
-  "pnpm": {
-    "overrides": {
-      "typescript": "6.0.3",
-      "react": "19.2.8",
-      "react-dom": "19.2.8",
-      "zod": "4.4.3"
-    },
-    "peerDependencyRules": {
-      "allowAny": ["typescript"]
-    }
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:"
   }
 }
