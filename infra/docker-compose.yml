@@ -2,7 +2,7 @@ services:
   mcp-clickhouse:
     image: ghcr.io/clickhouse/mcp-clickhouse@sha256:f4d9f1502a14a98fd17f3ecf8654bd102ba5b1a5bde86e54a9579ed8871ef8d7
     ports:
-      - "8000:8000"
+      - '8000:8000'
     environment:
       - CLICKHOUSE_HOST=${CLICKHOUSE_HOST}
       - CLICKHOUSE_PORT=${CLICKHOUSE_PORT:-8443}
@@ -21,7 +21,7 @@ services:
       context: ..
       dockerfile: infra/Dockerfile
     ports:
-      - "8080:8080"
+      - '8080:8080'
     environment:
       - PORT=8080
       - LOG_LEVEL=info

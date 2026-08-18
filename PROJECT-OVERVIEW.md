@@ -34,14 +34,14 @@ A forensic agent that:
 
 ## 3. Scope (deliberately narrow)
 
-| In scope | Out of scope |
-|---|---|
-| One FAST channel | Multi-tenant / multi-channel ops |
+| In scope                                      | Out of scope                          |
+| --------------------------------------------- | ------------------------------------- |
+| One FAST channel                              | Multi-tenant / multi-channel ops      |
 | One primary failure mode: SSP auction timeout | Encoder cue drift (stretch goal only) |
-| Vision + log correlation + loss attribution | Auto-remediation execution |
-| One polished war-room screen | Full observability platform |
+| Vision + log correlation + loss attribution   | Auto-remediation execution            |
+| One polished war-room screen                  | Full observability platform           |
 
-Design is judged as *"a complete, coherent product experience, not a proof of concept."* Narrow and
+Design is judged as _"a complete, coherent product experience, not a proof of concept."_ Narrow and
 finished beats broad and rough.
 
 ## 4. Flow
@@ -73,9 +73,9 @@ Every number in the final answer must cite a value returned by ClickHouse.
   segmentation_type_id, expected_duration_ms
 - `ssai_stitch_attempts` — channel_id, splice_event_id, attempt_time, stitch_status, ssp_id,
   ad_response_latency_ms, device_class, codec, vast_version
-- `slate_observations` — session_id, channel_id, observed_at, frame_class, confidence *(written by
-  Gemini vision)*
-- `advertiser_inventory` — channel_id, daypart, cpm_usd, fill_target_pct *(grounds the loss figure)*
+- `slate_observations` — session_id, channel_id, observed_at, frame_class, confidence _(written by
+  Gemini vision)_
+- `advertiser_inventory` — channel_id, daypart, cpm_usd, fill_target_pct _(grounds the loss figure)_
 
 `LowCardinality` on ssp_id / device_class / codec / stitch_status. `AggregatingMergeTree` rollups for
 auction-latency quantiles. These two are used because the query pattern needs them — resist adding
@@ -84,7 +84,7 @@ features purely to showcase them.
 ### Corrected ASOF JOIN
 
 ASOF returns exactly **one** matched row per left row. Aggregating a percentage per
-`splice_event_id` therefore yields only 0% or 100%. Aggregate *across* cues instead:
+`splice_event_id` therefore yields only 0% or 100%. Aggregate _across_ cues instead:
 
 ```sql
 WITH matched AS (
@@ -129,7 +129,7 @@ Counter it deliberately:
   magnitude faster than pushing rows from Python. Use Python only to inject anomalies.
 - **Confounders:** include benign latency spikes, one unrelated regional CDN blip, and diurnal
   traffic patterns, so the true cause must actually be isolated rather than spotted.
-- **Negative control:** include a window with *no* real root cause and show the agent correctly
+- **Negative control:** include a window with _no_ real root cause and show the agent correctly
   reporting that none was found. An agent that declines to hallucinate is more convincing than one
   that always succeeds.
 
@@ -141,11 +141,11 @@ pnpm `catalog:` and referenced by name, so two copies of the same technology can
 
 ### Runtime
 
-| | Version | Note |
-|---|---|---|
-| Node | **24.19.0 LTS ("Krypton")** | Current LTS line. Node 26 is newer but *not* LTS |
-| pnpm | **11.22.0** | Pinned via `packageManager` |
-| TypeScript | **6.0.3** | See note below |
+|            | Version                     | Note                                             |
+| ---------- | --------------------------- | ------------------------------------------------ |
+| Node       | **24.19.0 LTS ("Krypton")** | Current LTS line. Node 26 is newer but _not_ LTS |
+| pnpm       | **11.22.0**                 | Pinned via `packageManager`                      |
+| TypeScript | **6.0.3**                   | See note below                                   |
 
 **On TypeScript 7:** 7.0.2 is published and is `latest` on npm — it's the native Go port. But it has
 exactly one stable patch release, and the surrounding toolchain (typed ESLint, Vite plugins, editor
@@ -154,30 +154,30 @@ trade, so this pins **6.0.3**. Moving to 7 later is a one-line change in the cat
 
 ### Server (`server/`)
 
-| Package | Version |
-|---|---|
-| express | 5.2.1 |
-| @types/express | 5.0.6 |
-| @clickhouse/client | 1.23.1 |
-| @google/genai | 2.17.1 |
-| zod | 4.4.3 |
-| pino / pino-http | 10.3.1 / 11.0.0 |
-| tsx | 4.23.12 |
-| vitest | 4.1.11 |
-| @types/node | 24.13.3 |
+| Package            | Version         |
+| ------------------ | --------------- |
+| express            | 5.2.1           |
+| @types/express     | 5.0.6           |
+| @clickhouse/client | 1.23.1          |
+| @google/genai      | 2.17.1          |
+| zod                | 4.4.3           |
+| pino / pino-http   | 10.3.1 / 11.0.0 |
+| tsx                | 4.23.12         |
+| vitest             | 4.1.11          |
+| @types/node        | 24.13.3         |
 
 `@types/node` is pinned to the **24.x** line to match the Node 24 runtime — not the newer 26.x,
 which would type against APIs the runtime does not have.
 
 ### Web (`web/`)
 
-| Package | Version |
-|---|---|
-| react / react-dom | 19.2.8 |
-| vite | 8.2.1 |
-| @vitejs/plugin-react | 6.0.5 |
-| tailwindcss / @tailwindcss/vite | 4.3.3 |
-| recharts | 3.10.1 |
+| Package                         | Version          |
+| ------------------------------- | ---------------- |
+| react / react-dom               | 19.2.8           |
+| vite                            | 8.2.1            |
+| @vitejs/plugin-react            | 6.0.5            |
+| tailwindcss / @tailwindcss/vite | 4.3.3            |
+| recharts                        | 3.10.1           |
 | @types/react / @types/react-dom | 19.2.18 / 19.2.4 |
 
 ### Tooling
@@ -205,7 +205,7 @@ service a generous request timeout, since an agent run can span tens of seconds.
 
 Framework choice is not scored. The consequence that matters: a React SPA cannot hold Google Cloud
 or ClickHouse credentials, so an explicit Express server is required — not optional. One container
-serves the built static assets *and* the API, keeping judge setup to a single `docker-compose up`.
+serves the built static assets _and_ the API, keeping judge setup to a single `docker-compose up`.
 
 ## 8. Evaluation Harness
 
@@ -227,8 +227,8 @@ protects your demo from a bad run on recording day.
 
 ## 10. Demo Script (3 min)
 
-1. **0:00** — Stream plays. Slate appears. Every dashboard shows green, HTTP 200. *"Nothing is alerting. This channel is losing money right now."*
-2. **0:25** — Prompt: *"Sponsorship revenue dropped 18% during the Q3 break. Audit cue markers and stitcher logs for unmonetized slate bleed."*
+1. **0:00** — Stream plays. Slate appears. Every dashboard shows green, HTTP 200. _"Nothing is alerting. This channel is losing money right now."_
+2. **0:25** — Prompt: _"Sponsorship revenue dropped 18% during the Q3 break. Audit cue markers and stitcher logs for unmonetized slate bleed."_
 3. **0:40** — Gemini vision flags the slate frames; UI shows classified thumbnails.
 4. **1:00** — Live MCP trace: schema discovery → ASOF JOIN correlation → dimension isolation. Real SQL, real timings, rows scanned.
 5. **1:50** — Diagnosis: SSP auction latency breaching the stitcher deadline for one device/codec cohort. Loss figure computed from the rate-card table.
@@ -237,15 +237,15 @@ protects your demo from a bad run on recording day.
 
 ## 11. Timeline
 
-| Dates | Work |
-|---|---|
-| Aug 18–22 | SCTE-35/SSAI domain study; schema + baseline data at scale; benchmark queries sub-50ms |
-| Aug 23–27 | MCP server standalone; Agent Builder tool-calling loop working end to end |
-| **Aug 27** | **Go/no-go — if domain modeling hasn't converged, switch to StreamOps Commander** |
-| Aug 28–Sep 2 | Vision pipeline; war-room UI; loss attribution |
-| Sep 3–5 | Eval harness; confounders + negative control; Cloud Run deploy |
-| Sep 6–7 | Demo video, README, license |
-| Sep 8 | Buffer — deadline is 2:30am IST, treat Sep 8 as the real cutoff |
+| Dates        | Work                                                                                   |
+| ------------ | -------------------------------------------------------------------------------------- |
+| Aug 18–22    | SCTE-35/SSAI domain study; schema + baseline data at scale; benchmark queries sub-50ms |
+| Aug 23–27    | MCP server standalone; Agent Builder tool-calling loop working end to end              |
+| **Aug 27**   | **Go/no-go — if domain modeling hasn't converged, switch to StreamOps Commander**      |
+| Aug 28–Sep 2 | Vision pipeline; war-room UI; loss attribution                                         |
+| Sep 3–5      | Eval harness; confounders + negative control; Cloud Run deploy                         |
+| Sep 6–7      | Demo video, README, license                                                            |
+| Sep 8        | Buffer — deadline is 2:30am IST, treat Sep 8 as the real cutoff                        |
 
 ## Open items to verify yourself
 

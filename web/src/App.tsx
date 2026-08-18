@@ -68,7 +68,8 @@ export const App: React.FC = () => {
             2. ClickHouse MCP Core
           </h2>
           <p className="text-xs text-(--text-muted)">
-            SCTE-35 cue correlation via ASOF JOIN, multi-dimensional cohort isolation, and rate-card loss attribution.
+            SCTE-35 cue correlation via ASOF JOIN, multi-dimensional cohort isolation, and rate-card
+            loss attribution.
           </p>
           <div className="mt-auto bg-(--surface-card) p-3 rounded border border-(--border-subtle) text-xs font-mono text-(--text-secondary)">
             Engine: ClickHouse Cloud + mcp-clickhouse
@@ -80,7 +81,8 @@ export const App: React.FC = () => {
             3. Forensic Agent Loop
           </h2>
           <p className="text-xs text-(--text-muted)">
-            Iterative reasoning trace, grounded revenue bleed quantification, and human-in-the-loop remediation.
+            Iterative reasoning trace, grounded revenue bleed quantification, and human-in-the-loop
+            remediation.
           </p>
           <div className="mt-auto bg-(--surface-card) p-3 rounded border border-(--border-subtle) text-xs font-mono text-(--text-secondary)">
             Model: Gemini on Vertex AI

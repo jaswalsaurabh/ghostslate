@@ -2,12 +2,12 @@
 
 **Inception → production deployment on Cloud Run → submission.**
 
-| | |
-|---|---|
-| Day 1 | Tue 18 Aug 2026 |
-| Day 11 | Fri 28 Aug 2026 |
+|                     |                                                      |
+| ------------------- | ---------------------------------------------------- |
+| Day 1               | Tue 18 Aug 2026                                      |
+| Day 11              | Fri 28 Aug 2026                                      |
 | Submission deadline | **Wed 9 Sep 2026, 2:00pm PDT** (~2:30am IST, 10 Sep) |
-| Slack after Day 11 | 11 days |
+| Slack after Day 11  | 11 days                                              |
 
 The slack is deliberate, not padding. It absorbs the two risks this plan cannot eliminate: the
 Agent Builder integration behaving differently than documented, and the unresolved **Sept 7 vs
@@ -81,6 +81,7 @@ never done, and every other estimate in this plan is reliable only if this one w
 - [ ] Secrets in env / Secret Manager, never in code
 
 > ### ⚠️ GO/NO-GO GATE — end of Day 2
+>
 > If Gemini is not reliably calling MCP tools and citing real values, **stop and switch to StreamOps
 > Commander**. Same stack, same data layer, no vision pipeline, no SCTE-35 domain risk. Deciding here
 > costs you two days. Deciding on Day 8 costs you the submission.
@@ -112,7 +113,7 @@ never done, and every other estimate in this plan is reliable only if this one w
 - [ ] **Confounders:** benign latency spikes, an unrelated regional blip, normal diurnal variation
 - [ ] **Negative-control window** with no real root cause
 
-**Timebox:** if the domain work overruns, ship a simplified but *internally consistent* cue model.
+**Timebox:** if the domain work overruns, ship a simplified but _internally consistent_ cue model.
 A coherent simplification reads as a design decision; a half-correct real spec reads as a mistake.
 
 ---
@@ -128,7 +129,7 @@ A coherent simplification reads as a design decision; a half-correct real spec r
 - [ ] **Vitest:** ASOF aggregation, denominator-of-one trap, loss attribution, small-sample guard
 - [ ] Every query benchmarked; timings recorded for the UI badge
 
-**Exit criteria:** queries isolate the planted incident *and* stay silent on the negative control —
+**Exit criteria:** queries isolate the planted incident _and_ stay silent on the negative control —
 verified by test, not by eye.
 
 ---
@@ -164,11 +165,13 @@ verified by test, not by eye.
 **Goal:** a complete product experience. Design is 25% of the score.
 
 Day 8 — structure:
+
 - [ ] Vite + React + Tailwind v4 shell, dark ops aesthetic
 - [ ] Prompt input, live agent trace panel, SSE wired
 - [ ] SQL displayed verbatim with timing and rows-scanned badges
 
 Day 9 — substance:
+
 - [ ] Classified frame thumbnails with confidence
 - [ ] Timeline and dimension-breakdown charts (Recharts)
 - [ ] Diagnosis panel with the grounded loss figure
@@ -210,14 +213,14 @@ without narration.
 
 ## Risk register
 
-| Risk | Day surfaced | Mitigation |
-|---|---|---|
-| Agent Builder / MCP integration harder than documented | 1–2 | Spike first; hard gate on Day 2; StreamOps fallback |
-| SCTE-35 domain modelling overruns | 4 | Timebox; ship a consistent simplification |
-| Agent unreliable across runs | 6, 10 | Eval cases + idempotent cached replay for the demo |
-| Demo run fails on recording day | 11 | Preset scenarios; replay from cache; record early |
-| Vision adds latency that ruins pacing | 7 | Pre-classify frames offline; cache by hash |
-| Deadline is Sept 7, not Sept 9 | any | Treat Sept 6 as the deadline until confirmed |
+| Risk                                                   | Day surfaced | Mitigation                                          |
+| ------------------------------------------------------ | ------------ | --------------------------------------------------- |
+| Agent Builder / MCP integration harder than documented | 1–2          | Spike first; hard gate on Day 2; StreamOps fallback |
+| SCTE-35 domain modelling overruns                      | 4            | Timebox; ship a consistent simplification           |
+| Agent unreliable across runs                           | 6, 10        | Eval cases + idempotent cached replay for the demo  |
+| Demo run fails on recording day                        | 11           | Preset scenarios; replay from cache; record early   |
+| Vision adds latency that ruins pacing                  | 7            | Pre-classify frames offline; cache by hash          |
+| Deadline is Sept 7, not Sept 9                         | any          | Treat Sept 6 as the deadline until confirmed        |
 
 ## Definition of done
 
