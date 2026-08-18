@@ -1,0 +1,121 @@
+# ---------------------------------------------------------------------------
+# Secrets — nothing here is ever recoverable once pushed to a public repo.
+# The hard constraint is "no credentials in the browser"; the corollary is
+# no credentials in git either.
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+# Google Cloud service-account keys, whatever they get named
+*-service-account*.json
+*-sa-key*.json
+gcp-key*.json
+application_default_credentials.json
+.gcloud/
+secrets/
+# ClickHouse Cloud connection material
+clickhouse-*.crt
+.clickhouse/
+
+# ---------------------------------------------------------------------------
+# Node / pnpm
+# pnpm-lock.yaml is deliberately NOT ignored — the single-version rule in
+# AGENTS.md is only enforceable if the lockfile is committed.
+# ---------------------------------------------------------------------------
+node_modules/
+.pnpm-store/
+.pnpm-debug.log*
+npm-debug.log*
+yarn-error.log*
+*.tsbuildinfo
+.eslintcache
+
+# ---------------------------------------------------------------------------
+# Build output
+# ---------------------------------------------------------------------------
+dist/
+build/
+web/dist/
+server/dist/
+.vite/
+vite.config.*.timestamp-*
+
+# ---------------------------------------------------------------------------
+# Test and coverage
+# ---------------------------------------------------------------------------
+coverage/
+.vitest/
+*.lcov
+
+# ---------------------------------------------------------------------------
+# Python — tools/generator
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.python-version
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# ---------------------------------------------------------------------------
+# Generated media and caches
+# Frame samples, ffmpeg output and the classification cache are large,
+# regenerable, and must never make the repo look like it ships footage.
+# ---------------------------------------------------------------------------
+media/
+frames/
+*.mp4
+*.ts
+*.m3u8
+*.mpd
+!server/**/*.ts
+!web/**/*.ts
+!tools/**/*.ts
+.cache/
+.frame-cache/
+
+# ---------------------------------------------------------------------------
+# Local data dumps and scratch SQL results
+# ---------------------------------------------------------------------------
+*.csv.gz
+*.parquet
+*.native
+data/
+eval/results/
+benchmarks/*.json
+
+# ---------------------------------------------------------------------------
+# Docker / local runtime
+# ---------------------------------------------------------------------------
+docker-compose.override.yml
+.docker/
+*.pid
+logs/
+*.log
+
+# ---------------------------------------------------------------------------
+# Editors and OS
+# ---------------------------------------------------------------------------
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+*~
+
+# ---------------------------------------------------------------------------
+# Agent tooling scratch
+# ---------------------------------------------------------------------------
+graphify-out/
+.claude/settings.local.json

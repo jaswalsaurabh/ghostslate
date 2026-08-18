@@ -1,0 +1,4 @@
+# Anomaly injection only. The 100M-row baseline is generated inside ClickHouse
+# via INSERT ... SELECT FROM numbers(), not pushed from Python.
+clickhouse-connect==0.9.6
+faker==38.2.0

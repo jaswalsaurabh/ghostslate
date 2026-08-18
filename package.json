@@ -1,0 +1,36 @@
+{
+  "name": "ghostslate",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.22.0",
+  "engines": {
+    "node": ">=24.19.0 <25",
+    "pnpm": ">=11.22.0"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter ./web --filter ./server dev",
+    "build": "pnpm --filter ./server build && pnpm --filter ./web build",
+    "start": "pnpm --filter ./server start",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "dedupe:check": "pnpm dedupe --check",
+    "deps:why": "pnpm why -r",
+    "deps:outdated": "pnpm -r outdated"
+  },
+  "devDependencies": {
+    "prettier": "catalog:",
+    "typescript": "catalog:"
+  },
+  "pnpm": {
+    "overrides": {
+      "typescript": "6.0.3",
+      "react": "19.2.8",
+      "react-dom": "19.2.8",
+      "zod": "4.4.3"
+    },
+    "peerDependencyRules": {
+      "allowAny": ["typescript"]
+    }
+  }
+}
