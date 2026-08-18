@@ -24,10 +24,9 @@ ENV NODE_ENV=production
 ENV PORT=8080
 
 COPY --from=builder /app/pnpm-workspace.yaml /app/package.json /app/tsconfig.base.json /app/.npmrc ./
-COPY --from=builder /app/server/package.json ./server/package.json
-COPY --from=builder /app/server/dist ./server/dist
-COPY --from=builder /app/web/dist ./web/dist
 COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/server ./server
+COPY --from=builder /app/web/dist ./web/dist
 
 EXPOSE 8080
 CMD ["node", "server/dist/index.js"]

@@ -1,4 +1,21 @@
 services:
+  mcp-clickhouse:
+    image: ghcr.io/clickhouse/mcp-clickhouse@sha256:f4d9f1502a14a98fd17f3ecf8654bd102ba5b1a5bde86e54a9579ed8871ef8d7
+    ports:
+      - "8000:8000"
+    environment:
+      - CLICKHOUSE_HOST=${CLICKHOUSE_HOST}
+      - CLICKHOUSE_PORT=${CLICKHOUSE_PORT:-8443}
+      - CLICKHOUSE_SECURE=${CLICKHOUSE_SECURE:-true}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
+      - CLICKHOUSE_DATABASE=${CLICKHOUSE_DATABASE:-ghostslate}
+      - CLICKHOUSE_MCP_SERVER_TRANSPORT=sse
+      - CLICKHOUSE_MCP_BIND_HOST=0.0.0.0
+      - CLICKHOUSE_MCP_BIND_PORT=8000
+      - CLICKHOUSE_MCP_AUTH_TOKEN=${CLICKHOUSE_MCP_AUTH_TOKEN}
+    restart: unless-stopped
+
   app:
     build:
       context: ..
@@ -11,11 +28,9 @@ services:
       - NODE_ENV=production
       - CLICKHOUSE_HOST=${CLICKHOUSE_HOST:-}
       - CLICKHOUSE_PORT=${CLICKHOUSE_PORT:-8443}
-      - CLICKHOUSE_DATABASE=${CLICKHOUSE_DATABASE:-default}
-      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-default}
+      - CLICKHOUSE_DATABASE=${CLICKHOUSE_DATABASE:-ghostslate}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-}
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-}
       - GCP_PROJECT_ID=${GCP_PROJECT_ID:-}
       - GCP_REGION=${GCP_REGION:-us-central1}
-    env_file:
-      - ../.env
     restart: unless-stopped
