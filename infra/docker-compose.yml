@@ -1,20 +1,41 @@
 services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8-alpine
+    container_name: ghostslate-clickhouse
+    ports:
+      - '127.0.0.1:8123:8123'
+      - '127.0.0.1:9000:9000'
+    environment:
+      - CLICKHOUSE_DB=ghostslate
+      # ClickHouse image contract: CLICKHOUSE_PASSWORD sets the default (admin) user password
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_ADMIN_PASSWORD:-ghostslate_admin_local_dev}
+      - CLICKHOUSE_ADMIN_PASSWORD=${CLICKHOUSE_ADMIN_PASSWORD:-ghostslate_admin_local_dev}
+      - CLICKHOUSE_AGENT_PASSWORD=${CLICKHOUSE_AGENT_PASSWORD:-ghostslate_agent_local_dev}
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
+    volumes:
+      - ../sql/00-spike.sql:/docker-entrypoint-initdb.d/00-spike.sql:ro
+      - ../sql/01-create-agent-user.sh:/docker-entrypoint-initdb.d/01-create-agent-user.sh:ro
+    restart: unless-stopped
+
   mcp-clickhouse:
     image: ghcr.io/clickhouse/mcp-clickhouse@sha256:f4d9f1502a14a98fd17f3ecf8654bd102ba5b1a5bde86e54a9579ed8871ef8d7
+    container_name: ghostslate-mcp-clickhouse
     ports:
-      - '8000:8000'
+      - '127.0.0.1:8000:8000'
     environment:
-      - CLICKHOUSE_HOST=${CLICKHOUSE_HOST}
-      - CLICKHOUSE_PORT=${CLICKHOUSE_PORT:-8443}
-      - CLICKHOUSE_SECURE=${CLICKHOUSE_SECURE:-true}
-      - CLICKHOUSE_USER=${CLICKHOUSE_USER}
-      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
+      - CLICKHOUSE_HOST=${CLICKHOUSE_HOST:-clickhouse}
+      - CLICKHOUSE_PORT=${CLICKHOUSE_PORT:-8123}
+      - CLICKHOUSE_SECURE=${CLICKHOUSE_SECURE:-false}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-ghostslate_agent}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_AGENT_PASSWORD:-ghostslate_agent_local_dev}
       - CLICKHOUSE_DATABASE=${CLICKHOUSE_DATABASE:-ghostslate}
       - CLICKHOUSE_MCP_SERVER_TRANSPORT=sse
       - CLICKHOUSE_MCP_BIND_HOST=0.0.0.0
       - CLICKHOUSE_MCP_BIND_PORT=8000
       - CLICKHOUSE_MCP_AUTH_TOKEN=${CLICKHOUSE_MCP_AUTH_TOKEN}
       - CLICKHOUSE_MCP_AUTH_DISABLED=${CLICKHOUSE_MCP_AUTH_DISABLED:-true}
+    depends_on:
+      - clickhouse
     restart: unless-stopped
 
   app:
@@ -27,11 +48,11 @@ services:
       - PORT=8080
       - LOG_LEVEL=info
       - NODE_ENV=production
-      - CLICKHOUSE_HOST=${CLICKHOUSE_HOST:-}
-      - CLICKHOUSE_PORT=${CLICKHOUSE_PORT:-8443}
+      - CLICKHOUSE_HOST=${CLICKHOUSE_HOST:-clickhouse}
+      - CLICKHOUSE_PORT=${CLICKHOUSE_PORT:-8123}
       - CLICKHOUSE_DATABASE=${CLICKHOUSE_DATABASE:-ghostslate}
-      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-}
-      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-ghostslate_agent}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_AGENT_PASSWORD:-ghostslate_agent_local_dev}
       - GCP_PROJECT_ID=${GCP_PROJECT_ID:-}
       - GCP_REGION=${GCP_REGION:-us-central1}
     restart: unless-stopped
