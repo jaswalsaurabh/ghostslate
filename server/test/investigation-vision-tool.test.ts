@@ -147,7 +147,7 @@ describe('InvestigationService — Vision Tool Wiring', () => {
                 {
                   functionCall: {
                     name: 'run_query',
-                    args: { query: 'SELECT count() FROM ghostslate.spike_cue_events' },
+                    args: { query: 'SELECT count() FROM ghostslate.ssai_stitch_attempts' },
                   },
                 },
               ],
@@ -175,7 +175,7 @@ describe('InvestigationService — Vision Tool Wiring', () => {
 
     expect(mockMcpService.callTool).toHaveBeenCalledTimes(1);
     expect(mockMcpService.callTool).toHaveBeenCalledWith('run_query', {
-      query: 'SELECT count() FROM ghostslate.spike_cue_events',
+      query: 'SELECT count() FROM ghostslate.ssai_stitch_attempts',
     });
     expect(mockVisionService.classifyVideoTimestamp).not.toHaveBeenCalled();
 

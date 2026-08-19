@@ -1,6 +1,8 @@
 -- GhostSlate ClickHouse Schema DDL
 
-CREATE TABLE IF NOT EXISTS scte35_cue_events (
+CREATE DATABASE IF NOT EXISTS ghostslate;
+
+CREATE TABLE IF NOT EXISTS ghostslate.scte35_cue_events (
     channel_id LowCardinality(String),
     splice_event_id UInt64,
     cue_time DateTime64(3, 'UTC'),
@@ -10,7 +12,7 @@ CREATE TABLE IF NOT EXISTS scte35_cue_events (
 ) ENGINE = MergeTree()
 ORDER BY (channel_id, cue_time, splice_event_id);
 
-CREATE TABLE IF NOT EXISTS ssai_stitch_attempts (
+CREATE TABLE IF NOT EXISTS ghostslate.ssai_stitch_attempts (
     channel_id LowCardinality(String),
     splice_event_id UInt64,
     attempt_time DateTime64(3, 'UTC'),
@@ -21,9 +23,10 @@ CREATE TABLE IF NOT EXISTS ssai_stitch_attempts (
     codec LowCardinality(String), -- 'h264', 'hevc', 'av1'
     vast_version LowCardinality(String) -- '2.0', '3.0', '4.0', '4.2'
 ) ENGINE = MergeTree()
+PARTITION BY toYYYYMMDD(attempt_time)
 ORDER BY (channel_id, attempt_time, splice_event_id);
 
-CREATE TABLE IF NOT EXISTS slate_observations (
+CREATE TABLE IF NOT EXISTS ghostslate.slate_observations (
     session_id UUID,
     channel_id LowCardinality(String),
     observed_at DateTime64(3, 'UTC'),
@@ -32,10 +35,11 @@ CREATE TABLE IF NOT EXISTS slate_observations (
 ) ENGINE = MergeTree()
 ORDER BY (channel_id, observed_at, session_id);
 
-CREATE TABLE IF NOT EXISTS advertiser_inventory (
+CREATE TABLE IF NOT EXISTS ghostslate.advertiser_inventory (
     channel_id LowCardinality(String),
     daypart LowCardinality(String), -- 'primetime', 'daytime', 'late_night', 'early_morning'
     cpm_usd Decimal(8, 2),
+    -- Unit invariant: percentages are stored 0–100, never 0–1
     fill_target_pct Float32
 ) ENGINE = MergeTree()
 ORDER BY (channel_id, daypart);

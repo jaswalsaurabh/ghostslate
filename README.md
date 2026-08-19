@@ -198,29 +198,44 @@ docker compose -f infra/docker-compose.yml up -d clickhouse mcp-clickhouse
 ```
 
 This brings up ClickHouse (`:8123`) and the MCP server (`:8000`), both bound to localhost only. On
-first start it creates the `ghostslate` database and provisions the read-only `ghostslate_agent`
-account the agent queries through.
+first start, the container automatically applies the schema, provisions the read-only
+`ghostslate_agent` user, seeds the rate cards, and generates the **101.4M-row baseline telemetry**.
+Initial seeding takes about 1–2 minutes. Subsequent starts are instant because the dataset is
+persisted in a named Docker volume (`clickhouse_data`). To re-seed from scratch after editing seed
+files, run `docker compose -f infra/docker-compose.yml down -v` first.
 
-### 4. Apply the schema
+### 4. Verify ClickHouse status
 
-The container's init hook does not load the analytical schema, so apply it once:
-
-```bash
-docker exec -i ghostslate-clickhouse clickhouse-client \
-  --user default --password "$CLICKHOUSE_ADMIN_PASSWORD" \
-  --database ghostslate --multiquery < sql/schema/001_initial_tables.sql
-```
-
-Verify:
+Check that all four tables are present and populated:
 
 ```bash
 docker exec ghostslate-clickhouse clickhouse-client \
-  --user default --password "$CLICKHOUSE_ADMIN_PASSWORD" \
-  --query "SHOW TABLES FROM ghostslate"
+  --user default --password "${CLICKHOUSE_ADMIN_PASSWORD:-ghostslate_admin_local_dev}" \
+  --query "SELECT table, total_rows FROM system.tables WHERE database = 'ghostslate'"
 ```
 
-You should see `scte35_cue_events`, `ssai_stitch_attempts`, `slate_observations` and
-`advertiser_inventory`.
+You should see `advertiser_inventory` (4 rows), `scte35_cue_events` (14,400 rows), `ssai_stitch_attempts` (101,400,000 rows), and `slate_observations` (0 rows).
+
+#### If you are deploying to ClickHouse Cloud
+
+The Docker Compose init hook runs locally only. For ClickHouse Cloud (the production target), create the read-only `ghostslate_agent` user and grant `SELECT ON ghostslate.* TO ghostslate_agent` via the Cloud console, then apply the three files in order using `clickhouse-client`:
+
+```bash
+# Apply schema, rate cards, and baseline telemetry to ClickHouse Cloud
+clickhouse-client --host "$CLICKHOUSE_HOST" --port 9440 --secure \
+  --user default --password "$CLICKHOUSE_ADMIN_PASSWORD" \
+  --multiquery < sql/schema/001_initial_tables.sql
+
+clickhouse-client --host "$CLICKHOUSE_HOST" --port 9440 --secure \
+  --user default --password "$CLICKHOUSE_ADMIN_PASSWORD" \
+  --multiquery < sql/seed/002-advertiser-inventory.sql
+
+clickhouse-client --host "$CLICKHOUSE_HOST" --port 9440 --secure \
+  --user default --password "$CLICKHOUSE_ADMIN_PASSWORD" \
+  --multiquery < sql/seed/003-baseline-telemetry.sql
+```
+
+Seeding 101.4M rows over network to Cloud takes longer than local Docker; execute it once ahead of deployment. Run `sql/checks/baseline-assertions.sql` against the Cloud instance to verify all 16 assertions and confirm the determinism fingerprint matches local exactly.
 
 ### 5. Run the app
 
@@ -262,12 +277,12 @@ anywhere in this project.**
 
 ### Common issues
 
-| Symptom                                 | Cause                                                                                         |
-| --------------------------------------- | --------------------------------------------------------------------------------------------- |
-| Agent can't reach ClickHouse            | `MCP_SERVER_URL` points at `localhost` from inside a container — use the Compose service name |
-| `403` / `PERMISSION_DENIED` from Gemini | Vertex AI API not enabled, or ADC not set up for the right project                            |
-| Tables missing                          | Step 4 was skipped — the init hook does not load the analytical schema                        |
-| `ERR_PNPM_UNSUPPORTED_ENGINE`           | Wrong Node version. `nvm use` reads `.nvmrc`                                                  |
+| Symptom                                 | Cause                                                                                                                                        |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Agent can't reach ClickHouse            | `MCP_SERVER_URL` points at `localhost` from inside a container — use the Compose service name                                                |
+| `403` / `PERMISSION_DENIED` from Gemini | Vertex AI API not enabled, or ADC not set up for the right project                                                                           |
+| Tables missing or row counts wrong      | The data volume was created by an earlier run. `docker compose -f infra/docker-compose.yml down -v`, then `up -d` to re-run the init scripts |
+| `ERR_PNPM_UNSUPPORTED_ENGINE`           | Wrong Node version. `nvm use` reads `.nvmrc`                                                                                                 |
 
 ## Architecture
 

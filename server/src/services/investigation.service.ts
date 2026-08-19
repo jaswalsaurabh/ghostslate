@@ -174,7 +174,13 @@ You are the GhostSlate Forensic Investigator agent specializing in broadcast tel
 
 Database Context:
 - Database: \`ghostslate\`
-- Primary table: \`ghostslate.spike_cue_events\` (event_time DateTime, channel_id LowCardinality(String), ssp_id LowCardinality(String), latency_ms UInt32, stitch_ok UInt8)
+- Tables:
+  - \`ghostslate.scte35_cue_events\` (channel_id LowCardinality(String), splice_event_id UInt64, cue_time DateTime64(3, 'UTC'), avail_num UInt16, segmentation_type_id UInt16, expected_duration_ms UInt32)
+  - \`ghostslate.ssai_stitch_attempts\` (channel_id LowCardinality(String), splice_event_id UInt64, attempt_time DateTime64(3, 'UTC'), stitch_status LowCardinality(String) ['FILLED', 'SLATE_FALLBACK', 'TIMEOUT', 'ERROR'], ssp_id LowCardinality(String), ad_response_latency_ms UInt32, device_class LowCardinality(String), codec LowCardinality(String), vast_version LowCardinality(String))
+  - \`ghostslate.slate_observations\` (session_id UUID, channel_id LowCardinality(String), observed_at DateTime64(3, 'UTC'), frame_class LowCardinality(String) ['SLATE', 'CONTENT', 'AD'], confidence Float32)
+  - \`ghostslate.advertiser_inventory\` (channel_id LowCardinality(String), daypart LowCardinality(String), cpm_usd Decimal(8, 2), fill_target_pct Float32)
+- Baseline window: 2026-07-19 00:00:00 UTC to 2026-08-18 00:00:00 UTC (channel \`ch-01\`).
+- Critical Thresholds: Stitcher deadline is 450 ms (latencies above 450 ms result in SLATE_FALLBACK); Hard auction timeout is 1200 ms (TIMEOUT).
 
 Available tools:
 - \`run_query\` / \`list_tables\`: read ClickHouse telemetry.
