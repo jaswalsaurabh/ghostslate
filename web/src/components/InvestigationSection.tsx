@@ -10,10 +10,12 @@ import {
   Check,
   Search,
   Database,
+  Eye,
 } from 'lucide-react';
-import type { InvestigationTraceEvent } from '../types.js';
+import type { InvestigationTraceEvent, ClassificationType, SlateType } from '../types.js';
 import { ClickHouseResultViewer } from './ClickHouseResultViewer.js';
 import { GroundedDiagnosisCard } from './GroundedDiagnosisCard.js';
+import { FrameEvidenceCard } from './FrameEvidenceCard.js';
 
 interface InvestigationSectionProps {
   investigating: boolean;
@@ -174,6 +176,28 @@ export const InvestigationSection: React.FC<InvestigationSectionProps> = ({
               );
             }
 
+            // Vision Tool Call
+            if (ev.type === 'vision_call') {
+              const args = (ev.data?.args as Record<string, unknown>) || {};
+              return (
+                <div
+                  key={i}
+                  className="bg-surface-card p-3 rounded-lg border border-border-strong flex items-center justify-between gap-2 shadow-sm"
+                >
+                  <div className="flex items-center gap-2 text-interactive font-bold text-xs">
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>
+                      Vision Tool Call:{' '}
+                      <span className="font-mono text-text-primary">
+                        {String(args.video_file ?? '')} @ {String(args.timestamp_seconds ?? '')}s
+                      </span>
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-mono text-text-muted">[{time}]</span>
+                </div>
+              );
+            }
+
             // ClickHouse Tool Result / Error Result
             if (ev.type === 'tool_result') {
               if (ev.data?.isError) {
@@ -198,6 +222,26 @@ export const InvestigationSection: React.FC<InvestigationSectionProps> = ({
                 <div key={i} className="flex flex-col">
                   <ClickHouseResultViewer rawResult={String(ev.data?.result || '')} />
                 </div>
+              );
+            }
+
+            // Frame Classified Result
+            if (ev.type === 'frame_classified') {
+              const d = ev.data ?? {};
+              const args = (d.args as Record<string, unknown>) || {};
+              return (
+                <FrameEvidenceCard
+                  key={i}
+                  classification={d.classification as ClassificationType}
+                  confidence={Number(d.confidence ?? 0)}
+                  slateType={(d.slate_type ?? null) as SlateType}
+                  textDetected={String(d.text_detected ?? '')}
+                  visualSummary={String(d.visual_summary ?? '')}
+                  timestampSeconds={d.timestampSeconds as number | undefined}
+                  videoFile={args.video_file as string | undefined}
+                  frameBase64={d.frameBase64 as string | undefined}
+                  cached={Boolean(d.cached)}
+                />
               );
             }
 

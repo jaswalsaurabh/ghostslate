@@ -40,10 +40,11 @@ export function createApp({ logger }: AppContext): Express {
   const healthController = new HealthController(healthService);
 
   const mcpService = new McpClientService();
-  const investigationService = new InvestigationService(mcpService);
+  const visionService = new VisionService();
+
+  const investigationService = new InvestigationService(mcpService, visionService);
   const investigationController = new InvestigationController(investigationService);
 
-  const visionService = new VisionService();
   const visionController = new VisionController(visionService);
 
   app.use('/api', createHealthRouter(healthController));

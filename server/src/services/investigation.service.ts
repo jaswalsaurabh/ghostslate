@@ -1,9 +1,18 @@
 import { GoogleGenAI, Type, type FunctionDeclaration, type Part } from '@google/genai';
-import { McpClientService, type McpToolResult } from './mcp.service.js';
+import { McpClientService } from './mcp.service.js';
+import { VisionService, type FrameClassification } from './vision.service.js';
 import { ServiceUnavailableError } from '../errors/domain-error.js';
 
 export interface InvestigationEvent {
-  type: 'status' | 'tool_call' | 'tool_result' | 'reasoning' | 'diagnosis' | 'error';
+  type:
+    | 'status'
+    | 'tool_call'
+    | 'tool_result'
+    | 'vision_call'
+    | 'frame_classified'
+    | 'reasoning'
+    | 'diagnosis'
+    | 'error';
   timestamp: string;
   data: Record<string, unknown>;
 }
@@ -14,12 +23,16 @@ export interface InvestigationResult {
   toolCallsCount: number;
 }
 
+// The synthetic demo streams in web/public/media. The agent may only inspect these.
+const INSPECTABLE_MEDIA = ['slate.mp4', 'ad.mp4', 'content.mp4'] as const;
+
 export class InvestigationService {
   private readonly ai: GoogleGenAI;
   private readonly modelName: string;
 
   constructor(
     private readonly mcpService: McpClientService,
+    private readonly visionService: VisionService,
     config?: { projectId?: string; region?: string; model?: string },
   ) {
     const project = config?.projectId || process.env.GCP_PROJECT_ID || 'agentic-cinema-ch-2026';
@@ -63,7 +76,68 @@ export class InvestigationService {
           required: ['database'],
         },
       },
+      {
+        name: 'classify_frame',
+        description:
+          'Inspect the actual video frame at a given timestamp and classify what is on screen as ' +
+          '"slate", "ad", or "content". Use this to confirm visually whether a suspicious ad break ' +
+          'found in the telemetry actually bled a filler slate to air, when the ClickHouse data alone ' +
+          'is ambiguous. Returns the classification, a confidence score, the slate type, any text ' +
+          'visible on screen, and a short visual summary.',
+        parameters: {
+          type: Type.OBJECT,
+          properties: {
+            video_file: {
+              type: Type.STRING,
+              description: `The demo stream to inspect. One of: ${INSPECTABLE_MEDIA.join(', ')}.`,
+            },
+            timestamp_seconds: {
+              type: Type.NUMBER,
+              description: 'Offset into the stream, in seconds. Must be non-negative.',
+            },
+          },
+          required: ['video_file', 'timestamp_seconds'],
+        },
+      },
     ];
+  }
+
+  private async executeTool(
+    name: string,
+    args: Record<string, unknown>,
+  ): Promise<{ modelText: string; isError: boolean; frame?: FrameClassification }> {
+    if (name !== 'classify_frame') {
+      const result = await this.mcpService.callTool(name, args);
+      return {
+        modelText: result.content?.[0]?.text || JSON.stringify(result),
+        isError: result.isError || false,
+      };
+    }
+
+    const videoFile = String(args.video_file ?? '');
+    const timestamp = Number(args.timestamp_seconds);
+
+    if (!INSPECTABLE_MEDIA.includes(videoFile as (typeof INSPECTABLE_MEDIA)[number])) {
+      return {
+        modelText: `Unknown video_file "${videoFile}". Choose one of: ${INSPECTABLE_MEDIA.join(', ')}.`,
+        isError: true,
+      };
+    }
+
+    if (!Number.isFinite(timestamp) || timestamp < 0) {
+      return {
+        modelText: `Invalid timestamp_seconds "${String(args.timestamp_seconds)}". Provide a non-negative number.`,
+        isError: true,
+      };
+    }
+
+    const frame = await this.visionService.classifyVideoTimestamp(videoFile, timestamp);
+
+    // The frame image goes to the war room, never to the model — it would cost tens of
+    // thousands of tokens per turn and add nothing the classification fields do not already say.
+    const { frameBase64: _frameBase64, ...modelFacing } = frame;
+
+    return { modelText: JSON.stringify(modelFacing), isError: false, frame };
   }
 
   async *investigateSpike(
@@ -102,11 +176,20 @@ Database Context:
 - Database: \`ghostslate\`
 - Primary table: \`ghostslate.spike_cue_events\` (event_time DateTime, channel_id LowCardinality(String), ssp_id LowCardinality(String), latency_ms UInt32, stitch_ok UInt8)
 
+Available tools:
+- \`run_query\` / \`list_tables\`: read ClickHouse telemetry.
+- \`classify_frame\`: look at the actual video frame at a timestamp and classify it as slate, ad, or content.
+
 Rules:
-1. Always query ClickHouse using \`run_query\` to inspect actual cue events and stitch attempts.
+1. Always start from ClickHouse using \`run_query\` to inspect actual cue events and stitch attempts.
 2. Ground every single claim, latency figure, and failure count in exact data returned from ClickHouse.
-3. Identify root causes (such as slow SSPs, high latency, or timeout thresholds).
-4. Provide a clear, concise forensic diagnosis with specific metrics.
+3. When the telemetry points to a suspicious ad break but cannot prove what actually reached the
+   viewer, call \`classify_frame\` on the relevant stream and timestamp to confirm visually.
+4. Visual evidence describes what is on screen. It is never the source of a number — every count,
+   rate, latency and financial figure must still come from a ClickHouse query.
+5. Identify root causes (such as slow SSPs, high latency, or timeout thresholds).
+6. Provide a clear, concise forensic diagnosis with specific metrics, citing both the telemetry and,
+   where you used it, the visual confirmation.
 `.trim();
 
     const contents: Array<{ role: 'user' | 'model'; parts: Array<Record<string, unknown>> }> = [
@@ -118,7 +201,7 @@ Rules:
 
     let toolCallsCount = 0;
     let finalDiagnosis = '';
-    const maxTurns = 8;
+    const maxTurns = 10;
 
     for (let turn = 0; turn < maxTurns; turn++) {
       yield emit('status', { message: `Reasoning turn ${turn + 1}...` });
@@ -161,35 +244,40 @@ Rules:
             .functionCall;
           toolCallsCount++;
 
-          yield emit('tool_call', {
+          const isVision = call.name === 'classify_frame';
+
+          yield emit(isVision ? 'vision_call' : 'tool_call', {
             name: call.name,
             args: call.args,
           });
 
-          let result: McpToolResult;
+          let outcome: { modelText: string; isError: boolean; frame?: FrameClassification };
           try {
-            result = await this.mcpService.callTool(call.name, call.args || {});
+            outcome = await this.executeTool(call.name, call.args || {});
           } catch (err: unknown) {
             const errorMsg = err instanceof Error ? err.message : String(err);
-            result = {
-              content: [{ type: 'text', text: `Tool error: ${errorMsg}` }],
-              isError: true,
-            };
+            outcome = { modelText: `Tool error: ${errorMsg}`, isError: true };
           }
 
-          const responseText = result.content?.[0]?.text || JSON.stringify(result);
-
-          yield emit('tool_result', {
-            name: call.name,
-            result: responseText,
-            isError: result.isError || false,
-          });
+          if (outcome.frame) {
+            yield emit('frame_classified', {
+              name: call.name,
+              args: call.args,
+              ...outcome.frame,
+            });
+          } else {
+            yield emit('tool_result', {
+              name: call.name,
+              result: outcome.modelText,
+              isError: outcome.isError,
+            });
+          }
 
           responseParts.push({
             functionResponse: {
               name: call.name,
               response: {
-                content: responseText,
+                content: outcome.modelText,
               },
             },
           });

@@ -30,7 +30,16 @@ export interface McpQueryData {
 }
 
 export interface InvestigationTraceEvent {
-  type: 'status' | 'tool_call' | 'tool_result' | 'reasoning' | 'diagnosis' | 'error' | 'done';
+  type:
+    | 'status'
+    | 'tool_call'
+    | 'tool_result'
+    | 'vision_call'
+    | 'frame_classified'
+    | 'reasoning'
+    | 'diagnosis'
+    | 'error'
+    | 'done';
   timestamp: string;
   data?: {
     message?: string;
