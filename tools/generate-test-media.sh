@@ -1,6 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Preflight checks
+if ! command -v rsvg-convert &> /dev/null; then
+  echo "Error: rsvg-convert is required to rasterize SVGs." >&2
+  echo "Install it via: brew install librsvg (macOS) or apt-get install librsvg2-bin (Debian/Ubuntu)" >&2
+  exit 1
+fi
+
+if ! command -v ffmpeg &> /dev/null; then
+  echo "Error: ffmpeg is required to encode video streams." >&2
+  echo "Install it via: brew install ffmpeg (macOS) or apt-get install ffmpeg (Debian/Ubuntu)" >&2
+  exit 1
+fi
+
 OUT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/web/public/media"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
@@ -98,26 +111,25 @@ cat << 'EOF' > "$TMP_DIR/ad.svg"
 EOF
 
 echo "==> Rendering SVGs to PNG..."
-qlmanage -t -s 1280 -o "$TMP_DIR" "$TMP_DIR/content.svg" > /dev/null 2>&1
-qlmanage -t -s 1280 -o "$TMP_DIR" "$TMP_DIR/slate.svg" > /dev/null 2>&1
-qlmanage -t -s 1280 -o "$TMP_DIR" "$TMP_DIR/ad.svg" > /dev/null 2>&1
-
-mv "$TMP_DIR/content.svg.png" "$TMP_DIR/content.png"
-mv "$TMP_DIR/slate.svg.png" "$TMP_DIR/slate.png"
-mv "$TMP_DIR/ad.svg.png" "$TMP_DIR/ad.png"
+rsvg-convert -w 1280 -h 720 -o "$TMP_DIR/content.png" "$TMP_DIR/content.svg"
+rsvg-convert -w 1280 -h 720 -o "$TMP_DIR/slate.png" "$TMP_DIR/slate.svg"
+rsvg-convert -w 1280 -h 720 -o "$TMP_DIR/ad.png" "$TMP_DIR/ad.svg"
 
 echo "==> Encoding Video Segments with ffmpeg..."
 
 # 1. Content (10s)
 ffmpeg -y -loop 1 -i "$TMP_DIR/content.png" -f lavfi -i sine=frequency=440:duration=10 \
+  -vf "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1" \
   -c:v libx264 -t 10 -pix_fmt yuv420p -r 30 -c:a aac -b:a 128k -shortest "$OUT_DIR/content.mp4"
 
 # 2. Slate (15s)
 ffmpeg -y -loop 1 -i "$TMP_DIR/slate.png" -f lavfi -i sine=frequency=220:duration=15 \
+  -vf "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1" \
   -c:v libx264 -t 15 -pix_fmt yuv420p -r 30 -c:a aac -b:a 128k -shortest "$OUT_DIR/slate.mp4"
 
 # 3. Ad (15s)
 ffmpeg -y -loop 1 -i "$TMP_DIR/ad.png" -f lavfi -i sine=frequency=660:duration=15 \
+  -vf "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1" \
   -c:v libx264 -t 15 -pix_fmt yuv420p -r 30 -c:a aac -b:a 128k -shortest "$OUT_DIR/ad.mp4"
 
 echo "==> Stitching Full Test Streams (35s each)..."
