@@ -124,3 +124,5 @@ Thumbs.db
 # ---------------------------------------------------------------------------
 graphify-out/
 .claude/settings.local.json
+.agent/docs
+.agent/plans
