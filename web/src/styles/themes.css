@@ -1,0 +1,115 @@
+[data-theme='light'] {
+  /* Surfaces */
+  --color-surface-base: var(--gs-neutral-0);
+  --color-surface-panel: var(--gs-neutral-100);
+  --color-surface-card: var(--gs-neutral-200);
+  --color-surface-hover: var(--gs-neutral-300);
+  --color-surface-scrim: color-mix(in oklab, var(--gs-neutral-950) 40%, transparent);
+
+  /* Borders */
+  --color-border-subtle: var(--gs-neutral-300);
+  --color-border-strong: var(--gs-neutral-600);
+
+  /* Text */
+  --color-text-primary: var(--gs-neutral-950);
+  --color-text-secondary: var(--gs-neutral-600);
+  --color-text-muted: var(--gs-neutral-500);
+
+  /* Interactive */
+  --color-interactive: var(--gs-sky-700);
+  --color-interactive-fg: var(--gs-neutral-0);
+  --color-interactive-surface: color-mix(
+    in oklab,
+    var(--gs-sky-700) 15%,
+    var(--color-surface-base)
+  );
+  --color-interactive-border: color-mix(in oklab, var(--gs-sky-700) 30%, transparent);
+  --color-interactive-subtle: color-mix(in oklab, var(--gs-sky-700) 20%, transparent);
+
+  /* Status — Critical */
+  --color-status-critical: var(--gs-red-700);
+  --color-status-critical-surface: color-mix(
+    in oklab,
+    var(--gs-red-700) 12%,
+    var(--color-surface-base)
+  );
+  --color-status-critical-border: color-mix(in oklab, var(--gs-red-700) 30%, transparent);
+  --color-status-critical-subtle: color-mix(in oklab, var(--gs-red-700) 20%, transparent);
+  --color-status-critical-zone: color-mix(in oklab, var(--gs-red-700) 35%, transparent);
+
+  /* Status — Warning */
+  --color-status-warning: var(--gs-amber-700);
+  --color-status-warning-fg: var(--gs-neutral-0);
+  --color-status-warning-surface: color-mix(
+    in oklab,
+    var(--gs-amber-700) 12%,
+    var(--color-surface-base)
+  );
+  --color-status-warning-border: color-mix(in oklab, var(--gs-amber-700) 30%, transparent);
+  --color-status-warning-subtle: color-mix(in oklab, var(--gs-amber-700) 20%, transparent);
+
+  /* Status — Success */
+  --color-status-success: var(--gs-emerald-700);
+  --color-status-success-surface: color-mix(
+    in oklab,
+    var(--gs-emerald-700) 12%,
+    var(--color-surface-base)
+  );
+  --color-status-success-border: color-mix(in oklab, var(--gs-emerald-700) 30%, transparent);
+  --color-status-success-zone: color-mix(in oklab, var(--gs-emerald-700) 35%, transparent);
+
+  /* Data / query surface — the ClickHouse terminal aesthetic */
+  --color-data-fg: var(--gs-emerald-700);
+  --color-data-fg-on: var(--gs-neutral-0);
+  --color-data-surface: color-mix(in oklab, var(--gs-emerald-700) 10%, var(--color-surface-base));
+  --color-data-border: color-mix(in oklab, var(--gs-emerald-700) 35%, transparent);
+
+  /* Agent Reasoning */
+  --color-reasoning-fg: var(--gs-purple-700);
+  --color-reasoning-surface: color-mix(
+    in oklab,
+    var(--gs-purple-700) 10%,
+    var(--color-surface-base)
+  );
+  --color-reasoning-border: color-mix(in oklab, var(--gs-purple-700) 30%, transparent);
+
+  /* Domain — agent confidence */
+  --color-confidence-high: var(--gs-emerald-700);
+  --color-confidence-medium: var(--gs-amber-700);
+  --color-confidence-low: var(--gs-red-700);
+
+  /* Domain — telemetry severity */
+  --color-severity-nominal: var(--gs-emerald-700);
+  --color-severity-degraded: var(--gs-amber-700);
+  --color-severity-anomalous: var(--gs-red-700);
+
+  /* Domain — frame classification. Slate is critical (red). */
+  --color-classification-slate: var(--gs-red-700);
+  --color-classification-slate-surface: color-mix(
+    in oklab,
+    var(--gs-red-700) 12%,
+    var(--color-surface-base)
+  );
+  --color-classification-slate-border: color-mix(in oklab, var(--gs-red-700) 35%, transparent);
+  --color-classification-slate-subtle: color-mix(in oklab, var(--gs-red-700) 20%, transparent);
+
+  --color-classification-ad: var(--gs-blue-700);
+  --color-classification-ad-surface: color-mix(
+    in oklab,
+    var(--gs-blue-700) 12%,
+    var(--color-surface-base)
+  );
+  --color-classification-ad-border: color-mix(in oklab, var(--gs-blue-700) 35%, transparent);
+
+  --color-classification-content: var(--gs-emerald-700);
+  --color-classification-content-surface: color-mix(
+    in oklab,
+    var(--gs-emerald-700) 12%,
+    var(--color-surface-base)
+  );
+  --color-classification-content-border: color-mix(
+    in oklab,
+    var(--gs-emerald-700) 35%,
+    transparent
+  );
+}

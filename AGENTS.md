@@ -70,7 +70,14 @@ is the project's core credibility property — treat a violation as a bug, not a
 
 ## Frontend
 
-- Tailwind v4 token syntax: `bg-(--surface)`, not `bg-[var(--surface)]`.
+- **Design tokens are canonical in `.agent/design-system.md`.** Colour, spacing, radius, type,
+  elevation, motion and layering all resolve through a three-tier chain — primitive, semantic,
+  component. Components read semantic tokens only: a stock palette class or a raw hex under
+  `web/src/components/` is a bug, because it freezes that spot to one theme. Read that file before
+  touching anything visual.
+- Tailwind v4: semantic tokens are registered with `@theme static` and consumed as generated
+  utilities (`bg-surface-base`). For a token deliberately left out of `@theme`, the arbitrary form
+  is `bg-(--surface)`, never `bg-[var(--surface)]`.
 - Component files PascalCase and matching their export; everything else kebab-case; hooks camelCase
   beginning with `use`.
 - No `any` for domain or API types. Shapes are decoded once at the API boundary with zod.

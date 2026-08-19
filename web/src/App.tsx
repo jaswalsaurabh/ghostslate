@@ -217,7 +217,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-(--surface-base) text-(--text-primary) flex flex-col font-sans selection:bg-(--accent-primary) selection:text-black">
+    <div className="min-h-screen bg-surface-base text-text-primary flex flex-col font-sans selection:bg-interactive selection:text-interactive-fg">
       {/* Top Header */}
       <Header health={health} healthLoading={healthLoading} healthError={healthError} />
 

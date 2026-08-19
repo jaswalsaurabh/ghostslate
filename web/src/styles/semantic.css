@@ -1,0 +1,140 @@
+@theme static {
+  /* Surfaces */
+  --color-surface-base: var(--gs-neutral-950);
+  --color-surface-panel: var(--gs-neutral-900);
+  --color-surface-card: var(--gs-neutral-850);
+  --color-surface-hover: var(--gs-neutral-750);
+  --color-surface-scrim: color-mix(in oklab, var(--gs-neutral-950) 80%, transparent);
+
+  /* Borders */
+  --color-border-subtle: var(--gs-neutral-800);
+  --color-border-strong: var(--gs-neutral-700);
+
+  /* Text */
+  --color-text-primary: var(--gs-neutral-50);
+  --color-text-secondary: var(--gs-neutral-400);
+  --color-text-muted: var(--gs-neutral-450);
+
+  /* Interactive */
+  --color-interactive: var(--gs-sky-400);
+  --color-interactive-fg: var(--gs-neutral-950);
+  --color-interactive-surface: color-mix(
+    in oklab,
+    var(--gs-sky-400) 15%,
+    var(--color-surface-base)
+  );
+  --color-interactive-border: color-mix(in oklab, var(--gs-sky-400) 30%, transparent);
+  --color-interactive-subtle: color-mix(in oklab, var(--gs-sky-400) 20%, transparent);
+
+  /* Status — Critical */
+  --color-status-critical: var(--gs-red-400);
+  --color-status-critical-surface: color-mix(
+    in oklab,
+    var(--gs-red-400) 15%,
+    var(--color-surface-base)
+  );
+  --color-status-critical-border: color-mix(in oklab, var(--gs-red-400) 30%, transparent);
+  --color-status-critical-subtle: color-mix(in oklab, var(--gs-red-400) 20%, transparent);
+  --color-status-critical-zone: color-mix(in oklab, var(--gs-red-400) 40%, transparent);
+
+  /* Status — Warning */
+  --color-status-warning: var(--gs-amber-400);
+  --color-status-warning-fg: var(--gs-neutral-950);
+  --color-status-warning-surface: color-mix(
+    in oklab,
+    var(--gs-amber-400) 15%,
+    var(--color-surface-base)
+  );
+  --color-status-warning-border: color-mix(in oklab, var(--gs-amber-400) 30%, transparent);
+  --color-status-warning-subtle: color-mix(in oklab, var(--gs-amber-400) 20%, transparent);
+
+  /* Status — Success */
+  --color-status-success: var(--gs-emerald-400);
+  --color-status-success-surface: color-mix(
+    in oklab,
+    var(--gs-emerald-400) 15%,
+    var(--color-surface-base)
+  );
+  --color-status-success-border: color-mix(in oklab, var(--gs-emerald-400) 30%, transparent);
+  --color-status-success-zone: color-mix(in oklab, var(--gs-emerald-400) 40%, transparent);
+
+  /* Data / query surface — the ClickHouse terminal aesthetic */
+  --color-data-fg: var(--gs-emerald-400);
+  --color-data-fg-on: var(--gs-neutral-950);
+  --color-data-surface: color-mix(in oklab, var(--gs-emerald-400) 8%, var(--color-surface-base));
+  --color-data-border: color-mix(in oklab, var(--gs-emerald-400) 30%, transparent);
+
+  /* Agent Reasoning */
+  --color-reasoning-fg: var(--gs-purple-400);
+  --color-reasoning-surface: color-mix(
+    in oklab,
+    var(--gs-purple-400) 12%,
+    var(--color-surface-base)
+  );
+  --color-reasoning-border: color-mix(in oklab, var(--gs-purple-400) 30%, transparent);
+
+  /* Domain — agent confidence (§7 of the design system) */
+  --color-confidence-high: var(--gs-emerald-400);
+  --color-confidence-medium: var(--gs-amber-400);
+  --color-confidence-low: var(--gs-red-400);
+
+  /* Domain — telemetry severity */
+  --color-severity-nominal: var(--gs-emerald-400);
+  --color-severity-degraded: var(--gs-amber-400);
+  --color-severity-anomalous: var(--gs-red-400);
+
+  /* Domain — frame classification. Mirrors ClassificationType in web/src/types.ts. Slate is critical (red). */
+  --color-classification-slate: var(--gs-red-400);
+  --color-classification-slate-surface: color-mix(
+    in oklab,
+    var(--color-classification-slate) 15%,
+    var(--color-surface-base)
+  );
+  --color-classification-slate-border: color-mix(
+    in oklab,
+    var(--color-classification-slate) 40%,
+    transparent
+  );
+  --color-classification-slate-subtle: color-mix(
+    in oklab,
+    var(--color-classification-slate) 20%,
+    transparent
+  );
+
+  --color-classification-ad: var(--gs-blue-400);
+  --color-classification-ad-surface: color-mix(
+    in oklab,
+    var(--color-classification-ad) 15%,
+    var(--color-surface-base)
+  );
+  --color-classification-ad-border: color-mix(
+    in oklab,
+    var(--color-classification-ad) 40%,
+    transparent
+  );
+
+  --color-classification-content: var(--gs-emerald-400);
+  --color-classification-content-surface: color-mix(
+    in oklab,
+    var(--color-classification-content) 15%,
+    var(--color-surface-base)
+  );
+  --color-classification-content-border: color-mix(
+    in oklab,
+    var(--color-classification-content) 40%,
+    transparent
+  );
+
+  /* Non-colour scales */
+  --font-sans:
+    'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --duration-fast: 150ms;
+  --duration-base: 250ms;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --z-sticky: 40;
+}

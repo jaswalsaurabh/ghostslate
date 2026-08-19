@@ -1,0 +1,38 @@
+@layer theme {
+  :root {
+    /* Neutrals — Dark theme */
+    --gs-neutral-950: #070b12;
+    --gs-neutral-900: #0d1424;
+    --gs-neutral-850: #141f36;
+    --gs-neutral-800: #1e2d4a;
+    --gs-neutral-750: #1f2e4d;
+    --gs-neutral-700: #2a3d63;
+    --gs-neutral-500: #64748b;
+    --gs-neutral-450: #7c8ba1;
+    --gs-neutral-400: #94a3b8;
+    --gs-neutral-50: #f8fafc;
+    --gs-neutral-0: #ffffff;
+
+    /* Neutrals — Light theme */
+    --gs-neutral-100: #f1f5f9;
+    --gs-neutral-200: #e2e8f0;
+    --gs-neutral-300: #cbd5e1;
+    --gs-neutral-600: #475569;
+
+    /* Accents — Dark theme (400 step) */
+    --gs-sky-400: #38bdf8;
+    --gs-amber-400: #fbbf24;
+    --gs-red-400: #f87171;
+    --gs-emerald-400: #34d399;
+    --gs-blue-400: #60a5fa;
+    --gs-purple-400: #c084fc;
+
+    /* Accents — Light theme (700 step for WCAG AA >= 4.5:1) */
+    --gs-sky-700: #0369a1;
+    --gs-amber-700: #b45309;
+    --gs-red-700: #b91c1c;
+    --gs-emerald-700: #047857;
+    --gs-blue-700: #1d4ed8;
+    --gs-purple-700: #7e22ce;
+  }
+}

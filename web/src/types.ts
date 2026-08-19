@@ -7,6 +7,11 @@ export interface SystemHealth {
 export type ClassificationType = 'slate' | 'ad' | 'content';
 export type SlateType = 'looping_card' | 'black_screen' | 'static_logo' | null;
 
+export const CONFIDENCE_THRESHOLDS = {
+  HIGH: 0.9,
+  MEDIUM: 0.7,
+} as const;
+
 export interface FrameClassificationData {
   classification: ClassificationType;
   confidence: number;
