@@ -23,6 +23,7 @@ export interface GroundedKpiMetrics {
   scannedLogsTag: string;
 
   isGroundedFromMcp: boolean;
+  rateCardFromQuery: boolean;
 }
 
 const GroundedKpiPayloadSchema = z.object({
@@ -52,6 +53,7 @@ const GroundedKpiPayloadSchema = z.object({
   scannedLogsTag: z.string().nullable().optional(),
 
   isGroundedFromMcp: z.boolean().default(false),
+  rateCardFromQuery: z.boolean().default(false),
 });
 
 const EMPTY_METRICS: GroundedKpiMetrics = {
@@ -75,6 +77,7 @@ const EMPTY_METRICS: GroundedKpiMetrics = {
   scannedLogsTag: '—',
 
   isGroundedFromMcp: false,
+  rateCardFromQuery: false,
 };
 
 export function useClickHouseMetrics(
@@ -110,6 +113,7 @@ export function useClickHouseMetrics(
               scannedLogsTag: data.scannedLogsTag ?? '—',
 
               isGroundedFromMcp: true,
+              rateCardFromQuery: data.rateCardFromQuery,
             };
           }
         }

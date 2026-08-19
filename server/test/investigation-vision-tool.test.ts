@@ -402,6 +402,7 @@ describe('InvestigationService — Vision Tool Wiring', () => {
     expect(metricsEvent?.data.offendingSsp).toBe('SSP-BETA');
     expect(metricsEvent?.data.sspLatency).toBe('542ms');
     expect(metricsEvent?.data.slateBleedRate).toBe('84.2%');
-    expect(metricsEvent?.data.revenueLoss).toBe('$25.00');
+    // 5 unmonetized impressions * ($25 fallback CPM / 1000) = $0.125 -> $0.13
+    expect(metricsEvent?.data.revenueLoss).toBe('$0.13');
   });
 });

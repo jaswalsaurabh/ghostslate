@@ -2,6 +2,7 @@ import { GoogleGenAI, Type, type FunctionDeclaration, type Part } from '@google/
 import { McpClientService } from './mcp.service.js';
 import { VisionService, type FrameClassification } from './vision.service.js';
 import { MetricsService, type RawMcpQueryData } from './metrics.service.js';
+import { GroundingService } from './grounding.service.js';
 import { ServiceUnavailableError } from '../errors/domain-error.js';
 
 export interface InvestigationEvent {
@@ -31,13 +32,17 @@ const INSPECTABLE_MEDIA = ['slate.mp4', 'ad.mp4', 'content.mp4'] as const;
 export class InvestigationService {
   private readonly ai: GoogleGenAI;
   private readonly modelName: string;
+  private readonly groundingService: GroundingService;
 
   constructor(
     private readonly mcpService: McpClientService,
     private readonly visionService: VisionService,
     private readonly metricsService: MetricsService = new MetricsService(),
+    groundingService?: GroundingService,
     config?: { projectId?: string; region?: string; model?: string },
   ) {
+    this.groundingService = groundingService ?? new GroundingService(this.metricsService);
+
     const project = config?.projectId || process.env.GCP_PROJECT_ID || 'agentic-cinema-ch-2026';
     const location = config?.region || process.env.GCP_REGION || 'us-central1';
     this.modelName = config?.model || process.env.GEMINI_MODEL || 'gemini-2.5-flash';
@@ -334,7 +339,11 @@ Rules:
           .join('\n');
 
         finalDiagnosis = textParts || 'Investigation complete.';
-        yield emit('diagnosis', { diagnosis: finalDiagnosis });
+        const groundingReport = this.groundingService.verify(finalDiagnosis, events);
+        yield emit('diagnosis', {
+          diagnosis: finalDiagnosis,
+          grounding: groundingReport,
+        });
         break;
       }
     }

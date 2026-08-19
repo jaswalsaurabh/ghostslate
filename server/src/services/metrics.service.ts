@@ -24,35 +24,43 @@ export interface GroundedKpiPayload {
   scannedLogsTag: string | null;
 
   isGroundedFromMcp: boolean;
+  rateCardFromQuery: boolean;
 }
 
 export interface RateCard {
   cpmUsd: number;
-  impressionsPerCue: number;
 }
 
+/**
+ * Fallback rate card used strictly when no advertiser_inventory rate card
+ * is returned by ClickHouse queries. Fallback numbers must be visibly flagged
+ * via rateCardFromQuery: false.
+ */
 export const CANONICAL_RATE_CARD: RateCard = {
-  cpmUsd: 25.0, // Baseline CPM for FAST ad pods
-  impressionsPerCue: 200, // Standard estimated viewer impressions per SCTE-35 cue
+  cpmUsd: 25.0, // Baseline CPM fallback for FAST ad pods
 };
 
+/**
+ * Minimum percentage-point gap between the worst cohort and the median cohort
+ * required to declare an isolated incident rather than diffuse baseline noise.
+ * Prevents diffuse elevation (where all cohorts rise together by a few points)
+ * from being misclassified as an isolated critical incident.
+ */
+export const COHORT_DISPERSION_THRESHOLD_PP = 15.0;
+
 export class MetricsService {
-  constructor(private readonly rateCard: RateCard = CANONICAL_RATE_CARD) {}
+  constructor(private readonly fallbackRateCard: RateCard = CANONICAL_RATE_CARD) {}
 
   /**
-   * Computes financial revenue loss from unmonetized SCTE-35 ad cues.
+   * Computes financial revenue loss from unmonetized SSAI viewer stitch attempts.
    * Single ownership rule: all loss calculations repo-wide must trace to this function.
+   * Both parameters are required with no defaults. Each stitch attempt is one impression.
    */
-  computeLoss(
-    unmonetizedCues: number,
-    impressionsPerCue: number = this.rateCard.impressionsPerCue,
-    cpmUsd: number = this.rateCard.cpmUsd,
-  ): number {
-    if (unmonetizedCues <= 0 || impressionsPerCue <= 0 || cpmUsd <= 0) {
+  computeLoss(unmonetizedImpressions: number, cpmUsd: number): number {
+    if (unmonetizedImpressions <= 0 || cpmUsd <= 0) {
       return 0.0;
     }
-    const impressions = unmonetizedCues * impressionsPerCue;
-    const loss = Math.round(impressions * (cpmUsd / 1000) * 100) / 100;
+    const loss = Math.round(unmonetizedImpressions * (cpmUsd / 1000) * 100) / 100;
     return loss;
   }
 
@@ -86,11 +94,13 @@ export class MetricsService {
       colMap.get('avg_latency') ??
       colMap.get('avg_latency_ms') ??
       colMap.get('ad_response_latency_ms') ??
+      colMap.get('p95_auction_ms') ??
       colMap.get('latency_ms') ??
       colMap.get('latency') ??
       -1;
 
     const bleedIdx =
+      colMap.get('unmonetized_pct') ??
       colMap.get('bleed_pct') ??
       colMap.get('slate_bleed_pct') ??
       colMap.get('failure_rate') ??
@@ -99,11 +109,24 @@ export class MetricsService {
 
     const cuesIdx = colMap.get('total_cues') ?? colMap.get('cues') ?? colMap.get('count') ?? -1;
 
+    const attemptsIdx =
+      colMap.get('total_attempts') ?? colMap.get('attempts') ?? colMap.get('total_stitches') ?? -1;
+
     const droppedIdx =
+      colMap.get('unmonetized_impressions') ??
+      colMap.get('unmonetized') ??
+      colMap.get('slate_cues') ??
       colMap.get('dropped_ads') ??
       colMap.get('failed_stitches') ??
       colMap.get('dropped_stitches') ??
       colMap.get('failures') ??
+      -1;
+
+    const cpmIdx =
+      colMap.get('cpm_usd') ??
+      colMap.get('cpm') ??
+      colMap.get('cpmusd') ??
+      colMap.get('rate') ??
       -1;
 
     // If neither ssp, latency, bleed, nor cues columns match, this is not an expected telemetry result
@@ -117,7 +140,8 @@ export class MetricsService {
       return this.getEmptyPayload();
     }
 
-    // Find the row with highest bleed percentage or worst latency / failures
+    // Collect all valid bleed percentages across rows to evaluate cohort dispersion
+    const cohortBleeds: number[] = [];
     let worstRow = queryData.rows[0];
     let maxMetricVal = -1;
 
@@ -125,6 +149,7 @@ export class MetricsService {
       let metricVal = -1;
       if (bleedIdx >= 0 && row[bleedIdx] != null && !isNaN(Number(row[bleedIdx]))) {
         metricVal = Number(row[bleedIdx]);
+        cohortBleeds.push(metricVal);
       } else if (droppedIdx >= 0 && row[droppedIdx] != null && !isNaN(Number(row[droppedIdx]))) {
         metricVal = Number(row[droppedIdx]);
       } else if (latencyIdx >= 0 && row[latencyIdx] != null && !isNaN(Number(row[latencyIdx]))) {
@@ -161,49 +186,85 @@ export class MetricsService {
           : 'Within 250ms SLA budget'
         : null;
 
-    // 3. Cues & Dropped
-    const cuesNum =
-      cuesIdx >= 0 && worstRow[cuesIdx] != null && !isNaN(Number(worstRow[cuesIdx]))
-        ? Number(worstRow[cuesIdx])
-        : null;
+    // 3. Attempts & Unmonetized Impressions
+    let attemptsNum: number | null = null;
+    if (
+      attemptsIdx >= 0 &&
+      worstRow[attemptsIdx] != null &&
+      !isNaN(Number(worstRow[attemptsIdx]))
+    ) {
+      attemptsNum = Number(worstRow[attemptsIdx]);
+    } else if (cuesIdx >= 0 && worstRow[cuesIdx] != null && !isNaN(Number(worstRow[cuesIdx]))) {
+      attemptsNum = Number(worstRow[cuesIdx]);
+    }
 
     let droppedNum: number | null = null;
     if (droppedIdx >= 0 && worstRow[droppedIdx] != null && !isNaN(Number(worstRow[droppedIdx]))) {
       droppedNum = Number(worstRow[droppedIdx]);
     }
 
-    // 4. Slate Bleed Percentage
+    // 4. Unmonetized / Slate Bleed Percentage
     let bleedNum: number | null = null;
     if (bleedIdx >= 0 && worstRow[bleedIdx] != null && !isNaN(Number(worstRow[bleedIdx]))) {
       bleedNum = Number(worstRow[bleedIdx]);
-    } else if (cuesNum !== null && cuesNum > 0 && droppedNum !== null) {
-      bleedNum = (droppedNum / cuesNum) * 100;
+    } else if (attemptsNum !== null && attemptsNum > 0 && droppedNum !== null) {
+      bleedNum = (droppedNum / attemptsNum) * 100;
     }
 
-    if (droppedNum === null && cuesNum !== null && bleedNum !== null) {
-      droppedNum = Math.round(cuesNum * (bleedNum / 100));
+    if (droppedNum === null && attemptsNum !== null && bleedNum !== null) {
+      droppedNum = Math.round(attemptsNum * (bleedNum / 100));
     }
 
+    // Cohort Dispersion Restraint Rule:
+    // A spike is critical only if it exceeds 20% absolute failure rate AND stands out
+    // from peer cohorts by at least COHORT_DISPERSION_THRESHOLD_PP (or is the sole filtered incident).
+    let isSeparated = true;
+    if (cohortBleeds.length > 1 && bleedNum !== null) {
+      const sorted = [...cohortBleeds].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      const medianVal = sorted[mid] ?? 0;
+      const prevVal = sorted[mid - 1] ?? medianVal;
+      const medianBleed = sorted.length % 2 !== 0 ? medianVal : (prevVal + medianVal) / 2;
+      isSeparated = bleedNum - medianBleed >= COHORT_DISPERSION_THRESHOLD_PP;
+    }
+
+    const isCriticalBleed = bleedNum !== null ? bleedNum > 20 && isSeparated : false;
     const slateBleedRate = bleedNum !== null ? `${bleedNum.toFixed(1)}%` : null;
-    const isCriticalBleed = bleedNum !== null ? bleedNum > 20 : false;
     const slateBleedVariant =
-      bleedNum !== null ? (isCriticalBleed ? 'critical' : 'success') : 'neutral';
+      bleedNum !== null
+        ? isCriticalBleed
+          ? 'critical'
+          : bleedNum > 5
+            ? 'warning'
+            : 'success'
+        : 'neutral';
     const slateBleedTag =
       bleedNum !== null ? (isCriticalBleed ? 'CRITICAL SPIKE' : 'NOMINAL') : null;
     const slateBleedSubtext = slateBleedRate !== null ? 'Target: 0.0% unmonetized pod time' : null;
 
-    // 5. Revenue Loss
+    // 5. Revenue Loss & Rate Card Grounding
     let formattedLoss: string | null = null;
     let revenueLossSubtext: string | null = null;
     let revenueLossVariant: GroundedKpiPayload['revenueLossVariant'] = 'neutral';
     let revenueLossTag: string | null = null;
 
+    let cpmUsd = this.fallbackRateCard.cpmUsd;
+    let rateCardFromQuery = false;
+
+    if (cpmIdx >= 0 && worstRow[cpmIdx] != null && !isNaN(Number(worstRow[cpmIdx]))) {
+      const parsedCpm = Number(worstRow[cpmIdx]);
+      if (parsedCpm > 0) {
+        cpmUsd = parsedCpm;
+        rateCardFromQuery = true;
+      }
+    }
+
     if (droppedNum !== null) {
-      const loss = this.computeLoss(droppedNum);
-      formattedLoss = `$${loss.toFixed(2)}`;
-      revenueLossSubtext = `${droppedNum} unmonetized SCTE-35 cues`;
-      revenueLossVariant = isCriticalBleed || loss > 0 ? 'critical' : 'success';
-      revenueLossTag = isCriticalBleed ? 'Loss in Window' : 'Optimal';
+      const loss = this.computeLoss(droppedNum, cpmUsd);
+      formattedLoss = `$${loss.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      revenueLossSubtext = `${droppedNum.toLocaleString('en-US')} unmonetized impressions`;
+      revenueLossVariant = isCriticalBleed ? 'critical' : loss > 0 ? 'warning' : 'success';
+      revenueLossTag = isCriticalBleed ? 'Loss in Window' : loss > 0 ? 'Nominal' : 'Optimal';
     }
 
     // 6. Scanned Logs / MCP telemetry execution metrics
@@ -241,6 +302,7 @@ export class MetricsService {
       scannedLogsTag,
 
       isGroundedFromMcp: true,
+      rateCardFromQuery,
     };
   }
 
@@ -266,6 +328,7 @@ export class MetricsService {
       scannedLogsTag: null,
 
       isGroundedFromMcp: false,
+      rateCardFromQuery: false,
     };
   }
 }

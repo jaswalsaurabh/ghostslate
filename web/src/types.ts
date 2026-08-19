@@ -33,6 +33,17 @@ export interface McpQueryData {
   rows: (string | number | boolean | null)[][];
 }
 
+export interface GroundingViolation {
+  claim: string;
+  context: string;
+}
+
+export interface GroundingReport {
+  grounded: boolean;
+  violations: GroundingViolation[];
+  checkedClaims: number;
+}
+
 export interface InvestigationTraceEvent {
   type:
     | 'status'
@@ -54,6 +65,7 @@ export interface InvestigationTraceEvent {
     isError?: boolean;
     error?: string;
     diagnosis?: string;
+    grounding?: GroundingReport;
     [key: string]: unknown;
   };
 }

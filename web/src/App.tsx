@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import type { SystemHealth, FrameClassificationData, InvestigationTraceEvent } from './types.js';
+import type {
+  SystemHealth,
+  FrameClassificationData,
+  InvestigationTraceEvent,
+  GroundingReport,
+} from './types.js';
 import { Header } from './components/Header.js';
 import { KpiStrip } from './components/KpiStrip.js';
 import { VisionSection } from './components/VisionSection.js';
@@ -31,6 +36,7 @@ export const App: React.FC = () => {
   const [investigating, setInvestigating] = useState<boolean>(false);
   const [investigationTrace, setInvestigationTrace] = useState<InvestigationTraceEvent[]>([]);
   const [finalDiagnosis, setFinalDiagnosis] = useState<string | null>(null);
+  const [groundingReport, setGroundingReport] = useState<GroundingReport | undefined>(undefined);
 
   // Grounded ClickHouse Metrics Hook
   const kpiMetrics = useClickHouseMetrics(investigationTrace);
@@ -185,6 +191,7 @@ export const App: React.FC = () => {
     setInvestigating(true);
     setInvestigationTrace([]);
     setFinalDiagnosis(null);
+    setGroundingReport(undefined);
 
     const prompt =
       activeScenario === 'slate'
@@ -230,9 +237,12 @@ export const App: React.FC = () => {
             if (line.startsWith('data: ')) {
               try {
                 const event = JSON.parse(line.slice(6)) as InvestigationTraceEvent;
-                setInvestigationTrace((prev) => [...prev, event]);
+                setInvestigationTrace((prev: InvestigationTraceEvent[]) => [...prev, event]);
                 if (event.type === 'diagnosis' && event.data?.diagnosis) {
                   setFinalDiagnosis(String(event.data.diagnosis));
+                  if (event.data?.grounding) {
+                    setGroundingReport(event.data.grounding as GroundingReport);
+                  }
                 }
               } catch {
                 // Ignore parse errors
@@ -243,7 +253,7 @@ export const App: React.FC = () => {
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      setInvestigationTrace((prev) => [
+      setInvestigationTrace((prev: InvestigationTraceEvent[]) => [
         ...prev,
         {
           type: 'error',
@@ -310,6 +320,7 @@ export const App: React.FC = () => {
             onRunInvestigation={runInvestigation}
             investigationTrace={investigationTrace}
             finalDiagnosis={finalDiagnosis}
+            groundingReport={groundingReport}
             onRemediate={handleRemediate}
           />
         </div>
