@@ -92,6 +92,10 @@ that nothing checks is not an answer key.
   component. Components read semantic tokens only: a stock palette class or a raw hex under
   `web/src/components/` is a bug, because it freezes that spot to one theme. Read that file before
   touching anything visual.
+- **Reusable UI Primitives.** Shared interactive elements (buttons, cards, badges, inputs, KPI metrics)
+  are authored as atomic reusable components under `web/src/components/ui/`. They encapsulate base
+  interactions, focus rings, loading states, accessibility attributes, and variant mappings. Feature
+  components compose these primitives rather than reimplementing inline ad-hoc styles.
 - Tailwind v4: semantic tokens are registered with `@theme static` and consumed as generated
   utilities (`bg-surface-base`). For a token deliberately left out of `@theme`, the arbitrary form
   is `bg-(--surface)`, never `bg-[var(--surface)]`.

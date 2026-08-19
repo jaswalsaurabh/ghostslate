@@ -1,6 +1,7 @@
 import { GoogleGenAI, Type, type FunctionDeclaration, type Part } from '@google/genai';
 import { McpClientService } from './mcp.service.js';
 import { VisionService, type FrameClassification } from './vision.service.js';
+import { MetricsService, type RawMcpQueryData } from './metrics.service.js';
 import { ServiceUnavailableError } from '../errors/domain-error.js';
 
 export interface InvestigationEvent {
@@ -10,6 +11,7 @@ export interface InvestigationEvent {
     | 'tool_result'
     | 'vision_call'
     | 'frame_classified'
+    | 'metrics'
     | 'reasoning'
     | 'diagnosis'
     | 'error';
@@ -33,6 +35,7 @@ export class InvestigationService {
   constructor(
     private readonly mcpService: McpClientService,
     private readonly visionService: VisionService,
+    private readonly metricsService: MetricsService = new MetricsService(),
     config?: { projectId?: string; region?: string; model?: string },
   ) {
     const project = config?.projectId || process.env.GCP_PROJECT_ID || 'agentic-cinema-ch-2026';
@@ -257,6 +260,7 @@ Rules:
             args: call.args,
           });
 
+          const startTime = Date.now();
           let outcome: { modelText: string; isError: boolean; frame?: FrameClassification };
           try {
             outcome = await this.executeTool(call.name, call.args || {});
@@ -264,6 +268,7 @@ Rules:
             const errorMsg = err instanceof Error ? err.message : String(err);
             outcome = { modelText: `Tool error: ${errorMsg}`, isError: true };
           }
+          const queryDurationMs = Date.now() - startTime;
 
           if (outcome.frame) {
             yield emit('frame_classified', {
@@ -277,6 +282,34 @@ Rules:
               result: outcome.modelText,
               isError: outcome.isError,
             });
+
+            if (!outcome.isError) {
+              try {
+                const parsed = JSON.parse(outcome.modelText);
+                let qData: RawMcpQueryData | null = null;
+                if (parsed && Array.isArray(parsed.columns) && Array.isArray(parsed.rows)) {
+                  qData = parsed as RawMcpQueryData;
+                } else if (
+                  parsed?.result &&
+                  Array.isArray(parsed.result.columns) &&
+                  Array.isArray(parsed.result.rows)
+                ) {
+                  qData = parsed.result as RawMcpQueryData;
+                }
+
+                if (qData && qData.rows.length > 0) {
+                  const derived = this.metricsService.deriveMetrics(qData, {
+                    rowsScanned: qData.rows.length,
+                    queryDurationMs,
+                  });
+                  if (derived.isGroundedFromMcp) {
+                    yield emit('metrics', { ...(derived as unknown as Record<string, unknown>) });
+                  }
+                }
+              } catch {
+                // Non-JSON tool result or non-query metadata, ignore derivation
+              }
+            }
           }
 
           responseParts.push({

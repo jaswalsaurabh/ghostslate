@@ -2,6 +2,10 @@ export interface SystemHealth {
   status: string;
   service: string;
   uptimeSeconds: number;
+  mcp?: {
+    connected: boolean;
+    latencyMs?: number;
+  };
 }
 
 export type ClassificationType = 'slate' | 'ad' | 'content';
@@ -36,6 +40,7 @@ export interface InvestigationTraceEvent {
     | 'tool_result'
     | 'vision_call'
     | 'frame_classified'
+    | 'metrics'
     | 'reasoning'
     | 'diagnosis'
     | 'error'

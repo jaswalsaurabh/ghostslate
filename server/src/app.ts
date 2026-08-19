@@ -15,6 +15,7 @@ import { createInvestigationRouter } from './routes/investigation.route.js';
 import { VisionService } from './services/vision.service.js';
 import { VisionController } from './controllers/vision.controller.js';
 import { createVisionRouter } from './routes/vision.route.js';
+import { MetricsService } from './services/metrics.service.js';
 import { NotFoundError } from './errors/domain-error.js';
 import { createErrorHandler } from './middleware/error-handler.js';
 
@@ -36,13 +37,13 @@ export function createApp({ logger }: AppContext): Express {
     }),
   );
 
-  const healthService = new HealthService();
+  const mcpService = new McpClientService();
+  const healthService = new HealthService(mcpService);
   const healthController = new HealthController(healthService);
 
-  const mcpService = new McpClientService();
   const visionService = new VisionService();
-
-  const investigationService = new InvestigationService(mcpService, visionService);
+  const metricsService = new MetricsService();
+  const investigationService = new InvestigationService(mcpService, visionService, metricsService);
   const investigationController = new InvestigationController(investigationService);
 
   const visionController = new VisionController(visionService);

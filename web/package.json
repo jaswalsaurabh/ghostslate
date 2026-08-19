@@ -14,7 +14,8 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "lucide-react": "catalog:",
-    "recharts": "3.10.1"
+    "recharts": "3.10.1",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.3.3",

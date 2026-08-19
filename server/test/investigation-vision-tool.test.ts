@@ -343,4 +343,65 @@ describe('InvestigationService — Vision Tool Wiring', () => {
     expect(toolResultEvent?.data.isError).toBe(true);
     expect(String(toolResultEvent?.data.result)).toContain('Invalid timestamp_seconds "-10"');
   });
+
+  it('derives and emits metrics event directly when run_query returns telemetry rows', async () => {
+    const mockMcpRows = JSON.stringify({
+      columns: ['ssp_id', 'cues', 'avg_latency_ms', 'failures', 'bleed_pct'],
+      rows: [
+        ['ssp-alpha', 34, 105.0, 0, 0.0],
+        ['ssp-beta', 33, 542.0, 5, 84.2],
+        ['ssp-gamma', 33, 106.0, 0, 0.0],
+      ],
+    });
+
+    mockMcpService.callTool = vi.fn().mockResolvedValue({
+      content: [{ type: 'text', text: mockMcpRows }],
+      isError: false,
+    });
+
+    mockGenerateContent
+      .mockResolvedValueOnce({
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  functionCall: {
+                    name: 'run_query',
+                    args: {
+                      query: 'SELECT ssp_id, bleed_pct FROM ghostslate.ssai_stitch_attempts',
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        candidates: [
+          {
+            content: {
+              parts: [{ text: 'Telemetry analysis complete.' }],
+            },
+          },
+        ],
+      });
+
+    const service = createServiceWithMockedAI();
+    const generator = service.investigateSpike('Analyze telemetry');
+
+    const events: InvestigationEvent[] = [];
+    for await (const ev of generator) {
+      events.push(ev);
+    }
+
+    const metricsEvent = events.find((e) => e.type === 'metrics');
+    expect(metricsEvent).toBeDefined();
+    expect(metricsEvent?.data.isGroundedFromMcp).toBe(true);
+    expect(metricsEvent?.data.offendingSsp).toBe('SSP-BETA');
+    expect(metricsEvent?.data.sspLatency).toBe('542ms');
+    expect(metricsEvent?.data.slateBleedRate).toBe('84.2%');
+    expect(metricsEvent?.data.revenueLoss).toBe('$25.00');
+  });
 });
