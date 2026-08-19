@@ -1,6 +1,6 @@
 import React from 'react';
 import { DollarSign, AlertTriangle, Clock, Database, CheckCircle2 } from 'lucide-react';
-import { KpiCard, Badge } from './ui/index.js';
+import { KpiCard } from './ui/index.js';
 import type { GroundedKpiMetrics } from '../hooks/use-clickhouse-metrics.js';
 
 interface KpiStripProps {
@@ -16,22 +16,15 @@ export const KpiStrip: React.FC<KpiStripProps> = ({ metrics }) => {
         value={metrics.revenueLoss}
         variant={metrics.revenueLossVariant}
         valueTag={
-          <div className="flex items-center gap-1.5">
-            <span
-              className={
-                metrics.revenueLossVariant === 'critical'
-                  ? 'text-status-critical'
-                  : 'text-status-success'
-              }
-            >
-              {metrics.revenueLossTag}
-            </span>
-            {metrics.isGroundedFromMcp && !metrics.rateCardFromQuery && (
-              <Badge variant="warning" size="sm">
-                FALLBACK CPM
-              </Badge>
-            )}
-          </div>
+          <span
+            className={
+              metrics.revenueLossVariant === 'critical'
+                ? 'text-status-critical'
+                : 'text-status-success'
+            }
+          >
+            {metrics.revenueLossTag}
+          </span>
         }
         subtext={metrics.revenueLossSubtext}
         icon={<DollarSign className="w-4 h-4" />}

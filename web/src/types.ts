@@ -69,6 +69,7 @@ export interface InvestigationTraceEvent {
     sql?: string;
     result?: string;
     rowsReturned?: number;
+    rowsScanned?: number;
     durationMs?: number;
     isError?: boolean;
     error?: string;

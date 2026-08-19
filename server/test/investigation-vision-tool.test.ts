@@ -5,7 +5,6 @@ import {
 } from '../src/services/investigation.service.js';
 import type { McpClientService } from '../src/services/mcp.service.js';
 import type { VisionService, FrameClassification } from '../src/services/vision.service.js';
-
 import { InvestigateSpikeSchema } from '../src/controllers/investigation.controller.js';
 
 interface ContentTurn {
@@ -21,7 +20,7 @@ interface ContentTurn {
   }>;
 }
 
-describe('InvestigationService — Vision Tool Wiring', () => {
+describe('InvestigationService — Vision Tool & Media Boundary Contracts', () => {
   let mockMcpService: McpClientService;
   let mockVisionService: VisionService;
   let mockGenerateContent: ReturnType<typeof vi.fn>;
@@ -44,6 +43,23 @@ describe('InvestigationService — Vision Tool Wiring', () => {
     frameBase64: 'data:image/jpeg;base64,BASE64_IMAGE_PAYLOAD_TEST',
   };
 
+  const emptyCanonicalEvidence = JSON.stringify({
+    columns: [
+      'channel_id',
+      'ssp_id',
+      'device_class',
+      'codec',
+      'daypart',
+      'cues',
+      'total_attempts',
+      'unmonetized_impressions',
+      'unmonetized_pct',
+      'p95_auction_ms',
+      'cpm_usd',
+    ],
+    rows: [],
+  });
+
   beforeEach(() => {
     vi.restoreAllMocks();
 
@@ -51,7 +67,7 @@ describe('InvestigationService — Vision Tool Wiring', () => {
       connect: vi.fn().mockResolvedValue(undefined),
       disconnect: vi.fn(),
       callTool: vi.fn().mockResolvedValue({
-        content: [{ type: 'text', text: 'query result rows' }],
+        content: [{ type: 'text', text: emptyCanonicalEvidence }],
         isError: false,
       }),
       listTools: vi.fn(),
@@ -66,7 +82,6 @@ describe('InvestigationService — Vision Tool Wiring', () => {
 
   function createServiceWithMockedAI() {
     const service = new InvestigationService(mockMcpService, mockVisionService);
-    // Stub the internal GoogleGenAI generateContent method
     (service as unknown as { ai: { models: { generateContent: typeof mockGenerateContent } } }).ai =
       {
         models: {
@@ -76,24 +91,79 @@ describe('InvestigationService — Vision Tool Wiring', () => {
     return service;
   }
 
-  it('offers classify_frame to the model alongside run_query and list_tables', () => {
+  it('offers all 5 tools to Gemini: run_query, list_tables, classify_frame, collect_diagnosis_evidence, finalize_investigation', () => {
     const service = new InvestigationService(mockMcpService, mockVisionService);
     const declarations = (
       service as unknown as {
-        getToolDeclarations: () => Array<{ name: string; parameters: { required: string[] } }>;
+        getToolDeclarations: () => Array<{ name: string }>;
       }
     ).getToolDeclarations();
 
-    expect(declarations).toHaveLength(3);
+    expect(declarations).toHaveLength(5);
     const names = declarations.map((d) => d.name);
-    expect(names).toEqual(['run_query', 'list_tables', 'classify_frame']);
-
-    const classifyTool = declarations.find((d) => d.name === 'classify_frame');
-    expect(classifyTool).toBeDefined();
-    expect(classifyTool?.parameters.required).toEqual(['video_file', 'timestamp_seconds']);
+    expect(names).toEqual([
+      'run_query',
+      'list_tables',
+      'classify_frame',
+      'collect_diagnosis_evidence',
+      'finalize_investigation',
+    ]);
   });
 
-  it('routes classify_frame calls to VisionService, not MCP', async () => {
+  it('validates per-file media durations with exclusive upper bounds (§8)', async () => {
+    const service = createServiceWithMockedAI();
+    const execute = (name: string, args: Record<string, unknown>) =>
+      (
+        service as unknown as {
+          executeTool: (
+            name: string,
+            args: Record<string, unknown>,
+            context: typeof defaultContext,
+          ) => Promise<{ resultText: string; isError: boolean }>;
+        }
+      ).executeTool(name, args, defaultContext);
+
+    // 1. content.mp4 has duration 10s -> timestamp 12 must fail
+    const contentOver = await execute('classify_frame', {
+      video_file: 'content.mp4',
+      timestamp_seconds: 12,
+    });
+    expect(contentOver.isError).toBe(true);
+    expect(contentOver.resultText).toContain('strictly less than 10');
+
+    // 2. slate.mp4 has duration 15s -> timestamp 14.5 must pass
+    const slateValid = await execute('classify_frame', {
+      video_file: 'slate.mp4',
+      timestamp_seconds: 14.5,
+    });
+    expect(slateValid.isError).toBe(false);
+
+    // 3. slate.mp4 has duration 15s -> timestamp 15 must fail (exclusive upper bound)
+    const slateAtBound = await execute('classify_frame', {
+      video_file: 'slate.mp4',
+      timestamp_seconds: 15,
+    });
+    expect(slateAtBound.isError).toBe(true);
+    expect(slateAtBound.resultText).toContain('strictly less than 15');
+
+    // 4. negative timestamp must fail
+    const negativeTs = await execute('classify_frame', {
+      video_file: 'slate.mp4',
+      timestamp_seconds: -1,
+    });
+    expect(negativeTs.isError).toBe(true);
+    expect(negativeTs.resultText).toContain('Invalid timestamp_seconds');
+
+    // 5. unknown video_file must fail
+    const unknownFile = await execute('classify_frame', {
+      video_file: 'unknown.mp4',
+      timestamp_seconds: 5,
+    });
+    expect(unknownFile.isError).toBe(true);
+    expect(unknownFile.resultText).toContain('Unknown video_file "unknown.mp4"');
+  });
+
+  it('never sends the base64 frame image to the model, but emits it in the SSE stream', async () => {
     mockGenerateContent
       .mockResolvedValueOnce({
         candidates: [
@@ -115,47 +185,11 @@ describe('InvestigationService — Vision Tool Wiring', () => {
         candidates: [
           {
             content: {
-              parts: [{ text: 'Visual confirmation: Slate bleed confirmed at 12s.' }],
-            },
-          },
-        ],
-      });
-
-    const service = createServiceWithMockedAI();
-    const generator = service.investigateSpike('Check if slate bled', defaultContext);
-
-    const events: InvestigationEvent[] = [];
-    for await (const ev of generator) {
-      events.push(ev);
-    }
-
-    expect(mockVisionService.classifyVideoTimestamp).toHaveBeenCalledTimes(1);
-    expect(mockVisionService.classifyVideoTimestamp).toHaveBeenCalledWith('slate.mp4', 12);
-    expect(mockMcpService.callTool).not.toHaveBeenCalled();
-
-    const visionCallEvent = events.find((e) => e.type === 'vision_call');
-    expect(visionCallEvent).toBeDefined();
-    expect(visionCallEvent?.data).toEqual({
-      name: 'classify_frame',
-      args: { video_file: 'slate.mp4', timestamp_seconds: 12 },
-    });
-
-    const frameClassifiedEvent = events.find((e) => e.type === 'frame_classified');
-    expect(frameClassifiedEvent).toBeDefined();
-    expect(frameClassifiedEvent?.data.classification).toBe('slate');
-  });
-
-  it('still routes non-vision calls to MCP', async () => {
-    mockGenerateContent
-      .mockResolvedValueOnce({
-        candidates: [
-          {
-            content: {
               parts: [
                 {
                   functionCall: {
-                    name: 'run_query',
-                    args: { query: 'SELECT count() FROM ghostslate.ssai_stitch_attempts' },
+                    name: 'collect_diagnosis_evidence',
+                    args: {},
                   },
                 },
               ],
@@ -167,73 +201,28 @@ describe('InvestigationService — Vision Tool Wiring', () => {
         candidates: [
           {
             content: {
-              parts: [{ text: 'Telemetry confirmed 100 cue events.' }],
-            },
-          },
-        ],
-      });
-
-    const service = createServiceWithMockedAI();
-    const generator = service.investigateSpike('Check telemetry', defaultContext);
-
-    const events: InvestigationEvent[] = [];
-    for await (const ev of generator) {
-      events.push(ev);
-    }
-
-    expect(mockMcpService.callTool).toHaveBeenCalledTimes(1);
-    expect(mockMcpService.callTool).toHaveBeenCalledWith('run_query', {
-      query: 'SELECT count() FROM ghostslate.ssai_stitch_attempts',
-    });
-    expect(mockVisionService.classifyVideoTimestamp).not.toHaveBeenCalled();
-
-    const toolCallEvent = events.find((e) => e.type === 'tool_call');
-    expect(toolCallEvent).toBeDefined();
-    expect(toolCallEvent?.data.name).toBe('run_query');
-
-    const toolResultEvent = events.find((e) => e.type === 'tool_result');
-    expect(toolResultEvent).toBeDefined();
-    expect(toolResultEvent?.data.result).toBe('query result rows');
-  });
-
-  it('never sends the frame image (base64) to the model, but emits it to the client', async () => {
-    mockGenerateContent
-      .mockResolvedValueOnce({
-        candidates: [
-          {
-            content: {
               parts: [
                 {
                   functionCall: {
-                    name: 'classify_frame',
-                    args: { video_file: 'slate.mp4', timestamp_seconds: 12 },
+                    name: 'finalize_investigation',
+                    args: {},
                   },
                 },
               ],
             },
           },
         ],
-      })
-      .mockResolvedValueOnce({
-        candidates: [
-          {
-            content: {
-              parts: [{ text: 'Diagnosis completed.' }],
-            },
-          },
-        ],
       });
 
     const service = createServiceWithMockedAI();
-    const generator = service.investigateSpike('Inspect frame at 12s', defaultContext);
+    const generator = service.investigateSpike('Inspect frame', defaultContext);
 
     const events: InvestigationEvent[] = [];
     for await (const ev of generator) {
       events.push(ev);
     }
 
-    // 1. Verify that the turn-2 call to Gemini receives functionResponse with NO base64
-    expect(mockGenerateContent).toHaveBeenCalledTimes(2);
+    // Turn 2 receives functionResponse with NO base64
     const secondCallArgs = mockGenerateContent.mock.calls[1][0];
     const userTurn = secondCallArgs.contents.find(
       (c: ContentTurn) => c.role === 'user' && Boolean(c.parts?.[0]?.functionResponse),
@@ -241,34 +230,21 @@ describe('InvestigationService — Vision Tool Wiring', () => {
     expect(userTurn).toBeDefined();
 
     const functionResponseContent = userTurn?.parts[0]?.functionResponse?.response.content;
-    expect(typeof functionResponseContent).toBe('string');
     expect(functionResponseContent).not.toContain('BASE64_IMAGE_PAYLOAD_TEST');
-    expect(functionResponseContent).not.toContain('data:image/jpeg;base64');
     expect(functionResponseContent).toContain('"classification":"slate"');
-    expect(functionResponseContent).toContain('"confidence":0.95');
 
-    // 2. Verify that the SSE event emitted to the client DOES contain the frameBase64
-    const frameClassifiedEvent = events.find((e) => e.type === 'frame_classified');
-    expect(frameClassifiedEvent).toBeDefined();
-    expect(frameClassifiedEvent?.data.frameBase64).toBe(
-      'data:image/jpeg;base64,BASE64_IMAGE_PAYLOAD_TEST',
-    );
+    // SSE event contains frameBase64
+    const frameEvent = events.find((e) => e.type === 'frame_classified');
+    expect(frameEvent?.data.frameBase64).toBe('data:image/jpeg;base64,BASE64_IMAGE_PAYLOAD_TEST');
   });
 
-  it('refuses an unknown video_file without calling VisionService and returns a recoverable error', async () => {
+  it('un-leaks the system instruction: prompt contains procedure and thresholds, NOT answers', async () => {
     mockGenerateContent
       .mockResolvedValueOnce({
         candidates: [
           {
             content: {
-              parts: [
-                {
-                  functionCall: {
-                    name: 'classify_frame',
-                    args: { video_file: 'malicious.mp4', timestamp_seconds: 5 },
-                  },
-                },
-              ],
+              parts: [{ functionCall: { name: 'collect_diagnosis_evidence', args: {} } }],
             },
           },
         ],
@@ -277,244 +253,79 @@ describe('InvestigationService — Vision Tool Wiring', () => {
         candidates: [
           {
             content: {
-              parts: [{ text: 'Recovered from unknown video file.' }],
+              parts: [{ functionCall: { name: 'finalize_investigation', args: {} } }],
             },
           },
         ],
       });
 
     const service = createServiceWithMockedAI();
-    const generator = service.investigateSpike('Check malicious file', defaultContext);
-
-    const events: InvestigationEvent[] = [];
-    for await (const ev of generator) {
-      events.push(ev);
-    }
-
-    expect(mockVisionService.classifyVideoTimestamp).not.toHaveBeenCalled();
-
-    const toolResultEvent = events.find((e) => e.type === 'tool_result');
-    expect(toolResultEvent).toBeDefined();
-    expect(toolResultEvent?.data.isError).toBe(true);
-    expect(String(toolResultEvent?.data.result)).toContain('Unknown video_file "malicious.mp4"');
-
-    // Second Gemini turn receives the error message
-    const secondCallArgs = mockGenerateContent.mock.calls[1][0];
-    const userTurn = secondCallArgs.contents.find(
-      (c: ContentTurn) => c.role === 'user' && Boolean(c.parts?.[0]?.functionResponse),
-    ) as ContentTurn | undefined;
-    expect(userTurn?.parts[0]?.functionResponse?.response.content).toContain(
-      'Unknown video_file "malicious.mp4"',
-    );
-  });
-
-  it('refuses a negative timestamp without calling VisionService and returns a recoverable error', async () => {
-    mockGenerateContent
-      .mockResolvedValueOnce({
-        candidates: [
-          {
-            content: {
-              parts: [
-                {
-                  functionCall: {
-                    name: 'classify_frame',
-                    args: { video_file: 'slate.mp4', timestamp_seconds: -10 },
-                  },
-                },
-              ],
-            },
-          },
-        ],
-      })
-      .mockResolvedValueOnce({
-        candidates: [
-          {
-            content: {
-              parts: [{ text: 'Recovered from invalid timestamp.' }],
-            },
-          },
-        ],
-      });
-
-    const service = createServiceWithMockedAI();
-    const generator = service.investigateSpike('Check negative timestamp', defaultContext);
-
-    const events: InvestigationEvent[] = [];
-    for await (const ev of generator) {
-      events.push(ev);
-    }
-
-    expect(mockVisionService.classifyVideoTimestamp).not.toHaveBeenCalled();
-
-    const toolResultEvent = events.find((e) => e.type === 'tool_result');
-    expect(toolResultEvent).toBeDefined();
-    expect(toolResultEvent?.data.isError).toBe(true);
-    expect(String(toolResultEvent?.data.result)).toContain('Invalid timestamp_seconds "-10"');
-  });
-
-  it('derives and emits metrics event directly when run_query returns telemetry rows', async () => {
-    const mockMcpRows = JSON.stringify({
-      columns: ['ssp_id', 'cues', 'avg_latency_ms', 'failures', 'bleed_pct'],
-      rows: [
-        ['ssp-alpha', 34, 105.0, 0, 0.0],
-        ['ssp-beta', 33, 542.0, 5, 84.2],
-        ['ssp-gamma', 33, 106.0, 0, 0.0],
-      ],
-    });
-
-    mockMcpService.callTool = vi.fn().mockResolvedValue({
-      content: [{ type: 'text', text: mockMcpRows }],
-      isError: false,
-    });
-
-    mockGenerateContent
-      .mockResolvedValueOnce({
-        candidates: [
-          {
-            content: {
-              parts: [
-                {
-                  functionCall: {
-                    name: 'run_query',
-                    args: {
-                      query: 'SELECT ssp_id, bleed_pct FROM ghostslate.ssai_stitch_attempts',
-                    },
-                  },
-                },
-              ],
-            },
-          },
-        ],
-      })
-      .mockResolvedValueOnce({
-        candidates: [
-          {
-            content: {
-              parts: [{ text: 'Telemetry analysis complete.' }],
-            },
-          },
-        ],
-      });
-
-    const service = createServiceWithMockedAI();
-    const generator = service.investigateSpike('Analyze telemetry', defaultContext);
-
-    const events: InvestigationEvent[] = [];
-    for await (const ev of generator) {
-      events.push(ev);
-    }
-
-    const metricsEvent = events.find((e) => e.type === 'metrics');
-    expect(metricsEvent).toBeDefined();
-    expect(metricsEvent?.data.isGroundedFromMcp).toBe(true);
-    expect(metricsEvent?.data.offendingSsp).toBe('SSP-BETA');
-    expect(metricsEvent?.data.sspLatency).toBe('542ms');
-    expect(metricsEvent?.data.slateBleedRate).toBe('84.2%');
-    // 5 unmonetized impressions * ($25 fallback CPM / 1000) = $0.125 -> $0.13
-    expect(metricsEvent?.data.revenueLoss).toBe('$0.13');
-  });
-
-  it('emits reasoning event when text accompanies a function call, but NOT on text-only final diagnosis turn', async () => {
-    mockGenerateContent
-      .mockResolvedValueOnce({
-        candidates: [
-          {
-            content: {
-              parts: [
-                { text: 'Hypothesis: Checking cue events for anomaly pattern.' },
-                {
-                  functionCall: {
-                    name: 'run_query',
-                    args: { query: 'SELECT count() FROM ghostslate.scte35_cue_events' },
-                  },
-                },
-              ],
-            },
-          },
-        ],
-      })
-      .mockResolvedValueOnce({
-        candidates: [
-          {
-            content: {
-              parts: [
-                { text: 'Part 1: Summary of findings.' },
-                { text: 'Part 2: Root cause isolated to ssp-beta.' },
-              ],
-            },
-          },
-        ],
-      });
-
-    const defaultContext = {
-      channel: 'ch-01',
-      from: '2026-08-14T19:00:00.000Z',
-      to: '2026-08-14T23:00:00.000Z',
-    };
-
-    const service = createServiceWithMockedAI();
-    const generator = service.investigateSpike('Check cues and diagnose', defaultContext);
-
-    const events: InvestigationEvent[] = [];
-    for await (const ev of generator) {
-      events.push(ev);
-    }
-
-    // 1. Turn 1 accompanied function call -> reasoning emitted
-    const reasoningEvents = events.filter((e) => e.type === 'reasoning');
-    expect(reasoningEvents).toHaveLength(1);
-    expect(reasoningEvents[0]?.data.hypothesis).toBe(
-      'Hypothesis: Checking cue events for anomaly pattern.',
-    );
-    expect(reasoningEvents[0]?.data.turn).toBe(1);
-
-    // 2. Turn 2 was text-only (final diagnosis) -> NO reasoning events from turn 2
-    expect(reasoningEvents.some((e) => e.data.turn === 2)).toBe(false);
-
-    // 3. Final diagnosis joins all text parts
-    const diagnosisEvent = events.find((e) => e.type === 'diagnosis');
-    expect(diagnosisEvent).toBeDefined();
-    expect(diagnosisEvent?.data.diagnosis).toBe(
-      'Part 1: Summary of findings.\nPart 2: Root cause isolated to ssp-beta.',
-    );
-  });
-
-  it('interpolates the primary incident window and channel into the Gemini system instruction', async () => {
-    mockGenerateContent.mockResolvedValueOnce({
-      candidates: [
-        {
-          content: {
-            parts: [{ text: 'Investigation complete.' }],
-          },
-        },
-      ],
-    });
-
-    const service = createServiceWithMockedAI();
-    const generator = service.investigateSpike('Forensic check', {
-      channel: 'ch-01',
-      from: '2026-08-14T19:00:00.000Z',
-      to: '2026-08-14T23:00:00.000Z',
-    });
+    const generator = service.investigateSpike('Run investigation', defaultContext);
 
     for await (const _ of generator) {
       // drain
     }
 
-    expect(mockGenerateContent).toHaveBeenCalledTimes(1);
-    const callConfig = mockGenerateContent.mock.calls[0][0];
-    const systemText = callConfig.config?.systemInstruction?.parts?.[0]?.text;
-    expect(systemText).toBeDefined();
-    expect(systemText).toContain('- Target channel: `ch-01`');
-    expect(systemText).toContain(
-      '- Incident investigation window: `2026-08-14T19:00:00.000Z` to `2026-08-14T23:00:00.000Z` (UTC)',
-    );
+    const firstCallArgs = mockGenerateContent.mock.calls[0][0];
+    const systemPrompt = firstCallArgs.config?.systemInstruction?.parts?.[0]?.text;
+
+    expect(systemPrompt).toBeDefined();
+    // Procedure and thresholds present
+    expect(systemPrompt).toContain('Phase 1 — Schema Discovery');
+    expect(systemPrompt).toContain('Phase 2 — Temporal Correlation');
+    expect(systemPrompt).toContain('Phase 3 — Multi-Dimensional Cohort Isolation');
+    expect(systemPrompt).toContain('Phase 4 — Evidence Collection');
+    expect(systemPrompt).toContain('Phase 5 — Finalization');
+    expect(systemPrompt).toContain('450 ms');
+    expect(systemPrompt).toContain('1200 ms');
+    expect(systemPrompt).toContain('HAVING cues >= 20');
+
+    // Answer un-leaked (cohort name and numbers MUST NOT appear)
+    expect(systemPrompt).not.toContain('ssp-beta × connected_tv × hevc');
+    expect(systemPrompt).not.toContain('97.73%');
+    expect(systemPrompt).not.toContain('80 cues');
+    expect(systemPrompt).not.toContain('34%');
   });
 
-  it('InvestigateSpikeSchema defaults channel and window to primary incident constants when omitted', () => {
-    const parsed = InvestigateSpikeSchema.parse({ prompt: 'Analyze channel anomaly' });
-    expect(parsed.channel).toBe('ch-01');
-    expect(parsed.from).toBe('2026-08-14T19:00:00.000Z');
-    expect(parsed.to).toBe('2026-08-14T23:00:00.000Z');
+  describe('InvestigateSpikeSchema validation', () => {
+    it('normalizes valid channel and ISO UTC timestamps', () => {
+      const parsed = InvestigateSpikeSchema.parse({
+        prompt: 'Check anomaly',
+        channel: '  CH-01  ',
+        from: '2026-08-14T19:00:00.000Z',
+        to: '2026-08-14T23:00:00.000Z',
+      });
+      expect(parsed.channel).toBe('ch-01');
+      expect(parsed.from).toBe('2026-08-14T19:00:00.000Z');
+      expect(parsed.to).toBe('2026-08-14T23:00:00.000Z');
+    });
+
+    it('rejects channel with SQL injection or special characters', () => {
+      expect(() =>
+        InvestigateSpikeSchema.parse({
+          prompt: 'Check anomaly',
+          channel: "ch-01'; DROP TABLE ssai_stitch_attempts; --",
+        }),
+      ).toThrow();
+    });
+
+    it('rejects timestamps without UTC Z suffix or invalid date syntax', () => {
+      expect(() =>
+        InvestigateSpikeSchema.parse({
+          prompt: 'Check anomaly',
+          from: '2026-08-14 19:00:00',
+        }),
+      ).toThrow();
+    });
+
+    it('rejects from >= to', () => {
+      expect(() =>
+        InvestigateSpikeSchema.parse({
+          prompt: 'Check anomaly',
+          from: '2026-08-14T23:00:00.000Z',
+          to: '2026-08-14T19:00:00.000Z',
+        }),
+      ).toThrow();
+    });
   });
 });

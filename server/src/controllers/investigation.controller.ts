@@ -3,15 +3,38 @@ import { z } from 'zod';
 import { InvestigationRunsService } from '../services/investigation-runs.service.js';
 import { NotFoundError, ValidationError } from '../errors/domain-error.js';
 
+const isoUtcString = z
+  .string()
+  .trim()
+  .refine(
+    (val) =>
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(val) && !isNaN(Date.parse(val)),
+    { message: 'Must be a valid ISO-8601 UTC string ending with Z' },
+  )
+  .transform((val) => new Date(val).toISOString());
+
 // Primary incident window recorded in ghostslate_eval.injected_incidents
 // and asserted in sql/checks/004-incident-assertions.sql (channel ch-01, 2026-08-14 19:00-23:00 UTC).
 // Single owner of default investigation window across the application.
-export const InvestigateSpikeSchema = z.object({
-  prompt: z.string().min(1, 'Prompt is required'),
-  channel: z.string().default('ch-01'),
-  from: z.string().default('2026-08-14T19:00:00.000Z'),
-  to: z.string().default('2026-08-14T23:00:00.000Z'),
-});
+export const InvestigateSpikeSchema = z
+  .object({
+    prompt: z.string().min(1, 'Prompt is required'),
+    channel: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .regex(
+        /^[a-z0-9_-]+$/,
+        'Channel must contain only alphanumeric characters, underscores, or hyphens',
+      )
+      .default('ch-01'),
+    from: isoUtcString.default('2026-08-14T19:00:00.000Z'),
+    to: isoUtcString.default('2026-08-14T23:00:00.000Z'),
+  })
+  .refine((data) => new Date(data.from).getTime() < new Date(data.to).getTime(), {
+    message: 'Start time (from) must be strictly before end time (to)',
+    path: ['from'],
+  });
 
 export class InvestigationController {
   constructor(private readonly runsService: InvestigationRunsService) {}

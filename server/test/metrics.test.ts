@@ -1,10 +1,56 @@
 import { describe, it, expect } from 'vitest';
-import { MetricsService, type RawMcpQueryData } from '../src/services/metrics.service.js';
+import {
+  MetricsService,
+  selectIncidentCohort,
+  type DiagnosisRow,
+} from '../src/services/metrics.service.js';
 
-describe('MetricsService', () => {
+describe('MetricsService & selectIncidentCohort', () => {
+  const service = new MetricsService();
+
+  const primaryIncidentFixture: DiagnosisRow[] = [
+    {
+      channelId: 'ch-01',
+      sspId: 'ssp-beta',
+      deviceClass: 'connected_tv',
+      codec: 'hevc',
+      daypart: 'primetime',
+      cues: 80,
+      totalAttempts: 60862,
+      unmonetizedImpressions: 59482,
+      unmonetizedPct: 97.73,
+      p95AuctionMs: 1812.0,
+      cpmUsd: 32.5,
+    },
+    {
+      channelId: 'ch-01',
+      sspId: 'ssp-alpha',
+      deviceClass: 'connected_tv',
+      codec: 'hevc',
+      daypart: 'primetime',
+      cues: 80,
+      totalAttempts: 75000,
+      unmonetizedImpressions: 1800,
+      unmonetizedPct: 2.4,
+      p95AuctionMs: 305.0,
+      cpmUsd: 32.5,
+    },
+    {
+      channelId: 'ch-01',
+      sspId: 'ssp-gamma',
+      deviceClass: 'connected_tv',
+      codec: 'hevc',
+      daypart: 'primetime',
+      cues: 80,
+      totalAttempts: 70000,
+      unmonetizedImpressions: 1400,
+      unmonetizedPct: 2.0,
+      p95AuctionMs: 290.0,
+      cpmUsd: 32.5,
+    },
+  ];
+
   it('computes exact financial loss from known impressions and known queried CPM', () => {
-    const service = new MetricsService();
-
     // Primary incident calculation:
     // 59,482 unmonetized impressions * ($32.50 CPM / 1000) = $1,933.165 -> round to cents = $1,933.17
     const primaryLoss = service.computeLoss(59482, 32.5);
@@ -15,16 +61,6 @@ describe('MetricsService', () => {
     const loss = service.computeLoss(2000, 25.0);
     expect(loss).toBe(50.0);
 
-    // Primetime advertiser inventory rate card:
-    // 1,500 impressions * ($32.50 CPM / 1000) = $48.75
-    const primetimeLoss = service.computeLoss(1500, 32.5);
-    expect(primetimeLoss).toBe(48.75);
-
-    // Daytime inventory rate card ($18.75 CPM):
-    // 16,000 impressions * ($18.75 CPM / 1000) = $300.00
-    const daytimeLoss = service.computeLoss(16000, 18.75);
-    expect(daytimeLoss).toBe(300.0);
-
     // Zero or negative input boundary conditions:
     expect(service.computeLoss(0, 25.0)).toBe(0.0);
     expect(service.computeLoss(-5, 25.0)).toBe(0.0);
@@ -32,165 +68,403 @@ describe('MetricsService', () => {
     expect(service.computeLoss(10, -10.0)).toBe(0.0);
   });
 
-  it('derives grounded KPI metrics from ClickHouse MCP query results with queried rate card', () => {
-    const service = new MetricsService();
-
-    // Query result matching primary incident from loss_attribution.sql
-    const mockQueryDataWithCpm: RawMcpQueryData = {
-      columns: [
-        'channel_id',
-        'ssp_id',
-        'device_class',
-        'codec',
-        'daypart',
-        'cues',
-        'total_attempts',
-        'unmonetized_impressions',
-        'unmonetized_pct',
-        'p95_auction_ms',
-        'cpm_usd',
-      ],
-      rows: [
-        [
-          'ch-01',
-          'ssp-beta',
-          'connected_tv',
-          'hevc',
-          'primetime',
-          80,
-          60862,
-          59482,
-          97.73,
-          1812.0,
-          32.5,
-        ],
-        [
-          'ch-01',
-          'ssp-alpha',
-          'connected_tv',
-          'hevc',
-          'primetime',
-          80,
-          75000,
-          1800,
-          2.4,
-          305.0,
-          32.5,
-        ],
-      ],
-    };
-
-    const metrics = service.deriveMetrics(mockQueryDataWithCpm, {
-      rowsScanned: 135862,
-      queryDurationMs: 52,
+  describe('selectIncidentCohort', () => {
+    it('selects expected incident row on primary incident fixture', () => {
+      const selected = selectIncidentCohort(primaryIncidentFixture);
+      expect(selected).not.toBeNull();
+      expect(selected?.sspId).toBe('ssp-beta');
+      expect(selected?.deviceClass).toBe('connected_tv');
+      expect(selected?.codec).toBe('hevc');
+      expect(selected?.unmonetizedPct).toBe(97.73);
+      expect(selected?.unmonetizedImpressions).toBe(59482);
     });
 
-    expect(metrics.isGroundedFromMcp).toBe(true);
-    expect(metrics.rateCardFromQuery).toBe(true);
-    expect(metrics.offendingSsp).toBe('SSP-BETA');
-    expect(metrics.sspLatency).toBe('1812ms');
-    expect(metrics.sspVariant).toBe('warning');
-    expect(metrics.slateBleedRate).toBe('97.7%');
-    expect(metrics.slateBleedVariant).toBe('critical');
-    // 59,482 unmonetized impressions * ($32.50 CPM / 1000) = $1,933.17
-    expect(metrics.revenueLoss).toBe('$1,933.17');
-    expect(metrics.revenueLossSubtext).toBe('59,482 unmonetized impressions');
-    expect(metrics.revenueLossVariant).toBe('critical');
-    expect(metrics.scannedLogs).toBe('135,862');
-    expect(metrics.scannedLogsSubtext).toBe('ClickHouse ASOF JOIN (52ms)');
-    expect(metrics.scannedLogsTag).toBe('GROUNDED (MCP)');
-  });
+    it('returns null on negative control fixture with all cohorts <= 5%', () => {
+      const negControlFixture: DiagnosisRow[] = [
+        {
+          channelId: 'ch-01',
+          sspId: 'ssp-alpha',
+          deviceClass: 'connected_tv',
+          codec: 'hevc',
+          daypart: 'primetime',
+          cues: 80,
+          totalAttempts: 50000,
+          unmonetizedImpressions: 1200,
+          unmonetizedPct: 2.4,
+          p95AuctionMs: 140.0,
+          cpmUsd: 32.5,
+        },
+        {
+          channelId: 'ch-01',
+          sspId: 'ssp-beta',
+          deviceClass: 'connected_tv',
+          codec: 'hevc',
+          daypart: 'primetime',
+          cues: 80,
+          totalAttempts: 50000,
+          unmonetizedImpressions: 1500,
+          unmonetizedPct: 3.0,
+          p95AuctionMs: 160.0,
+          cpmUsd: 32.5,
+        },
+        {
+          channelId: 'ch-01',
+          sspId: 'ssp-gamma',
+          deviceClass: 'connected_tv',
+          codec: 'hevc',
+          daypart: 'primetime',
+          cues: 80,
+          totalAttempts: 50000,
+          unmonetizedImpressions: 1100,
+          unmonetizedPct: 2.2,
+          p95AuctionMs: 150.0,
+          cpmUsd: 32.5,
+        },
+      ];
 
-  it('observably flags fallback rate card when query lacks cpm_usd column', () => {
-    const service = new MetricsService();
-
-    const mockQueryDataWithoutCpm: RawMcpQueryData = {
-      columns: [
-        'ssp_id',
-        'total_attempts',
-        'p95_auction_ms',
-        'unmonetized_impressions',
-        'unmonetized_pct',
-      ],
-      rows: [
-        ['ssp-alpha', 34000, 105.0, 0, 0.0],
-        ['ssp-beta', 33000, 542.0, 5000, 84.2],
-        ['ssp-gamma', 33000, 106.0, 0, 0.0],
-      ],
-    };
-
-    const metrics = service.deriveMetrics(mockQueryDataWithoutCpm, {
-      rowsScanned: 100000,
-      queryDurationMs: 42,
+      const selected = selectIncidentCohort(negControlFixture);
+      expect(selected).toBeNull();
     });
 
-    expect(metrics.isGroundedFromMcp).toBe(true);
-    // Must be flagged as not from query (fallback)
-    expect(metrics.rateCardFromQuery).toBe(false);
-    // Fallback calculation: 5,000 unmonetized impressions * ($25.00 fallback CPM / 1000) = $125.00
-    expect(metrics.revenueLoss).toBe('$125.00');
-    expect(metrics.revenueLossSubtext).toBe('5,000 unmonetized impressions');
-  });
+    it('guards cues < 20 (cues = 19 vs cues = 20)', () => {
+      const lowCuesFixture: DiagnosisRow[] = [
+        {
+          channelId: 'ch-01',
+          sspId: 'ssp-beta',
+          deviceClass: 'connected_tv',
+          codec: 'hevc',
+          daypart: 'primetime',
+          cues: 19, // Below guard
+          totalAttempts: 10000,
+          unmonetizedImpressions: 9500,
+          unmonetizedPct: 95.0,
+          p95AuctionMs: 1800,
+          cpmUsd: 32.5,
+        },
+        {
+          channelId: 'ch-01',
+          sspId: 'ssp-alpha',
+          deviceClass: 'connected_tv',
+          codec: 'hevc',
+          daypart: 'primetime',
+          cues: 80,
+          totalAttempts: 50000,
+          unmonetizedImpressions: 1000,
+          unmonetizedPct: 2.0,
+          p95AuctionMs: 150,
+          cpmUsd: 32.5,
+        },
+      ];
 
-  it('preserves negative-control restraint when all cohorts rise uniformly (diffuse 25% noise)', () => {
-    const service = new MetricsService();
+      // Since ssp-beta has cues = 19, it is filtered out; ssp-alpha has unmonetizedPct = 2.0% -> null
+      expect(selectIncidentCohort(lowCuesFixture)).toBeNull();
 
-    // Diffuse fixture: all cohorts at 25.0% unmonetized rate (above 20% absolute threshold, but 0pp dispersion)
-    const diffuseFixture: RawMcpQueryData = {
-      columns: [
-        'ssp_id',
-        'device_class',
-        'cues',
-        'total_attempts',
-        'unmonetized_impressions',
-        'unmonetized_pct',
-        'avg_latency_ms',
-        'cpm_usd',
-      ],
-      rows: [
-        ['ssp-alpha', 'connected_tv', 80, 40000, 10000, 25.0, 140.0, 32.5],
-        ['ssp-beta', 'connected_tv', 80, 40000, 10000, 25.0, 168.0, 32.5],
-        ['ssp-gamma', 'connected_tv', 80, 40000, 10000, 25.0, 152.0, 32.5],
-        ['ssp-delta', 'connected_tv', 80, 40000, 10000, 25.0, 175.0, 32.5],
-      ],
-    };
-
-    const metrics = service.deriveMetrics(diffuseFixture, {
-      rowsScanned: 160000,
-      queryDurationMs: 35,
+      // When cues = 20 and there are peers, ssp-beta is eligible
+      const validCuesFixture: DiagnosisRow[] = [
+        { ...lowCuesFixture[0]!, cues: 20 },
+        lowCuesFixture[1]!,
+      ];
+      const selected = selectIncidentCohort(validCuesFixture);
+      expect(selected).not.toBeNull();
+      expect(selected?.sspId).toBe('ssp-beta');
     });
 
-    expect(metrics.isGroundedFromMcp).toBe(true);
-    // Dispersion check prevents false escalation on diffuse noise:
-    expect(metrics.slateBleedVariant).toBe('warning');
-    expect(metrics.slateBleedTag).toBe('NOMINAL');
-    expect(metrics.slateBleedTag).not.toBe('CRITICAL SPIKE');
-    expect(metrics.revenueLossVariant).not.toBe('critical');
+    it('enforces absolute threshold boundary (>20% required)', () => {
+      const thresholdFixture20Pct: DiagnosisRow[] = [
+        {
+          channelId: 'ch-01',
+          sspId: 'ssp-beta',
+          deviceClass: 'connected_tv',
+          codec: 'hevc',
+          daypart: 'primetime',
+          cues: 25,
+          totalAttempts: 10000,
+          unmonetizedImpressions: 2000,
+          unmonetizedPct: 20.0, // Exactly 20.0% -> not > 20%
+          p95AuctionMs: 500,
+          cpmUsd: 32.5,
+        },
+        {
+          channelId: 'ch-01',
+          sspId: 'ssp-alpha',
+          deviceClass: 'connected_tv',
+          codec: 'hevc',
+          daypart: 'primetime',
+          cues: 25,
+          totalAttempts: 10000,
+          unmonetizedImpressions: 100,
+          unmonetizedPct: 1.0,
+          p95AuctionMs: 150,
+          cpmUsd: 32.5,
+        },
+      ];
+      expect(selectIncidentCohort(thresholdFixture20Pct)).toBeNull();
+
+      const thresholdFixture20_1Pct: DiagnosisRow[] = [
+        { ...thresholdFixture20Pct[0]!, unmonetizedPct: 20.1 },
+        thresholdFixture20Pct[1]!,
+      ];
+      // 20.1 - 1.0 = 19.1pp >= 15pp dispersion
+      expect(selectIncidentCohort(thresholdFixture20_1Pct)?.sspId).toBe('ssp-beta');
+    });
+
+    it('enforces dispersion threshold boundary (14.9pp fails, 15.0pp passes)', () => {
+      const peer: DiagnosisRow = {
+        channelId: 'ch-01',
+        sspId: 'ssp-alpha',
+        deviceClass: 'connected_tv',
+        codec: 'hevc',
+        daypart: 'primetime',
+        cues: 50,
+        totalAttempts: 10000,
+        unmonetizedImpressions: 1000,
+        unmonetizedPct: 10.0,
+        p95AuctionMs: 200,
+        cpmUsd: 32.5,
+      };
+
+      // Worst = 24.9% (24.9 - 10.0 = 14.9pp < 15.0pp -> null)
+      const underDispersion: DiagnosisRow[] = [
+        {
+          ...peer,
+          sspId: 'ssp-beta',
+          unmonetizedPct: 24.9,
+        },
+        peer,
+      ];
+      expect(selectIncidentCohort(underDispersion)).toBeNull();
+
+      // Worst = 25.0% (25.0 - 10.0 = 15.0pp >= 15.0pp -> ssp-beta)
+      const exactDispersion: DiagnosisRow[] = [
+        {
+          ...peer,
+          sspId: 'ssp-beta',
+          unmonetizedPct: 25.0,
+        },
+        peer,
+      ];
+      expect(selectIncidentCohort(exactDispersion)?.sspId).toBe('ssp-beta');
+    });
+
+    it('excludes the selected worst row from peer median computation', () => {
+      // Worst row is 90%. Peers are 10% and 10%. Peer median must be 10% (not (90+10+10)/3 = 10% median anyway, but with 2 peers, median is 10)
+      const rows: DiagnosisRow[] = [
+        {
+          channelId: 'ch-01',
+          sspId: 'ssp-beta',
+          deviceClass: 'connected_tv',
+          codec: 'hevc',
+          daypart: 'primetime',
+          cues: 40,
+          totalAttempts: 10000,
+          unmonetizedImpressions: 9000,
+          unmonetizedPct: 90.0,
+          p95AuctionMs: 1500,
+          cpmUsd: 32.5,
+        },
+        {
+          channelId: 'ch-01',
+          sspId: 'ssp-alpha',
+          deviceClass: 'connected_tv',
+          codec: 'hevc',
+          daypart: 'primetime',
+          cues: 40,
+          totalAttempts: 10000,
+          unmonetizedImpressions: 1000,
+          unmonetizedPct: 10.0,
+          p95AuctionMs: 200,
+          cpmUsd: 32.5,
+        },
+        {
+          channelId: 'ch-01',
+          sspId: 'ssp-gamma',
+          deviceClass: 'connected_tv',
+          codec: 'hevc',
+          daypart: 'primetime',
+          cues: 40,
+          totalAttempts: 10000,
+          unmonetizedImpressions: 1000,
+          unmonetizedPct: 10.0,
+          p95AuctionMs: 200,
+          cpmUsd: 32.5,
+        },
+      ];
+
+      const selected = selectIncidentCohort(rows);
+      expect(selected?.sspId).toBe('ssp-beta');
+    });
+
+    it('enforces restraint when a lone cohort exists with no peers in the daypart', () => {
+      const loneCohort: DiagnosisRow[] = [
+        {
+          channelId: 'ch-01',
+          sspId: 'ssp-beta',
+          deviceClass: 'connected_tv',
+          codec: 'hevc',
+          daypart: 'primetime',
+          cues: 80,
+          totalAttempts: 60000,
+          unmonetizedImpressions: 59000,
+          unmonetizedPct: 98.3,
+          p95AuctionMs: 1800,
+          cpmUsd: 32.5,
+        },
+      ];
+
+      // A lone cohort has 0 peers, so isolation cannot be verified -> restraint returns null
+      expect(selectIncidentCohort(loneCohort)).toBeNull();
+    });
+
+    it('breaks ties deterministically regardless of input row ordering', () => {
+      const rowA: DiagnosisRow = {
+        channelId: 'ch-01',
+        sspId: 'ssp-alpha',
+        deviceClass: 'connected_tv',
+        codec: 'hevc',
+        daypart: 'primetime',
+        cues: 50,
+        totalAttempts: 10000,
+        unmonetizedImpressions: 5000,
+        unmonetizedPct: 50.0,
+        p95AuctionMs: 800,
+        cpmUsd: 32.5,
+      };
+
+      const rowB: DiagnosisRow = {
+        channelId: 'ch-01',
+        sspId: 'ssp-beta',
+        deviceClass: 'connected_tv',
+        codec: 'hevc',
+        daypart: 'primetime',
+        cues: 50,
+        totalAttempts: 10000,
+        unmonetizedImpressions: 5000,
+        unmonetizedPct: 50.0,
+        p95AuctionMs: 800,
+        cpmUsd: 32.5,
+      };
+
+      const peer: DiagnosisRow = {
+        channelId: 'ch-01',
+        sspId: 'ssp-gamma',
+        deviceClass: 'connected_tv',
+        codec: 'hevc',
+        daypart: 'primetime',
+        cues: 50,
+        totalAttempts: 10000,
+        unmonetizedImpressions: 200,
+        unmonetizedPct: 2.0,
+        p95AuctionMs: 200,
+        cpmUsd: 32.5,
+      };
+
+      // Exact rate & impression tie between alpha and beta -> lexicographical sspId puts alpha first
+      const selected1 = selectIncidentCohort([rowA, rowB, peer]);
+      const selected2 = selectIncidentCohort([rowB, rowA, peer]);
+      const selected3 = selectIncidentCohort([peer, rowB, rowA]);
+
+      expect(selected1?.sspId).toBe('ssp-alpha');
+      expect(selected2?.sspId).toBe('ssp-alpha');
+      expect(selected3?.sspId).toBe('ssp-alpha');
+    });
   });
 
-  it('returns ungrounded null state when query data is missing or columns do not match', () => {
-    const service = new MetricsService();
+  describe('deriveMetrics', () => {
+    it('derives grounded KPI metrics from DiagnosisRow array with queried rate card', () => {
+      const metrics = service.deriveMetrics(primaryIncidentFixture, {
+        rowsReturned: 3,
+        queryDurationMs: 48,
+      });
 
-    // 1. Null / undefined / empty data
-    const emptyMetrics = service.deriveMetrics(null);
-    expect(emptyMetrics.isGroundedFromMcp).toBe(false);
-    expect(emptyMetrics.rateCardFromQuery).toBe(false);
-    expect(emptyMetrics.revenueLoss).toBeNull();
-    expect(emptyMetrics.slateBleedRate).toBeNull();
-    expect(emptyMetrics.offendingSsp).toBeNull();
-    expect(emptyMetrics.sspLatency).toBeNull();
-    expect(emptyMetrics.scannedLogs).toBeNull();
+      expect(metrics.isGroundedFromMcp).toBe(true);
+      expect(metrics.rateCardFromQuery).toBe(true);
+      expect(metrics.offendingSsp).toBe('SSP-BETA');
+      expect(metrics.sspLatency).toBe('1812ms');
+      expect(metrics.sspVariant).toBe('warning');
+      expect(metrics.slateBleedRate).toBe('97.7%');
+      expect(metrics.slateBleedVariant).toBe('critical');
+      // 59,482 unmonetized impressions * ($32.50 CPM / 1000) = $1,933.17
+      expect(metrics.revenueLoss).toBe('$1,933.17');
+      expect(metrics.revenueLossSubtext).toBe('59,482 unmonetized impressions');
+      expect(metrics.revenueLossVariant).toBe('critical');
+      expect(metrics.scannedLogs).toBe('3');
+      expect(metrics.scannedLogsSubtext).toBe('ClickHouse ASOF JOIN (48ms)');
+      expect(metrics.scannedLogsTag).toBe('GROUNDED (MCP)');
+    });
 
-    // 2. Unrelated table columns (e.g. system.databases query)
-    const unrelatedQuery: RawMcpQueryData = {
-      columns: ['name', 'engine', 'data_path'],
-      rows: [['default', 'Atomic', '/var/lib/clickhouse/data/default/']],
-    };
+    it('handles missing/nullable CPM cleanly without substituting a fallback rate card', () => {
+      const fixtureWithoutCpm: DiagnosisRow[] = primaryIncidentFixture.map((r) => ({
+        ...r,
+        cpmUsd: null,
+      }));
 
-    const unrelatedMetrics = service.deriveMetrics(unrelatedQuery);
-    expect(unrelatedMetrics.isGroundedFromMcp).toBe(false);
-    expect(unrelatedMetrics.revenueLoss).toBeNull();
-    expect(unrelatedMetrics.slateBleedRate).toBeNull();
-    expect(unrelatedMetrics.offendingSsp).toBeNull();
+      const metrics = service.deriveMetrics(fixtureWithoutCpm, {
+        rowsReturned: 3,
+        queryDurationMs: 48,
+      });
+
+      expect(metrics.isGroundedFromMcp).toBe(true);
+      expect(metrics.rateCardFromQuery).toBe(false);
+      expect(metrics.offendingSsp).toBe('SSP-BETA');
+      expect(metrics.slateBleedRate).toBe('97.7%');
+      expect(metrics.slateBleedVariant).toBe('critical');
+      // Loss fields must remain null and neutral when CPM is missing
+      expect(metrics.revenueLoss).toBeNull();
+      expect(metrics.revenueLossSubtext).toBe('Financial impact unavailable');
+      expect(metrics.revenueLossVariant).toBe('neutral');
+    });
+
+    it('returns nominal state on negative control query data', () => {
+      const negControl: DiagnosisRow[] = [
+        {
+          channelId: 'ch-01',
+          sspId: 'ssp-alpha',
+          deviceClass: 'connected_tv',
+          codec: 'hevc',
+          daypart: 'primetime',
+          cues: 80,
+          totalAttempts: 50000,
+          unmonetizedImpressions: 1200,
+          unmonetizedPct: 2.4,
+          p95AuctionMs: 140.0,
+          cpmUsd: 32.5,
+        },
+        {
+          channelId: 'ch-01',
+          sspId: 'ssp-beta',
+          deviceClass: 'connected_tv',
+          codec: 'hevc',
+          daypart: 'primetime',
+          cues: 80,
+          totalAttempts: 50000,
+          unmonetizedImpressions: 1500,
+          unmonetizedPct: 3.0,
+          p95AuctionMs: 160.0,
+          cpmUsd: 32.5,
+        },
+      ];
+
+      const metrics = service.deriveMetrics(negControl, {
+        rowsReturned: 2,
+        queryDurationMs: 30,
+      });
+
+      expect(metrics.isGroundedFromMcp).toBe(true);
+      expect(metrics.offendingSsp).toBeNull();
+      expect(metrics.sspLatency).toBeNull();
+      expect(metrics.revenueLoss).toBeNull();
+      expect(metrics.revenueLossVariant).toBe('neutral');
+      expect(metrics.revenueLossSubtext).toBe('No incident detected in window');
+      expect(metrics.slateBleedVariant).toBe('success');
+      expect(metrics.slateBleedTag).toBe('NOMINAL');
+    });
+
+    it('returns ungrounded empty state when query data is missing or empty', () => {
+      const emptyMetrics = service.deriveMetrics(null);
+      expect(emptyMetrics.isGroundedFromMcp).toBe(false);
+      expect(emptyMetrics.revenueLoss).toBeNull();
+      expect(emptyMetrics.slateBleedRate).toBeNull();
+      expect(emptyMetrics.offendingSsp).toBeNull();
+    });
   });
 });

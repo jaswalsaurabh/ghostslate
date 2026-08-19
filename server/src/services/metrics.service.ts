@@ -1,7 +1,12 @@
-export interface RawMcpQueryData {
-  columns: string[];
-  rows: (string | number | boolean | null)[][];
-}
+import { type DiagnosisRow } from './evidence.helper.js';
+import {
+  COHORT_DISPERSION_THRESHOLD_PP,
+  INCIDENT_FAILURE_THRESHOLD_PCT,
+  MINIMUM_COHORT_CUES,
+  STITCHER_DEADLINE_MS,
+} from './incident.constants.js';
+
+export type { DiagnosisRow } from './evidence.helper.js';
 
 export interface GroundedKpiPayload {
   revenueLoss: string | null;
@@ -27,30 +32,81 @@ export interface GroundedKpiPayload {
   rateCardFromQuery: boolean;
 }
 
-export interface RateCard {
-  cpmUsd: number;
+/**
+ * Pure incident selector with single ownership of the incident decision.
+ *
+ * Rules:
+ * 1. Small sample guard: cues >= 20.
+ * 2. Absolute failure threshold: unmonetized_pct > 20%.
+ * 3. Worst-cohort candidate: ordered by unmonetized_pct DESC, then unmonetized_impressions DESC,
+ *    then lexicographically by ssp_id, device_class, and codec.
+ * 4. Peers: other cues >= 20 rows from the same evidence snapshot and daypart.
+ * 5. Restraint check: if no peer rows exist, returns null (a lone cohort is insufficient evidence of isolation).
+ * 6. Dispersion check: worst candidate must exceed peer median by at least COHORT_DISPERSION_THRESHOLD_PP.
+ */
+export function selectIncidentCohort(rows: DiagnosisRow[]): DiagnosisRow | null {
+  if (!rows || rows.length === 0) {
+    return null;
+  }
+
+  // 1. Guard cues >= 20
+  const eligibleRows = rows.filter((r) => r.cues >= MINIMUM_COHORT_CUES);
+  if (eligibleRows.length === 0) {
+    return null;
+  }
+
+  // 2. Sort candidate worst cohorts deterministically
+  const sorted = [...eligibleRows].sort((a, b) => {
+    if (b.unmonetizedPct !== a.unmonetizedPct) {
+      return b.unmonetizedPct - a.unmonetizedPct;
+    }
+    if (b.unmonetizedImpressions !== a.unmonetizedImpressions) {
+      return b.unmonetizedImpressions - a.unmonetizedImpressions;
+    }
+    const sspComp = a.sspId.localeCompare(b.sspId);
+    if (sspComp !== 0) return sspComp;
+    const deviceComp = a.deviceClass.localeCompare(b.deviceClass);
+    if (deviceComp !== 0) return deviceComp;
+    return a.codec.localeCompare(b.codec);
+  });
+
+  const worst = sorted[0];
+  if (!worst) {
+    return null;
+  }
+
+  // 3. Absolute failure threshold (> 20%)
+  if (worst.unmonetizedPct <= INCIDENT_FAILURE_THRESHOLD_PCT) {
+    return null;
+  }
+
+  // 4. Peer cohorts from the same daypart (excluding the selected worst row)
+  const peers = eligibleRows.filter(
+    (r) => r !== worst && r.daypart.toLowerCase() === worst.daypart.toLowerCase(),
+  );
+
+  // 5. Restraint rule: A lone cohort is insufficient evidence of isolation
+  if (peers.length === 0) {
+    return null;
+  }
+
+  // 6. Compute peer median
+  const peerBleeds = peers.map((p) => p.unmonetizedPct).sort((a, b) => a - b);
+  const mid = Math.floor(peerBleeds.length / 2);
+  const peerMedian =
+    peerBleeds.length % 2 !== 0
+      ? (peerBleeds[mid] ?? 0)
+      : ((peerBleeds[mid - 1] ?? 0) + (peerBleeds[mid] ?? 0)) / 2;
+
+  // 7. Cohort dispersion threshold check
+  if (worst.unmonetizedPct - peerMedian < COHORT_DISPERSION_THRESHOLD_PP) {
+    return null;
+  }
+
+  return worst;
 }
 
-/**
- * Fallback rate card used strictly when no advertiser_inventory rate card
- * is returned by ClickHouse queries. Fallback numbers must be visibly flagged
- * via rateCardFromQuery: false.
- */
-export const CANONICAL_RATE_CARD: RateCard = {
-  cpmUsd: 25.0, // Baseline CPM fallback for FAST ad pods
-};
-
-/**
- * Minimum percentage-point gap between the worst cohort and the median cohort
- * required to declare an isolated incident rather than diffuse baseline noise.
- * Prevents diffuse elevation (where all cohorts rise together by a few points)
- * from being misclassified as an isolated critical incident.
- */
-export const COHORT_DISPERSION_THRESHOLD_PP = 15.0;
-
 export class MetricsService {
-  constructor(private readonly fallbackRateCard: RateCard = CANONICAL_RATE_CARD) {}
-
   /**
    * Computes financial revenue loss from unmonetized SSAI viewer stitch attempts.
    * Single ownership rule: all loss calculations repo-wide must trace to this function.
@@ -60,249 +116,138 @@ export class MetricsService {
     if (unmonetizedImpressions <= 0 || cpmUsd <= 0) {
       return 0.0;
     }
-    const loss = Math.round(unmonetizedImpressions * (cpmUsd / 1000) * 100) / 100;
-    return loss;
+    return Math.round(unmonetizedImpressions * (cpmUsd / 1000) * 100) / 100;
   }
 
   /**
-   * Derives grounded KPI metrics from ClickHouse MCP query results.
+   * Derives grounded KPI metrics from ClickHouse query results or decoded DiagnosisRows.
+   * Consumes selectIncidentCohort for single-ownership incident determination.
    */
   deriveMetrics(
-    queryData: RawMcpQueryData | null | undefined,
+    rows: DiagnosisRow[] | null | undefined,
     options?: {
-      rowsScanned?: number;
+      rowsReturned?: number;
       queryDurationMs?: number;
     },
   ): GroundedKpiPayload {
-    if (
-      !queryData ||
-      !Array.isArray(queryData.columns) ||
-      !Array.isArray(queryData.rows) ||
-      queryData.rows.length === 0
-    ) {
+    if (!rows || rows.length === 0) {
       return this.getEmptyPayload();
     }
 
-    const colMap = new Map<string, number>();
-    queryData.columns.forEach((col, idx) => {
-      colMap.set(col.toLowerCase(), idx);
-    });
+    const incident = selectIncidentCohort(rows);
 
-    const sspIdx = colMap.get('ssp_id') ?? colMap.get('ssp') ?? colMap.get('partner_id') ?? -1;
-
-    const latencyIdx =
-      colMap.get('avg_latency') ??
-      colMap.get('avg_latency_ms') ??
-      colMap.get('ad_response_latency_ms') ??
-      colMap.get('p95_auction_ms') ??
-      colMap.get('latency_ms') ??
-      colMap.get('latency') ??
-      -1;
-
-    const bleedIdx =
-      colMap.get('unmonetized_pct') ??
-      colMap.get('bleed_pct') ??
-      colMap.get('slate_bleed_pct') ??
-      colMap.get('failure_rate') ??
-      colMap.get('drop_pct') ??
-      -1;
-
-    const cuesIdx = colMap.get('total_cues') ?? colMap.get('cues') ?? colMap.get('count') ?? -1;
-
-    const attemptsIdx =
-      colMap.get('total_attempts') ?? colMap.get('attempts') ?? colMap.get('total_stitches') ?? -1;
-
-    const droppedIdx =
-      colMap.get('unmonetized_impressions') ??
-      colMap.get('unmonetized') ??
-      colMap.get('slate_cues') ??
-      colMap.get('dropped_ads') ??
-      colMap.get('failed_stitches') ??
-      colMap.get('dropped_stitches') ??
-      colMap.get('failures') ??
-      -1;
-
-    const cpmIdx =
-      colMap.get('cpm_usd') ??
-      colMap.get('cpm') ??
-      colMap.get('cpmusd') ??
-      colMap.get('rate') ??
-      -1;
-
-    // If neither ssp, latency, bleed, nor cues columns match, this is not an expected telemetry result
-    if (
-      sspIdx === -1 &&
-      latencyIdx === -1 &&
-      bleedIdx === -1 &&
-      cuesIdx === -1 &&
-      droppedIdx === -1
-    ) {
-      return this.getEmptyPayload();
-    }
-
-    // Collect all valid bleed percentages across rows to evaluate cohort dispersion
-    const cohortBleeds: number[] = [];
-    let worstRow = queryData.rows[0];
-    let maxMetricVal = -1;
-
-    for (const row of queryData.rows) {
-      let metricVal = -1;
-      if (bleedIdx >= 0 && row[bleedIdx] != null && !isNaN(Number(row[bleedIdx]))) {
-        metricVal = Number(row[bleedIdx]);
-        cohortBleeds.push(metricVal);
-      } else if (droppedIdx >= 0 && row[droppedIdx] != null && !isNaN(Number(row[droppedIdx]))) {
-        metricVal = Number(row[droppedIdx]);
-      } else if (latencyIdx >= 0 && row[latencyIdx] != null && !isNaN(Number(row[latencyIdx]))) {
-        metricVal = Number(row[latencyIdx]);
-      }
-
-      if (metricVal > maxMetricVal) {
-        maxMetricVal = metricVal;
-        worstRow = row;
-      }
-    }
-
-    if (!worstRow) {
-      return this.getEmptyPayload();
-    }
-
-    // 1. Offending SSP
-    const ssp =
-      sspIdx >= 0 && worstRow[sspIdx] != null && String(worstRow[sspIdx]).trim().length > 0
-        ? String(worstRow[sspIdx]).toUpperCase()
-        : null;
-
-    // 2. Latency
-    const rawLatency =
-      latencyIdx >= 0 && worstRow[latencyIdx] != null && !isNaN(Number(worstRow[latencyIdx]))
-        ? Math.round(Number(worstRow[latencyIdx]))
-        : null;
-    const sspLatency = rawLatency !== null ? `${rawLatency}ms` : null;
-    const sspVariant = rawLatency !== null ? (rawLatency > 250 ? 'warning' : 'success') : 'neutral';
-    const sspSubtext =
-      rawLatency !== null
-        ? rawLatency > 250
-          ? 'SSAI SLA max: 250ms (Exceeded)'
-          : 'Within 250ms SLA budget'
-        : null;
-
-    // 3. Attempts & Unmonetized Impressions
-    let attemptsNum: number | null = null;
-    if (
-      attemptsIdx >= 0 &&
-      worstRow[attemptsIdx] != null &&
-      !isNaN(Number(worstRow[attemptsIdx]))
-    ) {
-      attemptsNum = Number(worstRow[attemptsIdx]);
-    } else if (cuesIdx >= 0 && worstRow[cuesIdx] != null && !isNaN(Number(worstRow[cuesIdx]))) {
-      attemptsNum = Number(worstRow[cuesIdx]);
-    }
-
-    let droppedNum: number | null = null;
-    if (droppedIdx >= 0 && worstRow[droppedIdx] != null && !isNaN(Number(worstRow[droppedIdx]))) {
-      droppedNum = Number(worstRow[droppedIdx]);
-    }
-
-    // 4. Unmonetized / Slate Bleed Percentage
-    let bleedNum: number | null = null;
-    if (bleedIdx >= 0 && worstRow[bleedIdx] != null && !isNaN(Number(worstRow[bleedIdx]))) {
-      bleedNum = Number(worstRow[bleedIdx]);
-    } else if (attemptsNum !== null && attemptsNum > 0 && droppedNum !== null) {
-      bleedNum = (droppedNum / attemptsNum) * 100;
-    }
-
-    if (droppedNum === null && attemptsNum !== null && bleedNum !== null) {
-      droppedNum = Math.round(attemptsNum * (bleedNum / 100));
-    }
-
-    // Cohort Dispersion Restraint Rule:
-    // A spike is critical only if it exceeds 20% absolute failure rate AND stands out
-    // from peer cohorts by at least COHORT_DISPERSION_THRESHOLD_PP (or is the sole filtered incident).
-    let isSeparated = true;
-    if (cohortBleeds.length > 1 && bleedNum !== null) {
-      const sorted = [...cohortBleeds].sort((a, b) => a - b);
-      const mid = Math.floor(sorted.length / 2);
-      const medianVal = sorted[mid] ?? 0;
-      const prevVal = sorted[mid - 1] ?? medianVal;
-      const medianBleed = sorted.length % 2 !== 0 ? medianVal : (prevVal + medianVal) / 2;
-      isSeparated = bleedNum - medianBleed >= COHORT_DISPERSION_THRESHOLD_PP;
-    }
-
-    const isCriticalBleed = bleedNum !== null ? bleedNum > 20 && isSeparated : false;
-    const slateBleedRate = bleedNum !== null ? `${bleedNum.toFixed(1)}%` : null;
-    const slateBleedVariant =
-      bleedNum !== null
-        ? isCriticalBleed
-          ? 'critical'
-          : bleedNum > 5
-            ? 'warning'
-            : 'success'
-        : 'neutral';
-    const slateBleedTag =
-      bleedNum !== null ? (isCriticalBleed ? 'CRITICAL SPIKE' : 'NOMINAL') : null;
-    const slateBleedSubtext = slateBleedRate !== null ? 'Target: 0.0% unmonetized pod time' : null;
-
-    // 5. Revenue Loss & Rate Card Grounding
-    let formattedLoss: string | null = null;
-    let revenueLossSubtext: string | null = null;
-    let revenueLossVariant: GroundedKpiPayload['revenueLossVariant'] = 'neutral';
-    let revenueLossTag: string | null = null;
-
-    let cpmUsd = this.fallbackRateCard.cpmUsd;
-    let rateCardFromQuery = false;
-
-    if (cpmIdx >= 0 && worstRow[cpmIdx] != null && !isNaN(Number(worstRow[cpmIdx]))) {
-      const parsedCpm = Number(worstRow[cpmIdx]);
-      if (parsedCpm > 0) {
-        cpmUsd = parsedCpm;
-        rateCardFromQuery = true;
-      }
-    }
-
-    if (droppedNum !== null) {
-      const loss = this.computeLoss(droppedNum, cpmUsd);
-      formattedLoss = `$${loss.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-      revenueLossSubtext = `${droppedNum.toLocaleString('en-US')} unmonetized impressions`;
-      revenueLossVariant = isCriticalBleed ? 'critical' : loss > 0 ? 'warning' : 'success';
-      revenueLossTag = isCriticalBleed ? 'Loss in Window' : loss > 0 ? 'Nominal' : 'Optimal';
-    }
-
-    // 6. Scanned Logs / MCP telemetry execution metrics
-    const rowsScanned =
-      typeof options?.rowsScanned === 'number' && options.rowsScanned > 0
-        ? options.rowsScanned
-        : queryData.rows.length;
+    const rowsReturned =
+      typeof options?.rowsReturned === 'number' && options.rowsReturned >= 0
+        ? options.rowsReturned
+        : rows.length;
     const queryDurationMs = options?.queryDurationMs;
 
-    const scannedLogs = rowsScanned.toLocaleString('en-US');
+    const scannedLogs = rowsReturned.toLocaleString('en-US');
     const scannedLogsSubtext =
       typeof queryDurationMs === 'number' && queryDurationMs > 0
         ? `ClickHouse ASOF JOIN (${queryDurationMs}ms)`
         : 'ClickHouse ASOF JOIN Telemetry';
     const scannedLogsTag = 'GROUNDED (MCP)';
 
+    if (incident) {
+      const offendingSsp = incident.sspId ? incident.sspId.toUpperCase() : null;
+      const rawLatency = Math.round(incident.p95AuctionMs);
+      const sspLatency = `${rawLatency}ms`;
+      const deadlineExceeded = incident.p95AuctionMs > STITCHER_DEADLINE_MS;
+      const sspVariant = deadlineExceeded ? 'warning' : 'success';
+      const sspSubtext = deadlineExceeded
+        ? `Stitcher deadline: ${STITCHER_DEADLINE_MS}ms (Exceeded)`
+        : `Within ${STITCHER_DEADLINE_MS}ms stitcher deadline`;
+
+      const slateBleedRate = `${incident.unmonetizedPct.toFixed(1)}%`;
+      const slateBleedVariant = 'critical';
+      const slateBleedTag = 'CRITICAL SPIKE';
+      const slateBleedSubtext = 'Target: 0.0% unmonetized pod time';
+
+      let formattedLoss: string | null = null;
+      let revenueLossSubtext: string | null = null;
+      let revenueLossVariant: GroundedKpiPayload['revenueLossVariant'] = 'neutral';
+      let revenueLossTag: string | null = null;
+      let rateCardFromQuery = false;
+
+      if (incident.cpmUsd !== null && incident.cpmUsd > 0) {
+        const loss = this.computeLoss(incident.unmonetizedImpressions, incident.cpmUsd);
+        formattedLoss = `$${loss.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        revenueLossSubtext = `${incident.unmonetizedImpressions.toLocaleString('en-US')} unmonetized impressions`;
+        revenueLossVariant = 'critical';
+        revenueLossTag = 'Loss in Window';
+        rateCardFromQuery = true;
+      } else {
+        revenueLossSubtext = 'Financial impact unavailable';
+        revenueLossVariant = 'neutral';
+        revenueLossTag = null;
+        rateCardFromQuery = false;
+      }
+
+      return {
+        revenueLoss: formattedLoss,
+        revenueLossSubtext,
+        revenueLossVariant,
+        revenueLossTag,
+
+        slateBleedRate,
+        slateBleedSubtext,
+        slateBleedVariant,
+        slateBleedTag,
+
+        offendingSsp,
+        sspLatency,
+        sspSubtext,
+        sspVariant,
+
+        scannedLogs,
+        scannedLogsSubtext,
+        scannedLogsTag,
+
+        isGroundedFromMcp: true,
+        rateCardFromQuery,
+      };
+    }
+
+    // No incident selected (negative control / diffuse variation)
+    const eligibleRows = rows.filter((r) => r.cues >= MINIMUM_COHORT_CUES);
+    const candidateRows = eligibleRows.length > 0 ? eligibleRows : rows;
+    const firstCandidate = candidateRows[0];
+    const maxRow = firstCandidate
+      ? candidateRows.reduce(
+          (max, r) => (r.unmonetizedPct > max.unmonetizedPct ? r : max),
+          firstCandidate,
+        )
+      : undefined;
+
+    const bleedVal = maxRow ? maxRow.unmonetizedPct : null;
+    const slateBleedRate = bleedVal !== null ? `${bleedVal.toFixed(1)}%` : null;
+    const slateBleedVariant = bleedVal !== null && bleedVal > 5 ? 'warning' : 'success';
+    const slateBleedTag = 'NOMINAL';
+    const slateBleedSubtext = 'Target: 0.0% unmonetized pod time';
+
     return {
-      revenueLoss: formattedLoss,
-      revenueLossSubtext,
-      revenueLossVariant,
-      revenueLossTag,
+      revenueLoss: null,
+      revenueLossSubtext: 'No incident detected in window',
+      revenueLossVariant: 'neutral',
+      revenueLossTag: 'Nominal',
 
       slateBleedRate,
       slateBleedSubtext,
       slateBleedVariant,
       slateBleedTag,
 
-      offendingSsp: ssp,
-      sspLatency,
-      sspSubtext,
-      sspVariant,
+      offendingSsp: null,
+      sspLatency: null,
+      sspSubtext: null,
+      sspVariant: 'neutral',
 
       scannedLogs,
       scannedLogsSubtext,
       scannedLogsTag,
 
       isGroundedFromMcp: true,
-      rateCardFromQuery,
+      rateCardFromQuery: false,
     };
   }
 

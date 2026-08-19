@@ -1,179 +1,140 @@
 import { describe, it, expect } from 'vitest';
-import { GroundingService } from '../src/services/grounding.service.js';
-import type { InvestigationEvent } from '../src/services/investigation.service.js';
+import {
+  GroundingService,
+  renderDiagnosis,
+  countPublishedFigures,
+  type DiagnosisEvidence,
+} from '../src/services/grounding.service.js';
+import type { DiagnosisRow } from '../src/services/evidence.helper.js';
 
-describe('GroundingService', () => {
+describe('GroundingService & renderDiagnosis', () => {
   const service = new GroundingService();
 
-  it('passes a diagnosis whose every numeric claim appears in the steps corpus or is derived from queried figures', () => {
-    const steps: InvestigationEvent[] = [
-      {
-        type: 'tool_result',
-        timestamp: '2026-08-14T23:01:00.000Z',
-        data: {
-          name: 'run_query',
-          result: JSON.stringify({
-            columns: [
-              'channel_id',
-              'ssp_id',
-              'device_class',
-              'codec',
-              'cues',
-              'total_attempts',
-              'unmonetized_impressions',
-              'unmonetized_pct',
-              'p95_auction_ms',
-              'cpm_usd',
-            ],
-            rows: [
-              ['ch-01', 'ssp-beta', 'connected_tv', 'hevc', 80, 60862, 59482, 97.73, 1812.0, 32.5],
-            ],
-          }),
-        },
-      },
-      {
-        type: 'metrics',
-        timestamp: '2026-08-14T23:01:05.000Z',
-        data: {
-          revenueLoss: '$1,933.17',
-          slateBleedRate: '97.7%',
-          sspLatency: '1812ms',
-          scannedLogs: '60,862',
-          isGroundedFromMcp: true,
-          rateCardFromQuery: true,
-        },
-      },
-    ];
+  const mockPositiveRow: DiagnosisRow = {
+    channelId: 'ch-01',
+    sspId: 'ssp-beta',
+    deviceClass: 'connected_tv',
+    codec: 'hevc',
+    daypart: 'primetime',
+    cues: 80,
+    totalAttempts: 60862,
+    unmonetizedImpressions: 59482,
+    unmonetizedPct: 97.73,
+    p95AuctionMs: 1812.0,
+    cpmUsd: 32.5,
+  };
 
-    const diagnosis =
-      'Investigation confirmed that ssp-beta on connected_tv with hevc codec suffered an unmonetized rate of 97.73% ' +
-      'across 80 cues (59,482 unmonetized impressions of 60,862 attempts), with auction latency reaching 1812ms, ' +
-      'resulting in $1,933.17 in loss at $32.50 CPM.';
+  const mockEvidence: DiagnosisEvidence = {
+    context: {
+      channel: 'ch-01',
+      from: '2026-08-14T19:00:00.000Z',
+      to: '2026-08-14T23:00:00.000Z',
+    },
+    rows: [mockPositiveRow],
+    incident: mockPositiveRow,
+    frame: {
+      classification: 'slate',
+      confidence: 0.98,
+      slate_type: 'looping_card',
+      text_detected: 'We will be right back',
+      visual_summary: 'Looping commercial break slate screen',
+      contentHash: 'hash-123',
+      cached: false,
+      timestampSeconds: 12,
+    },
+  };
 
-    const report = service.verify(diagnosis, steps);
+  it('renders a deterministic positive incident diagnosis with all grounded figures and remediation', () => {
+    const diagnosis = renderDiagnosis(mockEvidence);
+
+    expect(diagnosis).toContain('**Target Channel:** `ch-01`');
+    expect(diagnosis).toContain('`2026-08-14T19:00:00.000Z` to `2026-08-14T23:00:00.000Z`');
+    expect(diagnosis).toContain('`ssp-beta` on device class `connected_tv` (codec `hevc`)');
+    expect(diagnosis).toContain('- Cues analyzed: 80');
+    expect(diagnosis).toContain('- Total stitch attempts: 60,862');
+    expect(diagnosis).toContain('59,482 (97.73%)');
+    expect(diagnosis).toContain('1812ms');
+    expect(diagnosis).toContain('450ms');
+    expect(diagnosis).toContain('1200ms');
+    expect(diagnosis).toContain("Frame classified as 'slate' at 12s with 98% confidence");
+    expect(diagnosis).toContain('slate type: looping card');
+    expect(diagnosis).not.toContain(mockEvidence.frame?.visual_summary);
+    expect(diagnosis).toContain('$1,933.17');
+    expect(diagnosis).toContain('$32.50');
+    expect(diagnosis).toContain('Immediately reroute SSAI ad requests away from ssp-beta');
+  });
+
+  it('describes latency relative to thresholds without claiming a breach below them', () => {
+    const diagnosis = renderDiagnosis({
+      ...mockEvidence,
+      incident: { ...mockPositiveRow, p95AuctionMs: 400 },
+    });
+
+    expect(diagnosis).toContain('within the 450ms stitcher deadline');
+    expect(diagnosis).toContain('below the 1200ms hard auction timeout threshold');
+    expect(diagnosis).not.toContain('exceeding the 450ms');
+  });
+
+  it('renders deterministic unavailable-impact sentence when queried CPM is missing', () => {
+    const evidenceWithoutCpm: DiagnosisEvidence = {
+      ...mockEvidence,
+      incident: {
+        ...mockPositiveRow,
+        cpmUsd: null,
+      },
+    };
+
+    const diagnosis = renderDiagnosis(evidenceWithoutCpm);
+
+    // Incident cohort is still published
+    expect(diagnosis).toContain('`ssp-beta` on device class `connected_tv` (codec `hevc`)');
+    expect(diagnosis).toContain('- Cues analyzed: 80');
+    // Financial impact states unavailable from queried inventory
+    expect(diagnosis).toContain('Financial impact was unavailable from queried inventory.');
+    expect(diagnosis).not.toContain('$1,933.17');
+    expect(diagnosis).not.toContain('$32.50');
+  });
+
+  it('renders deterministic negative control diagnosis when no cohort meets incident criteria', () => {
+    const negativeEvidence: DiagnosisEvidence = {
+      context: {
+        channel: 'ch-01',
+        from: '2026-08-09T19:00:00.000Z',
+        to: '2026-08-09T23:00:00.000Z',
+      },
+      rows: [],
+      incident: null,
+      frame: null,
+    };
+
+    const diagnosis = renderDiagnosis(negativeEvidence);
+
+    expect(diagnosis).toContain('**Target Channel:** `ch-01`');
+    expect(diagnosis).toContain(
+      'no isolated cohort breached the 20.0% unmonetized failure threshold',
+    );
+    expect(diagnosis).toContain(
+      'No isolated root cause, on-air slate bleed, or financial loss is asserted.',
+    );
+    expect(diagnosis).toContain('No remediation action required for this window.');
+  });
+
+  it('builds GroundingReport counting exact verified figures directly from evidence snapshot', () => {
+    expect(countPublishedFigures(mockEvidence)).toBe(11);
+    const report = service.buildReport(mockEvidence);
 
     expect(report.grounded).toBe(true);
     expect(report.violations).toHaveLength(0);
-    expect(report.checkedClaims).toBeGreaterThan(0);
+    // countPublishedFigures: 2 thresholds (450, 1200) + 5 telemetry figures + 2 frame figures + 2 financial figures = 11
+    expect(report.checkedClaims).toBe(11);
   });
 
-  it('strictly rejects ungrounded figures from the Finding 4 test matrix', () => {
-    // Corpus containing only [80, 34.04]
-    const steps: InvestigationEvent[] = [
-      {
-        type: 'tool_result',
-        timestamp: '2026-08-14T23:01:00.000Z',
-        data: {
-          name: 'run_query',
-          result: JSON.stringify({
-            columns: ['cues', 'slate_bleed_pct'],
-            rows: [[80, 34.04]],
-          }),
-        },
-      },
-    ];
+  it('ensures rendering is pure and reproducible across multiple invocations', () => {
+    const run1 = renderDiagnosis(mockEvidence);
+    const run2 = renderDiagnosis(mockEvidence);
+    const run3 = renderDiagnosis(mockEvidence);
 
-    // 1. $520.00 (hallucinated derivation from hardcoded multiplier/rate card)
-    const report1 = service.verify('Estimated revenue loss was $520.00 across the window.', steps);
-    expect(report1.grounded).toBe(false);
-    expect(report1.violations.map((v) => v.claim)).toContain('$520.00');
-
-    // 2. 3404 ad breaks (hallucinated 100x scaling of 34.04)
-    const report2 = service.verify('A total of 3404 ad breaks were affected by the issue.', steps);
-    expect(report2.grounded).toBe(false);
-    expect(report2.violations.map((v) => v.claim)).toContain('3404');
-
-    // 3. 88.8% failure rate
-    const report3 = service.verify('The failure rate escalated to 88.8% during the peak.', steps);
-    expect(report3.grounded).toBe(false);
-    expect(report3.violations.map((v) => v.claim)).toContain('88.8%');
-
-    // 4. $9.25 CPM (unqueried rate card)
-    const report4 = service.verify('Inventory was billed at a rate of $9.25 CPM.', steps);
-    expect(report4.grounded).toBe(false);
-    expect(report4.violations.map((v) => v.claim)).toContain('$9.25');
-  });
-
-  it('grounds derived revenue loss computed strictly from corpus impressions and queried CPM', () => {
-    // Tool result has 10,000 unmonetized impressions and $32.50 CPM, but raw string "$325.00" is absent
-    // 10,000 impressions * ($32.50 CPM / 1000) = $325.00
-    const steps: InvestigationEvent[] = [
-      {
-        type: 'tool_result',
-        timestamp: '2026-08-14T23:01:00.000Z',
-        data: {
-          name: 'run_query',
-          result: JSON.stringify({
-            columns: ['channel_id', 'unmonetized_impressions', 'cpm_usd'],
-            rows: [['ch-01', 10000, 32.5]],
-          }),
-        },
-      },
-    ];
-
-    const diagnosis =
-      'Analysis found 10000 unmonetized impressions during primetime inventory at $32.50 CPM, producing a derived loss of $325.00.';
-
-    const report = service.verify(diagnosis, steps);
-
-    expect(report.grounded).toBe(true);
-    expect(report.violations).toHaveLength(0);
-  });
-
-  it('exempts system prompt thresholds, timestamp dates, and step ordinals', () => {
-    const steps: InvestigationEvent[] = [
-      {
-        type: 'tool_result',
-        timestamp: '2026-08-14T23:01:00.000Z',
-        data: {
-          name: 'run_query',
-          result: JSON.stringify({
-            columns: ['ssp_id', 'latency_ms'],
-            rows: [['ssp-beta', 850]],
-          }),
-        },
-      },
-    ];
-
-    // Cites 450ms (stitcher deadline) and 1200ms (timeout) from prompt, 2026-08-14 19:00 window, and Step 1
-    const diagnosis =
-      'In Step 1 of the analysis for window 2026-08-14 from 19:00 to 23:00, latency reached 850ms, ' +
-      'breaching the 450ms stitcher deadline while remaining below the 1200ms hard timeout.';
-
-    const report = service.verify(diagnosis, steps);
-
-    expect(report.grounded).toBe(true);
-    expect(report.violations).toHaveLength(0);
-  });
-
-  it('flags an ungrounded root cause diagnosis on negative control telemetry', () => {
-    const steps: InvestigationEvent[] = [
-      {
-        type: 'tool_result',
-        timestamp: '2026-08-09T23:01:00.000Z',
-        data: {
-          name: 'run_query',
-          result: JSON.stringify({
-            columns: ['ssp_id', 'cues', 'unmonetized_pct'],
-            rows: [
-              ['ssp-alpha', 80, 2.5],
-              ['ssp-beta', 80, 3.1],
-              ['ssp-gamma', 80, 2.7],
-            ],
-          }),
-        },
-      },
-    ];
-
-    const bogusDiagnosis =
-      'Root cause isolated to ssp-alpha with 45.5% slate bleed resulting in $5,000.00 loss.';
-
-    const report = service.verify(bogusDiagnosis, steps);
-
-    expect(report.grounded).toBe(false);
-    expect(report.violations.length).toBeGreaterThan(0);
-    const violationClaims = report.violations.map((v) => v.claim);
-    expect(violationClaims).toContain('45.5%');
-    expect(violationClaims).toContain('$5,000.00');
+    expect(run1).toBe(run2);
+    expect(run2).toBe(run3);
   });
 });

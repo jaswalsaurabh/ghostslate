@@ -2,7 +2,7 @@
 -- Slices by channel_id, ssp_id, device_class, codec, and daypart.
 -- Defines unmonetized traffic as SLATE_FALLBACK + TIMEOUT (excluding hard ERRORs).
 -- Returns unmonetized_impressions and cpm_usd. Single ownership rule: MetricsService owns financial loss arithmetic.
--- Guarded by HAVING cues >= 20 AND unmonetized_pct > 5.
+-- Guarded by HAVING cues >= 20.
 
 WITH matched AS (
     SELECT
@@ -37,10 +37,11 @@ SELECT
     count()                                                                               AS total_attempts,
     countIf(m.stitch_status IN ('SLATE_FALLBACK', 'TIMEOUT'))                             AS unmonetized_impressions,
     round(100.0 * countIf(m.stitch_status IN ('SLATE_FALLBACK', 'TIMEOUT')) / count(), 2) AS unmonetized_pct,
-    any(inv.cpm_usd)                                                                      AS cpm_usd
+    quantileTDigest(0.95)(m.latency_ms)                                                   AS p95_auction_ms,
+    nullIf(any(inv.cpm_usd), 0)                                                           AS cpm_usd
 FROM matched AS m
-JOIN advertiser_inventory AS inv
+LEFT JOIN advertiser_inventory AS inv
   ON m.channel_id = inv.channel_id AND m.daypart = inv.daypart
 GROUP BY m.channel_id, m.ssp_id, m.device_class, m.codec, m.daypart
-HAVING cues >= 20 AND unmonetized_pct > 5
+HAVING cues >= 20
 ORDER BY unmonetized_impressions DESC;

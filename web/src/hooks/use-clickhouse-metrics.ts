@@ -69,7 +69,7 @@ const EMPTY_METRICS: GroundedKpiMetrics = {
 
   offendingSsp: '—',
   sspLatency: '—',
-  sspSubtext: 'SSAI SLA budget: 250ms',
+  sspSubtext: 'Awaiting latency evidence',
   sspVariant: 'neutral',
 
   scannedLogs: '—',
@@ -105,7 +105,7 @@ export function useClickHouseMetrics(
 
               offendingSsp: data.offendingSsp ?? '—',
               sspLatency: data.sspLatency ?? '—',
-              sspSubtext: data.sspSubtext ?? 'SSAI SLA budget: 250ms',
+              sspSubtext: data.sspSubtext ?? 'Awaiting latency evidence',
               sspVariant: data.sspVariant,
 
               scannedLogs: data.scannedLogs ?? '—',

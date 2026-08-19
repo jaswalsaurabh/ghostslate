@@ -7,12 +7,14 @@ interface ClickHouseResultViewerProps {
   rawResult: string;
   durationMs?: number | undefined;
   rowsReturned?: number | undefined;
+  rowsScanned?: number | undefined;
 }
 
 export const ClickHouseResultViewer: React.FC<ClickHouseResultViewerProps> = ({
   rawResult,
   durationMs,
   rowsReturned,
+  rowsScanned,
 }) => {
   const [copied, setCopied] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'json'>('table');
@@ -77,6 +79,11 @@ export const ClickHouseResultViewer: React.FC<ClickHouseResultViewerProps> = ({
           {typeof durationMs === 'number' && (
             <Badge variant="data" size="sm" icon={<Clock className="w-2.5 h-2.5" />}>
               {durationMs} ms
+            </Badge>
+          )}
+          {typeof rowsScanned === 'number' && (
+            <Badge variant="data" size="sm">
+              {rowsScanned.toLocaleString('en-US')} rows scanned
             </Badge>
           )}
         </div>

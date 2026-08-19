@@ -129,6 +129,7 @@ export const InvestigationEventItem: React.FC<InvestigationEventItemProps> = ({ 
           rowsReturned={
             typeof ev.data?.rowsReturned === 'number' ? ev.data.rowsReturned : undefined
           }
+          rowsScanned={typeof ev.data?.rowsScanned === 'number' ? ev.data.rowsScanned : undefined}
         />
       </div>
     );
