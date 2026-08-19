@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import type { ClassificationType, SlateType } from '../types.js';
 import { CONFIDENCE_THRESHOLDS } from '../types.js';
+import { Badge, Card, OcrTextDisplay, VisualSummaryDisplay } from './ui/index.js';
 
 interface FrameEvidenceCardProps {
   classification: ClassificationType;
@@ -37,7 +38,7 @@ export const FrameEvidenceCard: React.FC<FrameEvidenceCardProps> = ({
   const hasSource = Boolean(videoFile) && timestampSeconds !== undefined;
 
   return (
-    <div className="bg-surface-card rounded-lg p-4 border border-border-strong flex flex-col gap-3 shadow-md">
+    <Card variant="card" className="p-4 border-border-strong flex flex-col gap-3 shadow-md">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border-subtle pb-2 text-xs">
         <div className="flex items-center gap-2 text-interactive font-bold">
@@ -53,10 +54,10 @@ export const FrameEvidenceCard: React.FC<FrameEvidenceCardProps> = ({
             </span>
           )}
           {cached && (
-            <span className="px-1.5 py-0.5 rounded bg-interactive-surface text-interactive border border-interactive-border flex items-center gap-1 text-[10px] font-semibold font-mono">
+            <Badge variant="primary" size="sm">
               <CheckCheck className="w-3 h-3" />
               cached
-            </span>
+            </Badge>
           )}
         </div>
       </div>
@@ -68,7 +69,7 @@ export const FrameEvidenceCard: React.FC<FrameEvidenceCardProps> = ({
             <img
               src={frameBase64}
               alt="Classified frame evidence"
-              className="w-full h-auto rounded-md border border-border-strong object-cover shadow-sm max-w-full"
+              className="w-full h-auto rounded-md border border-border-strong object-cover shadow-xs max-w-full"
             />
           </div>
         )}
@@ -76,72 +77,69 @@ export const FrameEvidenceCard: React.FC<FrameEvidenceCardProps> = ({
         <div className="flex-1 flex flex-col gap-2 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             {/* Classification badge */}
-            <span
-              className={`text-xs px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1.5 ${
+            <Badge
+              variant={
                 classification === 'slate'
-                  ? 'bg-classification-slate-surface text-classification-slate border border-classification-slate-border shadow-[0_0_8px_var(--color-classification-slate-subtle)]'
+                  ? 'critical'
                   : classification === 'ad'
-                    ? 'bg-classification-ad-surface text-classification-ad border border-classification-ad-border'
-                    : 'bg-classification-content-surface text-classification-content border border-classification-content-border'
-              }`}
+                    ? 'primary'
+                    : 'success'
+              }
+              size="md"
             >
-              {classification === 'slate' && (
-                <AlertTriangle className="w-3 h-3 text-classification-slate" />
-              )}
-              {classification === 'ad' && (
-                <CheckCircle2 className="w-3 h-3 text-classification-ad" />
+              {classification === 'slate' ? (
+                <AlertTriangle className="w-3 h-3" />
+              ) : (
+                <CheckCircle2 className="w-3 h-3" />
               )}
               {classification.toUpperCase()}
-            </span>
+            </Badge>
 
             {/* Confidence indicator */}
-            <span
-              className={`text-xs font-mono font-semibold px-2 py-0.5 rounded bg-surface-panel border border-border-subtle ${
+            <Badge
+              variant={
                 confidence >= CONFIDENCE_THRESHOLDS.HIGH
-                  ? 'text-confidence-high'
+                  ? 'success'
                   : confidence >= CONFIDENCE_THRESHOLDS.MEDIUM
-                    ? 'text-confidence-medium'
-                    : 'text-confidence-low'
-              }`}
+                    ? 'warning'
+                    : 'critical'
+              }
+              size="md"
             >
               {Math.round(confidence * 100)}% Confidence
-            </span>
+            </Badge>
 
             {/* Slate type if present */}
             {slateType && (
-              <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded bg-status-critical-surface text-status-critical border border-status-critical-border">
+              <Badge variant="critical" size="sm">
                 Type: {slateType.replace('_', ' ')}
-              </span>
+              </Badge>
             )}
           </div>
 
           {/* OCR text detected if present */}
           {textDetected && (
-            <div className="bg-surface-panel p-2 rounded-md border border-border-subtle flex flex-col gap-1">
+            <div className="bg-surface-panel p-2 rounded-md border border-border-subtle flex flex-col gap-1.5">
               <div className="flex items-center gap-1.5 text-[10px] font-bold font-mono text-text-muted uppercase tracking-wider">
                 <FileText className="w-3 h-3 text-interactive" />
                 Text Detected:
               </div>
-              <div className="text-xs font-mono text-status-warning bg-surface-scrim p-1.5 rounded border border-status-warning-border whitespace-pre-wrap wrap-break-word">
-                {textDetected}
-              </div>
+              <OcrTextDisplay text={textDetected} />
             </div>
           )}
 
           {/* Visual summary body */}
           {visualSummary && (
-            <div className="bg-surface-panel p-2.5 rounded-md border border-border-subtle flex flex-col gap-1">
+            <div className="bg-surface-panel p-2.5 rounded-md border border-border-subtle flex flex-col gap-1.5">
               <div className="flex items-center gap-1.5 text-[10px] font-bold font-mono text-text-muted uppercase tracking-wider">
                 <Sparkles className="w-3 h-3 text-interactive" />
                 Visual Summary:
               </div>
-              <p className="text-xs text-text-primary leading-relaxed font-sans whitespace-pre-line wrap-break-word">
-                {visualSummary}
-              </p>
+              <VisualSummaryDisplay summary={visualSummary} />
             </div>
           )}
         </div>
       </div>
-    </div>
+    </Card>
   );
 };

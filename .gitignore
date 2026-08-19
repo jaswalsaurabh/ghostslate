@@ -126,3 +126,6 @@ graphify-out/
 .claude/settings.local.json
 .agent/docs
 .agent/plans
+.agent/backlog
+# Local design explorations are reference material, not shipped application code.
+web/design/

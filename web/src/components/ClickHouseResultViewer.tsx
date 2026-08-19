@@ -1,12 +1,21 @@
 import React, { useState, useMemo } from 'react';
-import { Table, Code2, Copy, Check, Database } from 'lucide-react';
+import { Table, Code2, Copy, Check, Database, Clock } from 'lucide-react';
 import type { McpQueryData } from '../types.js';
+import { Badge } from './ui/index.js';
 
 interface ClickHouseResultViewerProps {
   rawResult: string;
+  durationMs?: number | undefined;
+  rowsReturned?: number | undefined;
+  rowsScanned?: number | undefined;
 }
 
-export const ClickHouseResultViewer: React.FC<ClickHouseResultViewerProps> = ({ rawResult }) => {
+export const ClickHouseResultViewer: React.FC<ClickHouseResultViewerProps> = ({
+  rawResult,
+  durationMs,
+  rowsReturned,
+  rowsScanned,
+}) => {
   const [copied, setCopied] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'json'>('table');
 
@@ -55,17 +64,27 @@ export const ClickHouseResultViewer: React.FC<ClickHouseResultViewerProps> = ({ 
     <div className="bg-data-surface rounded-lg border border-data-border overflow-hidden shadow-inner flex flex-col my-1">
       {/* Result Header Bar */}
       <div className="bg-data-surface px-3 py-2 border-b border-data-border flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Database className="w-3.5 h-3.5 text-data-fg" />
           <span className="text-xs font-bold text-data-fg tracking-wide font-mono">
             ClickHouse Query Result
           </span>
-          {parsedData.queryData && (
+          {(rowsReturned !== undefined || parsedData.queryData) && (
             <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-surface-card text-data-fg border border-data-border">
-              {parsedData.queryData.rows.length} row
-              {parsedData.queryData.rows.length === 1 ? '' : 's'} ×{' '}
-              {parsedData.queryData.columns.length} cols
+              {rowsReturned ?? parsedData.queryData?.rows.length ?? 0} row
+              {(rowsReturned ?? parsedData.queryData?.rows.length ?? 0) === 1 ? '' : 's'}
+              {parsedData.queryData ? ` × ${parsedData.queryData.columns.length} cols` : ''}
             </span>
+          )}
+          {typeof durationMs === 'number' && (
+            <Badge variant="data" size="sm" icon={<Clock className="w-2.5 h-2.5" />}>
+              {durationMs} ms
+            </Badge>
+          )}
+          {typeof rowsScanned === 'number' && (
+            <Badge variant="data" size="sm">
+              {rowsScanned.toLocaleString('en-US')} rows scanned
+            </Badge>
           )}
         </div>
 

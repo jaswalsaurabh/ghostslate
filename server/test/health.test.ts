@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { HealthService } from '../src/services/health.service.js';
 
 describe('HealthService', () => {
-  it('returns ok status and server identity', () => {
+  it('returns ok status and server identity', async () => {
     const service = new HealthService();
-    const health = service.getHealth();
+    const health = await service.getHealth();
 
     expect(health.status).toBe('ok');
     expect(health.service).toBe('ghostslate-server');

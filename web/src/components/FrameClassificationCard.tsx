@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import type { FrameClassificationData } from '../types.js';
 import { CONFIDENCE_THRESHOLDS } from '../types.js';
+import { Badge, Card, OcrTextDisplay, VisualSummaryDisplay } from './ui/index.js';
 
 interface FrameClassificationCardProps {
   classificationResult: FrameClassificationData | null;
@@ -26,7 +27,7 @@ export const FrameClassificationCard: React.FC<FrameClassificationCardProps> = (
   currentTime,
 }) => {
   return (
-    <div className="mt-auto bg-surface-card rounded-lg p-4 border border-border-subtle flex flex-col gap-3 shadow-md">
+    <Card variant="card" className="mt-auto p-4 flex flex-col gap-3 shadow-md">
       <div className="flex items-center justify-between text-xs font-mono border-b border-border-subtle pb-2">
         <div className="flex items-center gap-1.5">
           <Eye className="w-3.5 h-3.5 text-interactive" />
@@ -43,10 +44,10 @@ export const FrameClassificationCard: React.FC<FrameClassificationCardProps> = (
               <strong className="text-text-primary font-mono">{classificationLatency}ms</strong>
             </span>
             {classificationResult?.cached && (
-              <span className="px-1.5 py-0.5 rounded bg-interactive-surface text-interactive border border-interactive-border flex items-center gap-1 text-[10px] font-semibold font-mono">
+              <Badge variant="primary" size="sm">
                 <CheckCheck className="w-3 h-3" />
                 SHA-256 Cached
-              </span>
+              </Badge>
             )}
           </div>
         )}
@@ -69,7 +70,7 @@ export const FrameClassificationCard: React.FC<FrameClassificationCardProps> = (
                 <img
                   src={classificationResult.frameBase64}
                   alt="Sampled frame"
-                  className="w-32 h-20 rounded-md border border-border-strong object-cover shadow"
+                  className="w-32 h-20 rounded-md border border-border-strong object-cover shadow-sm"
                 />
                 <span className="absolute bottom-1 right-1 bg-surface-scrim text-[10px] font-mono px-1 rounded text-text-primary">
                   {currentTime.toFixed(1)}s
@@ -77,44 +78,59 @@ export const FrameClassificationCard: React.FC<FrameClassificationCardProps> = (
               </div>
             )}
 
-            <div className="flex-1 flex flex-col gap-1.5 min-w-0">
+            <div className="flex-1 flex flex-col gap-2 min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <span
-                  className={`text-xs px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1.5 ${
+                <Badge
+                  variant={
                     classificationResult.classification === 'slate'
-                      ? 'bg-classification-slate-surface text-classification-slate border border-classification-slate-border shadow-[0_0_8px_var(--color-classification-slate-subtle)]'
+                      ? 'critical'
                       : classificationResult.classification === 'ad'
-                        ? 'bg-classification-ad-surface text-classification-ad border border-classification-ad-border'
-                        : 'bg-classification-content-surface text-classification-content border border-classification-content-border'
-                  }`}
+                        ? 'primary'
+                        : 'success'
+                  }
+                  size="md"
                 >
-                  {classificationResult.classification === 'slate' && (
-                    <AlertTriangle className="w-3 h-3 text-classification-slate" />
-                  )}
-                  {classificationResult.classification === 'ad' && (
-                    <CheckCircle2 className="w-3 h-3 text-classification-ad" />
+                  {classificationResult.classification === 'slate' ? (
+                    <AlertTriangle className="w-3 h-3" />
+                  ) : (
+                    <CheckCircle2 className="w-3 h-3" />
                   )}
                   {classificationResult.classification.toUpperCase()}
                   {classificationResult.slate_type &&
                     ` (${classificationResult.slate_type.replace('_', ' ')})`}
-                </span>
+                </Badge>
 
-                <span
-                  className={`text-xs font-mono font-semibold px-2 py-0.5 rounded bg-surface-panel border border-border-subtle ${
+                <Badge
+                  variant={
                     classificationResult.confidence >= CONFIDENCE_THRESHOLDS.HIGH
-                      ? 'text-confidence-high'
+                      ? 'success'
                       : classificationResult.confidence >= CONFIDENCE_THRESHOLDS.MEDIUM
-                        ? 'text-confidence-medium'
-                        : 'text-confidence-low'
-                  }`}
+                        ? 'warning'
+                        : 'critical'
+                  }
+                  size="md"
                 >
                   {Math.round(classificationResult.confidence * 100)}% Confidence
-                </span>
+                </Badge>
+              </div>
+
+              {/* Confidence Meter Bar */}
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-1.5 bg-surface-scrim rounded-full overflow-hidden border border-border-subtle">
+                  <div
+                    className={`h-full rounded-full transition-all duration-base ${
+                      classificationResult.classification === 'slate'
+                        ? 'bg-status-critical'
+                        : 'bg-status-success'
+                    }`}
+                    style={{ width: `${Math.round(classificationResult.confidence * 100)}%` }}
+                  />
+                </div>
               </div>
 
               {/* Content Hash ID */}
-              <div className="text-[11px] font-mono text-text-muted truncate">
-                Hash:{' '}
+              <div className="text-[10px] font-mono text-text-muted truncate">
+                Content Hash:{' '}
                 <span className="text-text-secondary">
                   {classificationResult.contentHash.slice(0, 16)}...
                 </span>
@@ -122,38 +138,47 @@ export const FrameClassificationCard: React.FC<FrameClassificationCardProps> = (
             </div>
           </div>
 
-          {/* OCR Text Detected (Full text without truncation) */}
+          {/* OCR Text Detected */}
           {classificationResult.text_detected && (
-            <div className="bg-surface-panel p-2.5 rounded-md border border-border-subtle flex flex-col gap-1">
+            <div className="bg-surface-panel p-2.5 rounded-md border border-border-subtle flex flex-col gap-1.5">
               <div className="flex items-center gap-1.5 text-[11px] font-bold font-mono text-text-muted uppercase tracking-wider">
                 <FileText className="w-3 h-3 text-interactive" />
                 OCR Text Detected on Screen:
               </div>
-              <div className="text-xs font-mono text-status-warning bg-surface-scrim p-2 rounded border border-status-warning-border whitespace-pre-wrap wrap-break-word leading-relaxed">
-                {classificationResult.text_detected}
-              </div>
+              <OcrTextDisplay text={classificationResult.text_detected} />
             </div>
           )}
 
-          {/* Multimodal Visual Summary (Full reasoning without line clamping) */}
+          {/* Multimodal Visual Summary */}
           {classificationResult.visual_summary && (
-            <div className="bg-surface-panel p-2.5 rounded-md border border-border-subtle flex flex-col gap-1">
+            <div className="bg-surface-panel p-2.5 rounded-md border border-border-subtle flex flex-col gap-1.5">
               <div className="flex items-center gap-1.5 text-[11px] font-bold font-mono text-text-muted uppercase tracking-wider">
                 <Sparkles className="w-3 h-3 text-interactive" />
                 Multimodal Reasoning &amp; Summary:
               </div>
-              <p className="text-xs text-text-primary leading-relaxed wrap-break-word whitespace-pre-line">
-                {classificationResult.visual_summary}
-              </p>
+              <VisualSummaryDisplay summary={classificationResult.visual_summary} />
             </div>
           )}
         </div>
       ) : (
-        <div className="text-xs text-text-muted italic py-4 text-center flex flex-col items-center gap-1">
-          <Camera className="w-6 h-6 text-text-muted/50" />
-          <span>Click &quot;Classify Frame&quot; to sample a frame and invoke Gemini Vision.</span>
+        <div className="border border-dashed border-border-strong/70 rounded-lg p-5 bg-surface-panel/30 flex flex-col items-center justify-center gap-2 text-center my-1">
+          <div className="w-8 h-8 rounded-full bg-interactive-surface flex items-center justify-center border border-interactive-border/50 shadow-xs">
+            <Camera className="w-4 h-4 text-interactive" />
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs font-semibold text-text-primary">
+              Vision Inspection Viewport
+            </span>
+            <span className="text-[11px] text-text-secondary">
+              Click{' '}
+              <strong className="text-text-primary font-semibold">
+                &quot;Classify Frame&quot;
+              </strong>{' '}
+              above to sample broadcast video and invoke Gemini Vision
+            </span>
+          </div>
         </div>
       )}
-    </div>
+    </Card>
   );
 };
