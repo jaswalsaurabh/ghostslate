@@ -2,6 +2,9 @@ import express, { type Express } from 'express';
 import cors from 'cors';
 import { pinoHttp } from 'pino-http';
 import type { Logger } from 'pino';
+import path from 'node:path';
+import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { HealthService } from './services/health.service.js';
 import { HealthController } from './controllers/health.controller.js';
 import { createHealthRouter } from './routes/health.route.js';
@@ -12,6 +15,7 @@ import { createInvestigationRouter } from './routes/investigation.route.js';
 import { VisionService } from './services/vision.service.js';
 import { VisionController } from './controllers/vision.controller.js';
 import { createVisionRouter } from './routes/vision.route.js';
+import { NotFoundError } from './errors/domain-error.js';
 import { createErrorHandler } from './middleware/error-handler.js';
 
 export interface AppContext {
@@ -45,6 +49,20 @@ export function createApp({ logger }: AppContext): Express {
   app.use('/api', createHealthRouter(healthController));
   app.use('/api', createInvestigationRouter(investigationController));
   app.use('/api', createVisionRouter(visionController));
+
+  app.use('/api', (_req, _res, next) => {
+    next(new NotFoundError('API endpoint not found'));
+  });
+
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const webDist = path.resolve(here, '../../web/dist');
+
+  if (fs.existsSync(webDist)) {
+    app.use(express.static(webDist));
+    app.get('/*splat', (_req, res) => {
+      res.sendFile(path.join(webDist, 'index.html'));
+    });
+  }
 
   app.use(createErrorHandler(logger));
 

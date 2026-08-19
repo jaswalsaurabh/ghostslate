@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { NotFoundError, ValidationError, ServiceUnavailableError } from '../errors/domain-error.js';
 
 export type FrameClassificationType = 'slate' | 'ad' | 'content';
@@ -31,7 +32,10 @@ export class VisionService {
     const location = config?.region || process.env.GCP_REGION || 'us-central1';
     this.modelName = config?.model || process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
-    this.mediaDir = config?.mediaDir || path.resolve(process.cwd(), '../web/public/media');
+    this.mediaDir =
+      config?.mediaDir ||
+      process.env.MEDIA_DIR ||
+      path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../web/public/media');
 
     this.ai = new GoogleGenAI({
       vertexai: true,
