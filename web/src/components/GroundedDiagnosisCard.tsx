@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ShieldCheck, Copy, Check, Zap, Clock, CheckCircle2 } from 'lucide-react';
-import { Button, Badge, Card } from './ui/index.js';
+import { Button, Badge, Card, MarkdownText } from './ui/index.js';
 
 interface GroundedDiagnosisCardProps {
   diagnosis: string;
@@ -23,25 +23,6 @@ export const GroundedDiagnosisCard: React.FC<GroundedDiagnosisCardProps> = ({
   const handleApply = (action: 'reroute' | 'buffer') => {
     setAppliedAction(action);
     if (onRemediate) onRemediate(action);
-  };
-
-  // Helper to render backticks in text as styled code pills
-  const renderFormattedText = (text: string) => {
-    const parts = text.split(/(`[^`]+`)/g);
-    return parts.map((part, idx) => {
-      if (part.startsWith('`') && part.endsWith('`')) {
-        const code = part.slice(1, -1);
-        return (
-          <code
-            key={idx}
-            className="px-1.5 py-0.5 mx-0.5 rounded bg-interactive-surface text-interactive border border-interactive-border font-mono text-[12px] font-semibold"
-          >
-            {code}
-          </code>
-        );
-      }
-      return <span key={idx}>{part}</span>;
-    });
   };
 
   return (
@@ -73,12 +54,8 @@ export const GroundedDiagnosisCard: React.FC<GroundedDiagnosisCardProps> = ({
         </Button>
       </div>
 
-      <div className="text-xs text-text-primary leading-relaxed font-sans space-y-2.5">
-        {diagnosis.split('\n\n').map((paragraph, pIdx) => (
-          <p key={pIdx} className="leading-relaxed">
-            {renderFormattedText(paragraph)}
-          </p>
-        ))}
+      <div className="font-sans space-y-2">
+        <MarkdownText content={diagnosis} />
       </div>
 
       {/* Operator Remediation Staging Actions */}

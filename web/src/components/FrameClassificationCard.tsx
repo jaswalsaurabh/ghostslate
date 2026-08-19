@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import type { FrameClassificationData } from '../types.js';
 import { CONFIDENCE_THRESHOLDS } from '../types.js';
-import { Badge, Card } from './ui/index.js';
+import { Badge, Card, OcrTextDisplay, VisualSummaryDisplay } from './ui/index.js';
 
 interface FrameClassificationCardProps {
   classificationResult: FrameClassificationData | null;
@@ -140,34 +140,43 @@ export const FrameClassificationCard: React.FC<FrameClassificationCardProps> = (
 
           {/* OCR Text Detected */}
           {classificationResult.text_detected && (
-            <div className="bg-surface-panel p-2.5 rounded-md border border-border-subtle flex flex-col gap-1">
+            <div className="bg-surface-panel p-2.5 rounded-md border border-border-subtle flex flex-col gap-1.5">
               <div className="flex items-center gap-1.5 text-[11px] font-bold font-mono text-text-muted uppercase tracking-wider">
                 <FileText className="w-3 h-3 text-interactive" />
                 OCR Text Detected on Screen:
               </div>
-              <div className="text-xs font-mono text-status-warning bg-surface-scrim p-2 rounded border border-status-warning-border whitespace-pre-wrap wrap-break-word leading-relaxed">
-                {classificationResult.text_detected}
-              </div>
+              <OcrTextDisplay text={classificationResult.text_detected} />
             </div>
           )}
 
           {/* Multimodal Visual Summary */}
           {classificationResult.visual_summary && (
-            <div className="bg-surface-panel p-2.5 rounded-md border border-border-subtle flex flex-col gap-1">
+            <div className="bg-surface-panel p-2.5 rounded-md border border-border-subtle flex flex-col gap-1.5">
               <div className="flex items-center gap-1.5 text-[11px] font-bold font-mono text-text-muted uppercase tracking-wider">
                 <Sparkles className="w-3 h-3 text-interactive" />
                 Multimodal Reasoning &amp; Summary:
               </div>
-              <p className="text-xs text-text-primary leading-relaxed wrap-break-word whitespace-pre-line">
-                {classificationResult.visual_summary}
-              </p>
+              <VisualSummaryDisplay summary={classificationResult.visual_summary} />
             </div>
           )}
         </div>
       ) : (
-        <div className="text-xs text-text-muted italic py-4 text-center flex flex-col items-center gap-1">
-          <Camera className="w-6 h-6 text-text-muted/50" />
-          <span>Click &quot;Classify Frame&quot; to sample a frame and invoke Gemini Vision.</span>
+        <div className="border border-dashed border-border-strong/70 rounded-lg p-5 bg-surface-panel/30 flex flex-col items-center justify-center gap-2 text-center my-1">
+          <div className="w-8 h-8 rounded-full bg-interactive-surface flex items-center justify-center border border-interactive-border/50 shadow-xs">
+            <Camera className="w-4 h-4 text-interactive" />
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs font-semibold text-text-primary">
+              Vision Inspection Viewport
+            </span>
+            <span className="text-[11px] text-text-secondary">
+              Click{' '}
+              <strong className="text-text-primary font-semibold">
+                &quot;Classify Frame&quot;
+              </strong>{' '}
+              above to sample broadcast video and invoke Gemini Vision
+            </span>
+          </div>
         </div>
       )}
     </Card>

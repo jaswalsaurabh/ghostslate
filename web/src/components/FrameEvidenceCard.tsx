@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import type { ClassificationType, SlateType } from '../types.js';
 import { CONFIDENCE_THRESHOLDS } from '../types.js';
-import { Badge, Card } from './ui/index.js';
+import { Badge, Card, OcrTextDisplay, VisualSummaryDisplay } from './ui/index.js';
 
 interface FrameEvidenceCardProps {
   classification: ClassificationType;
@@ -119,27 +119,23 @@ export const FrameEvidenceCard: React.FC<FrameEvidenceCardProps> = ({
 
           {/* OCR text detected if present */}
           {textDetected && (
-            <div className="bg-surface-panel p-2 rounded-md border border-border-subtle flex flex-col gap-1">
+            <div className="bg-surface-panel p-2 rounded-md border border-border-subtle flex flex-col gap-1.5">
               <div className="flex items-center gap-1.5 text-[10px] font-bold font-mono text-text-muted uppercase tracking-wider">
                 <FileText className="w-3 h-3 text-interactive" />
                 Text Detected:
               </div>
-              <div className="text-xs font-mono text-status-warning bg-surface-scrim p-1.5 rounded border border-status-warning-border whitespace-pre-wrap wrap-break-word">
-                {textDetected}
-              </div>
+              <OcrTextDisplay text={textDetected} />
             </div>
           )}
 
           {/* Visual summary body */}
           {visualSummary && (
-            <div className="bg-surface-panel p-2.5 rounded-md border border-border-subtle flex flex-col gap-1">
+            <div className="bg-surface-panel p-2.5 rounded-md border border-border-subtle flex flex-col gap-1.5">
               <div className="flex items-center gap-1.5 text-[10px] font-bold font-mono text-text-muted uppercase tracking-wider">
                 <Sparkles className="w-3 h-3 text-interactive" />
                 Visual Summary:
               </div>
-              <p className="text-xs text-text-primary leading-relaxed font-sans whitespace-pre-line wrap-break-word">
-                {visualSummary}
-              </p>
+              <VisualSummaryDisplay summary={visualSummary} />
             </div>
           )}
         </div>
