@@ -35,4 +35,4 @@ SELECT
 FROM matched
 GROUP BY channel_id, ssp_id, device_class, codec
 HAVING cues >= 20 AND unmonetized_pct > 5
-ORDER BY unmonetized_pct DESC;
+ORDER BY unmonetized_pct DESC

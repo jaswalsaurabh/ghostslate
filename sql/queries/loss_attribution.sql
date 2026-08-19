@@ -44,4 +44,4 @@ LEFT JOIN advertiser_inventory AS inv
   ON m.channel_id = inv.channel_id AND m.daypart = inv.daypart
 GROUP BY m.channel_id, m.ssp_id, m.device_class, m.codec, m.daypart
 HAVING cues >= 20
-ORDER BY unmonetized_impressions DESC;
+ORDER BY unmonetized_impressions DESC

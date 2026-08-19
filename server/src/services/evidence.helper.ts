@@ -135,7 +135,7 @@ export function renderLossAttributionQuery(
     throw new Error(`Rendered query contains unresolved placeholder: ${remainingMatch[0]}`);
   }
 
-  return rendered;
+  return rendered.trim().replace(/;+$/, '');
 }
 
 /**
