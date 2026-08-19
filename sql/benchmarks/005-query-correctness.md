@@ -1,7 +1,7 @@
 # Query Correctness Performance Benchmarks (Block 3 / Day 5 Rework)
 
 Measured against the canonical 101.4M-row dataset running on ClickHouse Server 24.8.
-All timings, rows scanned, and byte metrics are extracted directly from `system.query_log` and `system.parts`.
+All direct benchmark timings, rows scanned, and byte metrics are extracted from ClickHouse `system.query_log` and `system.parts`. Live end-to-end latencies are measured via the official `mcp-clickhouse` 0.4.1 server.
 
 ---
 
@@ -26,7 +26,7 @@ WITH matched AS (
       ON s.channel_id = c.channel_id
      AND s.splice_event_id = c.splice_event_id
      AND s.attempt_time >= c.cue_time
-    WHERE s.attempt_time >= '2026-08-14 19:00:00.000' AND s.attempt_time < '2026-08-14 23:00:00.000'
+    WHERE s.attempt_time >= toDateTime64('2026-08-14 19:00:00.000', 3, 'UTC') AND s.attempt_time < toDateTime64('2026-08-14 23:00:00.000', 3, 'UTC')
 )
 SELECT
     channel_id,
@@ -50,25 +50,25 @@ ORDER BY unmonetized_pct DESC;
 | ---------- | ---------- | -------------- | ------ | ---- | -------- | ----------- | --------------- | -------------- |
 | `ch-01`    | `ssp-beta` | `connected_tv` | `hevc` | 80   | 60,862   | 59,482      | **97.73%**      | 1812.54 ms     |
 
-| Metric         | Measured Value                         |
-| -------------- | -------------------------------------- |
-| Query Duration | **44 ms** (0.044s wall time)           |
-| Rows Read      | 954,321                                |
-| Bytes Read     | 22.64 MiB (23,742,825 bytes)           |
-| Peak Memory    | 46.90 MiB (49,177,039 bytes)           |
-| Target SLA     | < 1,000 ms (achieved: **~22x faster**) |
+| Metric         | Measured Value                         | Provenance                                       |
+| -------------- | -------------------------------------- | ------------------------------------------------ |
+| Query Duration | **44 ms** (0.044s wall time)           | Direct ClickHouse benchmark (`system.query_log`) |
+| Rows Read      | 954,321                                | Direct ClickHouse benchmark (`system.query_log`) |
+| Bytes Read     | 22.64 MiB (23,742,825 bytes)           | Direct ClickHouse benchmark (`system.query_log`) |
+| Peak Memory    | 46.90 MiB (49,177,039 bytes)           | Direct ClickHouse benchmark (`system.query_log`) |
+| Target SLA     | < 1,000 ms (achieved: **~22x faster**) | Evaluated against 1,000 ms interactive budget    |
 
 ---
 
 ### B. Full Single-Day Window (24 Hours: 2026-08-14 00:00:00 to 2026-08-15 00:00:00 UTC)
 
-| Metric         | Measured Value                         |
-| -------------- | -------------------------------------- |
-| Query Duration | **59 ms** (0.059s wall time)           |
-| Rows Read      | 3,394,400 (1 daily partition)          |
-| Bytes Read     | 80.82 MiB (84,744,800 bytes)           |
-| Peak Memory    | 98.35 MiB (103,131,333 bytes)          |
-| Target SLA     | < 1,000 ms (achieved: **~16x faster**) |
+| Metric         | Measured Value                         | Provenance                                       |
+| -------------- | -------------------------------------- | ------------------------------------------------ |
+| Query Duration | **59 ms** (0.059s wall time)           | Direct ClickHouse benchmark (`system.query_log`) |
+| Rows Read      | 3,394,400 (1 daily partition)          | Direct ClickHouse benchmark (`system.query_log`) |
+| Bytes Read     | 80.82 MiB (84,744,800 bytes)           | Direct ClickHouse benchmark (`system.query_log`) |
+| Peak Memory    | 98.35 MiB (103,131,333 bytes)          | Direct ClickHouse benchmark (`system.query_log`) |
+| Target SLA     | < 1,000 ms (achieved: **~16x faster**) | Evaluated against 1,000 ms interactive budget    |
 
 ---
 
@@ -119,7 +119,7 @@ LEFT JOIN advertiser_inventory AS inv
   ON m.channel_id = inv.channel_id AND m.daypart = inv.daypart
 GROUP BY m.channel_id, m.ssp_id, m.device_class, m.codec, m.daypart
 HAVING cues >= 20
-ORDER BY unmonetized_impressions DESC
+ORDER BY unmonetized_impressions DESC;
 ```
 
 #### Measured Result via MCP Protocol (`mcp-clickhouse` 0.4.1)
@@ -130,31 +130,37 @@ ORDER BY unmonetized_impressions DESC
 
 _(Loss derivation: 59,482 unmonetized impressions × $32.50 CPM / 1000 = $1,933.165 → rounded to cents = **$1,933.17**)_
 
-| Metric                 | Measured Value                         |
-| ---------------------- | -------------------------------------- |
-| MCP Query Wall Time    | **86 ms** (0.086s end-to-end)          |
-| Direct Server Duration | **44 ms**                              |
-| Rows Returned          | 44 cohorts                             |
-| Rows Read              | 954,325                                |
-| Bytes Read             | 19.00 MiB (19,925,484 bytes)           |
-| Target SLA             | < 1,000 ms (achieved: **~11x faster**) |
+#### Performance and Provenance Breakdown
+
+| Measurement                | Value                        | Provenance                                                                 |
+| -------------------------- | ---------------------------- | -------------------------------------------------------------------------- |
+| Rows returned              | 44 cohorts                   | Live `mcp-clickhouse` 0.4.1 response payload                               |
+| MCP wall time              | **86 ms** (0.086s)           | Application SSE duration around `callTool('run_query', ...)`               |
+| Direct ClickHouse duration | **44 ms**                    | Direct ClickHouse execution benchmark (`system.query_log`)                 |
+| Rows read                  | 954,325                      | Direct ClickHouse benchmark (`system.query_log`); unavailable in MCP 0.4.1 |
+| Bytes read                 | 19.00 MiB (19,925,484 bytes) | Direct ClickHouse benchmark (`system.query_log`); unavailable in MCP 0.4.1 |
+| Target SLA                 | < 1,000 ms                   | Achieved: **~11x faster** than interactive budget                          |
+
+> **Note on Rows-Read Provenance:** The official `mcp-clickhouse` 0.4.1 server returns `columns` and `rows` data over SSE without embedding execution metrics (such as `rows_read` or memory bytes). The application faithfully omits the scanned row badge for live MCP calls, whereas the 954,325 figure is derived from direct ClickHouse query log benchmarking.
 
 ---
 
 ### B. Negative Control Window (4 Hours: 2026-08-09 19:00:00 to 23:00:00 UTC)
 
-| Metric                    | Measured Value                                                        |
-| ------------------------- | --------------------------------------------------------------------- |
-| MCP Query Wall Time       | **97 ms** (0.097s end-to-end)                                         |
-| Rows Returned             | 44 cohorts                                                            |
-| Max Cohort Unmonetized    | **4.60%** (`ssp-beta` × `mobile` × `av1`, 150 unmonetized / 3259 att) |
-| Breaching Cohorts (>=20%) | **0 cohorts**                                                         |
-| Selected Incident Cohort  | `null` (nominal baseline traffic)                                     |
-| Grounded Loss Published   | **$0.00** (no financial loss asserted)                                |
+| Metric                    | Measured Value                                                        | Provenance                                               |
+| ------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------- |
+| MCP Query Wall Time       | **97 ms** (0.097s end-to-end)                                         | Application SSE duration around `callTool`               |
+| Rows Returned             | 44 cohorts                                                            | Live `mcp-clickhouse` 0.4.1 response                     |
+| Max Cohort Unmonetized    | **4.60%** (`ssp-beta` × `mobile` × `av1`, 150 unmonetized / 3259 att) | Live `mcp-clickhouse` cohort evaluation                  |
+| Breaching Cohorts (>=20%) | **0 cohorts**                                                         | `selectIncidentCohort` deterministic peer evaluation     |
+| Selected Incident Cohort  | `null` (nominal baseline traffic)                                     | Evaluated by `selectIncidentCohort`                      |
+| Grounded Loss Published   | No financial loss asserted (no dollar amount published)               | Server-rendered deterministic negative control diagnosis |
 
 ---
 
-### C. ClickHouse EXPLAIN Query Plan
+### C. ClickHouse EXPLAIN Query Plan (via MCP `run_query`)
+
+The following query plan was retrieved through MCP `callTool('run_query', { query: 'EXPLAIN PLAN ...' })`:
 
 ```
 Expression ((Project names + (Before ORDER BY + Projection) [lifted up part]))

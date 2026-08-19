@@ -123,7 +123,7 @@ Database Context:
   - \`ghostslate.slate_observations\` (session_id UUID, channel_id LowCardinality(String), observed_at DateTime64(3, 'UTC'), frame_class LowCardinality(String) ['SLATE', 'CONTENT', 'AD'], confidence Float32)
   - \`ghostslate.advertiser_inventory\` (channel_id LowCardinality(String), daypart LowCardinality(String), cpm_usd Decimal(8, 2), fill_target_pct Float32)
 - Target channel: \`${channel}\`
-- Incident investigation window: \`${fromTime}\` to \`${toTime}\` (UTC). Note: in ClickHouse SQL, write DateTime64 literals as 'YYYY-MM-DD HH:MM:SS.NNN' (e.g. toDateTime64('${fromTime.replace('T', ' ').replace('Z', '')}', 3, 'UTC')).
+- Incident investigation window: \`${fromTime}\` to \`${toTime}\` (UTC). Note: in ClickHouse SQL, write DateTime64 literals as 'YYYY-MM-DD HH:MM:SS.NNN' (e.g. toDateTime64('${fromTime.replace('T', ' ').replace('Z', '')}', 3, 'UTC')). Use the investigation window as a half-open UTC interval in every exploratory query: timestamp >= from AND timestamp < to. Never use BETWEEN or include the end timestamp.
 - Critical Thresholds: Stitcher deadline is ${STITCHER_DEADLINE_MS} ms (latencies above ${STITCHER_DEADLINE_MS} ms result in SLATE_FALLBACK); Hard auction timeout is ${HARD_AUCTION_TIMEOUT_MS} ms (TIMEOUT). Unmonetized failure is defined as SLATE_FALLBACK + TIMEOUT.
 
 Available tools:

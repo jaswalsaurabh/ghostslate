@@ -117,6 +117,10 @@ describe('GroundingService & renderDiagnosis', () => {
       'No isolated root cause, on-air slate bleed, or financial loss is asserted.',
     );
     expect(diagnosis).toContain('No remediation action required for this window.');
+    expect(diagnosis).not.toContain('$0.00');
+    expect(diagnosis).not.toContain('$');
+    expect(diagnosis).not.toContain('Root Cause Cohort');
+    expect(diagnosis).not.toContain('reroute');
   });
 
   it('builds GroundingReport counting exact verified figures directly from evidence snapshot', () => {

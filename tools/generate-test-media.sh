@@ -64,19 +64,19 @@ cat << 'EOF' > "$TMP_DIR/slate.svg"
   
   <!-- Outer Card Frame -->
   <rect x="120" y="100" width="1040" height="520" rx="24" fill="#0f172a" fill-opacity="0.9"/>
-  <rect x="120" y="100" width="1040" height="520" rx="24" fill="none" stroke="#ef4444" stroke-width="2" stroke-dasharray="8 8"/>
+  <rect x="120" y="100" width="1040" height="520" rx="24" fill="none" stroke="#6366f1" stroke-width="2" stroke-dasharray="6 6"/>
 
-  <!-- Warning Badge -->
-  <rect x="440" y="150" width="400" height="44" rx="22" fill="#7f1d1d" fill-opacity="0.6"/>
-  <text x="640" y="180" font-family="-apple-system, system-ui, sans-serif" font-size="18" font-weight="bold" fill="#fca5a5" text-anchor="middle">COMMERCIAL BREAK IN PROGRESS</text>
+  <!-- Status Badge -->
+  <rect x="440" y="150" width="400" height="44" rx="22" fill="#312e81" fill-opacity="0.8"/>
+  <text x="640" y="178" font-family="-apple-system, system-ui, sans-serif" font-size="18" font-weight="bold" fill="#c7d2fe" text-anchor="middle">COMMERCIAL BREAK IN PROGRESS</text>
 
   <!-- Big Slate Text -->
   <text x="640" y="320" font-family="-apple-system, system-ui, sans-serif" font-size="56" font-weight="900" fill="#ffffff" text-anchor="middle">We'll be right back</text>
   <text x="640" y="380" font-family="-apple-system, system-ui, sans-serif" font-size="24" font-weight="400" fill="#94a3b8" text-anchor="middle">Coverage will resume shortly</text>
 
-  <!-- Forensic Detection Footnote -->
-  <rect x="260" y="470" width="760" height="60" rx="12" fill="#18181b"/>
-  <text x="640" y="506" font-family="Courier, monospace" font-size="18" font-weight="bold" fill="#f87171" text-anchor="middle">[ FORENSIC ALERT: SSAI SLATE BLEED DETECTED ]</text>
+  <!-- Neutral Network Card Footer -->
+  <rect x="400" y="470" width="480" height="46" rx="23" fill="#1e293b" fill-opacity="0.9"/>
+  <text x="640" y="499" font-family="-apple-system, system-ui, sans-serif" font-size="16" font-weight="500" fill="#cbd5e1" text-anchor="middle">GhostSlate Network Feed • FAST-01</text>
 </svg>
 EOF
 

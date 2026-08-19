@@ -7,6 +7,7 @@ import {
   type DiagnosisRow,
   type InvestigationContext,
 } from './evidence.helper.js';
+import { getPermittedMediaMapping, PRIMARY_INCIDENT_MEDIA_MAPPING } from './incident.constants.js';
 
 export interface ToolOutcome {
   modelText: string;
@@ -23,15 +24,11 @@ const MAX_MODEL_RESULT_ROWS = 50;
 const MODEL_TRUNCATION_NOTE = `Output truncated to first ${MAX_MODEL_RESULT_ROWS} rows. Use GROUP BY aggregation for full dataset analysis.`;
 
 export const INSPECTABLE_MEDIA_DURATIONS_SECONDS = {
-  'slate.mp4': 15,
+  [PRIMARY_INCIDENT_MEDIA_MAPPING.permittedMediaFile]:
+    PRIMARY_INCIDENT_MEDIA_MAPPING.maxTimestampSeconds,
   'ad.mp4': 15,
   'content.mp4': 10,
 } as const;
-
-type InspectableMediaFile = keyof typeof INSPECTABLE_MEDIA_DURATIONS_SECONDS;
-const INSPECTABLE_MEDIA = Object.keys(
-  INSPECTABLE_MEDIA_DURATIONS_SECONDS,
-) as InspectableMediaFile[];
 
 function parseJson(resultText: string): unknown {
   try {
@@ -139,12 +136,11 @@ export function createInvestigationToolDeclarations(): FunctionDeclaration[] {
         properties: {
           video_file: {
             type: Type.STRING,
-            description: `The demo stream to inspect. One of: ${INSPECTABLE_MEDIA.map((file) => `${file} (${INSPECTABLE_MEDIA_DURATIONS_SECONDS[file]}s)`).join(', ')}.`,
+            description: `The demo stream to inspect for this incident (e.g. ${PRIMARY_INCIDENT_MEDIA_MAPPING.permittedMediaFile}).`,
           },
           timestamp_seconds: {
             type: Type.NUMBER,
-            description:
-              'Offset into the synthetic demo stream, in seconds. Must be >= 0 and strictly less than media clip duration (slate.mp4: 15s, ad.mp4: 15s, content.mp4: 10s).',
+            description: `Offset into the synthetic demo stream, in seconds. Must be >= 0 and strictly less than media clip duration (${PRIMARY_INCIDENT_MEDIA_MAPPING.permittedMediaFile}: ${PRIMARY_INCIDENT_MEDIA_MAPPING.maxTimestampSeconds}s).`,
           },
         },
         required: ['video_file', 'timestamp_seconds'],
@@ -182,7 +178,7 @@ export class InvestigationToolService {
       return this.collectDiagnosisEvidence(context);
     }
     if (name === 'classify_frame') {
-      return this.classifyFrame(args);
+      return this.classifyFrame(args, context);
     }
     if (name === 'finalize_investigation') {
       return {
@@ -245,18 +241,29 @@ export class InvestigationToolService {
     }
   }
 
-  private async classifyFrame(args: Record<string, unknown>): Promise<ToolOutcome> {
-    const videoFile = String(args.video_file ?? '') as InspectableMediaFile;
-    const timestamp = Number(args.timestamp_seconds);
-
-    if (!(videoFile in INSPECTABLE_MEDIA_DURATIONS_SECONDS)) {
-      const errorText = `Unknown video_file "${String(args.video_file)}". Choose one of: ${INSPECTABLE_MEDIA.join(', ')}.`;
+  private async classifyFrame(
+    args: Record<string, unknown>,
+    context: InvestigationContext,
+  ): Promise<ToolOutcome> {
+    const mapping = getPermittedMediaMapping(context);
+    if (!mapping) {
+      const errorText = `No synthetic stream media is mapped to investigation window ${context.from} to ${context.to} for channel ${context.channel}. Visual confirmation is only available for mapped incident windows.`;
       return { modelText: errorText, resultText: errorText, isError: true };
     }
 
-    const maxDuration = INSPECTABLE_MEDIA_DURATIONS_SECONDS[videoFile];
-    if (!Number.isFinite(timestamp) || timestamp < 0 || timestamp >= maxDuration) {
-      const errorText = `Invalid timestamp_seconds "${String(args.timestamp_seconds)}" for ${videoFile}. Provide a number >= 0 and strictly less than ${maxDuration}.`;
+    const videoFile = String(args.video_file ?? '');
+    if (videoFile !== mapping.permittedMediaFile) {
+      const errorText = `Media file "${videoFile}" is not mapped to the active incident context. Permitted media for this investigation is "${mapping.permittedMediaFile}".`;
+      return { modelText: errorText, resultText: errorText, isError: true };
+    }
+
+    const timestamp = Number(args.timestamp_seconds);
+    if (
+      !Number.isFinite(timestamp) ||
+      timestamp < mapping.minTimestampSeconds ||
+      timestamp >= mapping.maxTimestampSeconds
+    ) {
+      const errorText = `Invalid timestamp_seconds "${String(args.timestamp_seconds)}" for ${mapping.permittedMediaFile}. Provide a number >= ${mapping.minTimestampSeconds} and strictly less than ${mapping.maxTimestampSeconds}.`;
       return { modelText: errorText, resultText: errorText, isError: true };
     }
 
