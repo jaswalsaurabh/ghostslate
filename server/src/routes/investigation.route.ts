@@ -5,6 +5,7 @@ export function createInvestigationRouter(controller: InvestigationController): 
   const router = Router();
 
   router.post('/investigate/spike', controller.investigateSpike);
+  router.get('/investigate/runs/:runKey/stream', controller.streamRun);
 
   return router;
 }

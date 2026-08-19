@@ -7,6 +7,7 @@ import { Button, Badge, Card } from './ui/index.js';
 
 interface InvestigationSectionProps {
   investigating: boolean;
+  reconnecting?: boolean;
   onRunInvestigation: () => void;
   investigationTrace: InvestigationTraceEvent[];
   finalDiagnosis: string | null;
@@ -16,6 +17,7 @@ interface InvestigationSectionProps {
 
 export const InvestigationSection: React.FC<InvestigationSectionProps> = ({
   investigating,
+  reconnecting = false,
   onRunInvestigation,
   investigationTrace,
   finalDiagnosis,
@@ -35,10 +37,15 @@ export const InvestigationSection: React.FC<InvestigationSectionProps> = ({
     <Card variant="panel" className="lg:col-span-7 p-5 flex flex-col gap-4 shadow-xl">
       {/* Section Header */}
       <div className="flex flex-wrap items-center justify-between border-b border-border-subtle pb-3 gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Badge variant="primary" size="sm">
             MODULE 02 &amp; 03
           </Badge>
+          {reconnecting && (
+            <Badge variant="warning" size="sm" pulse>
+              Reconnecting to stream...
+            </Badge>
+          )}
           <div>
             <h2 className="text-xs font-bold uppercase tracking-wider text-interactive">
               ClickHouse MCP Core + Forensic Agent Loop

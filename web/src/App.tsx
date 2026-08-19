@@ -1,16 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import type {
-  SystemHealth,
-  FrameClassificationData,
-  InvestigationTraceEvent,
-  GroundingReport,
-} from './types.js';
+import type { SystemHealth, FrameClassificationData } from './types.js';
 import { Header } from './components/Header.js';
 import { KpiStrip } from './components/KpiStrip.js';
 import { VisionSection } from './components/VisionSection.js';
 import { InvestigationSection } from './components/InvestigationSection.js';
 import { CheckCircle2 } from 'lucide-react';
 import { useClickHouseMetrics } from './hooks/use-clickhouse-metrics.js';
+import { useInvestigationStream } from './hooks/use-investigation-stream.js';
 
 export const App: React.FC = () => {
   const [health, setHealth] = useState<SystemHealth | null>(null);
@@ -32,11 +28,16 @@ export const App: React.FC = () => {
   const [classificationLatency, setClassificationLatency] = useState<number | null>(null);
   const [classificationError, setClassificationError] = useState<string | null>(null);
 
-  // Investigation State
-  const [investigating, setInvestigating] = useState<boolean>(false);
-  const [investigationTrace, setInvestigationTrace] = useState<InvestigationTraceEvent[]>([]);
-  const [finalDiagnosis, setFinalDiagnosis] = useState<string | null>(null);
-  const [groundingReport, setGroundingReport] = useState<GroundingReport | undefined>(undefined);
+  // Investigation Stream Hook
+  const {
+    investigating,
+    reconnecting,
+    investigationTrace,
+    finalDiagnosis,
+    groundingReport,
+    startInvestigation,
+    resetInvestigation,
+  } = useInvestigationStream();
 
   // Grounded ClickHouse Metrics Hook
   const kpiMetrics = useClickHouseMetrics(investigationTrace);
@@ -94,15 +95,11 @@ export const App: React.FC = () => {
   }, []);
 
   const handleTimeUpdate = () => {
-    if (videoRef.current) {
-      setCurrentTime(videoRef.current.currentTime);
-    }
+    if (videoRef.current) setCurrentTime(videoRef.current.currentTime);
   };
 
   const handleLoadedMetadata = () => {
-    if (videoRef.current) {
-      setDuration(videoRef.current.duration || 35);
-    }
+    if (videoRef.current) setDuration(videoRef.current.duration || 35);
   };
 
   const handleSeek = (time: number) => {
@@ -128,6 +125,7 @@ export const App: React.FC = () => {
     setClassificationResult(null);
     setClassificationLatency(null);
     setClassificationError(null);
+    resetInvestigation();
     handleSeek(0);
     showToast(
       scenario === 'slate'
@@ -188,82 +186,16 @@ export const App: React.FC = () => {
   };
 
   const runInvestigation = async () => {
-    setInvestigating(true);
-    setInvestigationTrace([]);
-    setFinalDiagnosis(null);
-    setGroundingReport(undefined);
+    const channel = 'ch-01';
+    const from = '2026-08-14T19:00:00.000Z';
+    const to = '2026-08-14T23:00:00.000Z';
 
     const prompt =
       activeScenario === 'slate'
-        ? `Vision classifier detected a SLATE BLEED on channel ch-01 at timestamp ${currentTime.toFixed(1)}s. Correlate with SCTE-35 cue logs and identify offending SSP and latency.`
-        : 'Investigate ad stitch performance and latency metrics across SSPs for channel ch-01.';
+        ? `Vision classifier detected a SLATE BLEED on channel ${channel}. Correlate with SCTE-35 cue logs, isolate offending SSP, device class, and codec dimensions, and compute unmonetized loss.`
+        : `Investigate ad stitch performance and latency metrics across SSPs for channel ${channel}.`;
 
-    try {
-      const response = await fetch('/api/investigate/spike', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
-      });
-
-      if (!response.ok) {
-        let errMessage = `HTTP ${response.status}`;
-        try {
-          const errData = (await response.json()) as {
-            error?: { code?: string; message?: string };
-          };
-          if (errData?.error?.message) errMessage = errData.error.message;
-        } catch {
-          // ignore
-        }
-        throw new Error(errMessage);
-      }
-      if (!response.body) throw new Error('No SSE stream in response');
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n\n');
-        buffer = lines.pop() || '';
-
-        for (const block of lines) {
-          if (!block.trim()) continue;
-          for (const line of block.split('\n')) {
-            if (line.startsWith('data: ')) {
-              try {
-                const event = JSON.parse(line.slice(6)) as InvestigationTraceEvent;
-                setInvestigationTrace((prev: InvestigationTraceEvent[]) => [...prev, event]);
-                if (event.type === 'diagnosis' && event.data?.diagnosis) {
-                  setFinalDiagnosis(String(event.data.diagnosis));
-                  if (event.data?.grounding) {
-                    setGroundingReport(event.data.grounding as GroundingReport);
-                  }
-                }
-              } catch {
-                // Ignore parse errors
-              }
-            }
-          }
-        }
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setInvestigationTrace((prev: InvestigationTraceEvent[]) => [
-        ...prev,
-        {
-          type: 'error',
-          timestamp: new Date().toISOString(),
-          data: { error: msg },
-        },
-      ]);
-    } finally {
-      setInvestigating(false);
-    }
+    await startInvestigation({ prompt, channel, from, to });
   };
 
   const handleRemediate = (action: 'reroute' | 'buffer') => {
@@ -317,6 +249,7 @@ export const App: React.FC = () => {
           {/* Column 2: ClickHouse MCP Core + Forensic Agent Loop (7 cols) */}
           <InvestigationSection
             investigating={investigating}
+            reconnecting={reconnecting}
             onRunInvestigation={runInvestigation}
             investigationTrace={investigationTrace}
             finalDiagnosis={finalDiagnosis}

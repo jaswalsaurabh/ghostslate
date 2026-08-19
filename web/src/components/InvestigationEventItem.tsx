@@ -123,7 +123,13 @@ export const InvestigationEventItem: React.FC<InvestigationEventItemProps> = ({ 
     }
     return (
       <div className="flex flex-col animate-fadeIn">
-        <ClickHouseResultViewer rawResult={String(ev.data?.result || '')} />
+        <ClickHouseResultViewer
+          rawResult={String(ev.data?.result || '')}
+          durationMs={typeof ev.data?.durationMs === 'number' ? ev.data.durationMs : undefined}
+          rowsReturned={
+            typeof ev.data?.rowsReturned === 'number' ? ev.data.rowsReturned : undefined
+          }
+        />
       </div>
     );
   }

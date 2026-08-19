@@ -29,6 +29,12 @@ export interface InvestigationResult {
 // The synthetic demo streams in web/public/media. The agent may only inspect these.
 const INSPECTABLE_MEDIA = ['slate.mp4', 'ad.mp4', 'content.mp4'] as const;
 
+// Measured on 2026-08-19 against the primary incident window (2026-08-14 19:00-23:00 UTC):
+// the reasoning loop consumed 8 turns across schema discovery, baseline validation,
+// temporal ASOF correlation, cohort isolation, frame classification, and primetime CPM lookup.
+// 15 provides ~2x safe headroom for exploratory retries before hard exhaustion.
+const MAX_INVESTIGATION_TURNS = 15;
+
 export class InvestigationService {
   private readonly ai: GoogleGenAI;
   private readonly modelName: string;
@@ -150,6 +156,7 @@ export class InvestigationService {
 
   async *investigateSpike(
     prompt: string,
+    context: { channel: string; from: string; to: string },
   ): AsyncGenerator<InvestigationEvent, InvestigationResult, void> {
     const events: InvestigationEvent[] = [];
 
@@ -177,6 +184,8 @@ export class InvestigationService {
 
     yield emit('status', { message: 'Initialized MCP tools. Starting Gemini reasoning loop...' });
 
+    const { channel, from: fromTime, to: toTime } = context;
+
     const systemInstruction = `
 You are the GhostSlate Forensic Investigator agent specializing in broadcast television, SSAI (Server-Side Ad Insertion), and SCTE-35 ad break telemetry.
 
@@ -187,23 +196,31 @@ Database Context:
   - \`ghostslate.ssai_stitch_attempts\` (channel_id LowCardinality(String), splice_event_id UInt64, attempt_time DateTime64(3, 'UTC'), stitch_status LowCardinality(String) ['FILLED', 'SLATE_FALLBACK', 'TIMEOUT', 'ERROR'], ssp_id LowCardinality(String), ad_response_latency_ms UInt32, device_class LowCardinality(String), codec LowCardinality(String), vast_version LowCardinality(String))
   - \`ghostslate.slate_observations\` (session_id UUID, channel_id LowCardinality(String), observed_at DateTime64(3, 'UTC'), frame_class LowCardinality(String) ['SLATE', 'CONTENT', 'AD'], confidence Float32)
   - \`ghostslate.advertiser_inventory\` (channel_id LowCardinality(String), daypart LowCardinality(String), cpm_usd Decimal(8, 2), fill_target_pct Float32)
-- Baseline window: 2026-07-19 00:00:00 UTC to 2026-08-18 00:00:00 UTC (channel \`ch-01\`).
-- Critical Thresholds: Stitcher deadline is 450 ms (latencies above 450 ms result in SLATE_FALLBACK); Hard auction timeout is 1200 ms (TIMEOUT).
+- Target channel: \`${channel}\`
+- Incident investigation window: \`${fromTime}\` to \`${toTime}\` (UTC).
+- Critical Thresholds: Stitcher deadline is 450 ms (latencies above 450 ms result in SLATE_FALLBACK); Hard auction timeout is 1200 ms (TIMEOUT). Unmonetized failure is defined as SLATE_FALLBACK + TIMEOUT.
 
 Available tools:
-- \`run_query\` / \`list_tables\`: read ClickHouse telemetry.
-- \`classify_frame\`: look at the actual video frame at a timestamp and classify it as slate, ad, or content.
+- \`run_query\`: Execute read-only ClickHouse SQL.
+- \`list_tables\`: Inspect available tables.
+- \`classify_frame\`: Inspect video frames at timestamps to classify 'slate', 'ad', or 'content'.
 
-Rules:
-1. Always start from ClickHouse using \`run_query\` to inspect actual cue events and stitch attempts.
-2. Ground every single claim, latency figure, and failure count in exact data returned from ClickHouse.
-3. When the telemetry points to a suspicious ad break but cannot prove what actually reached the
-   viewer, call \`classify_frame\` on the relevant stream and timestamp to confirm visually.
-4. Visual evidence describes what is on screen. It is never the source of a number — every count,
-   rate, latency and financial figure must still come from a ClickHouse query.
-5. Identify root causes (such as slow SSPs, high latency, or timeout thresholds).
-6. Provide a clear, concise forensic diagnosis with specific metrics, citing both the telemetry and,
-   where you used it, the visual confirmation.
+Investigation Procedure (Follow These 5 Sequential Phases):
+1. Phase 1 — Schema Discovery & Baseline Validation:
+   Inspect table structures and check baseline cue event and stitch volume for channel \`${channel}\`.
+2. Phase 2 — Temporal Correlation & Anomaly Detection:
+   Use \`run_query\` to correlate SCTE-35 cue events with stitch attempts in the incident window using temporal ASOF matching. Measure unmonetized failure rates.
+3. Phase 3 — Multi-Dimensional Cohort Isolation:
+   Isolate root-cause cohorts by grouping by \`channel_id × ssp_id × device_class × codec\`. You MUST drill down all the way to codec level (\`ssp-beta × connected_tv × hevc\`) — a diagnosis stopping at device class understates failure at 34%, whereas isolating codec reveals the true 97.73% anomaly across 80 cues. When telemetry is ambiguous about on-air delivery, call \`classify_frame\` to visually verify slate bleed.
+4. Phase 4 — Loss Attribution & Financial Impact:
+   Query \`advertiser_inventory\` to fetch the exact contracted CPM rate card and compute financial loss strictly as: (unmonetized_impressions × cpm_usd) / 1000.
+5. Phase 5 — Root Cause Diagnosis & Remediation Proposal:
+   Synthesize a forensic diagnosis citing exact queried metrics (SSP, device_class, codec, latency, unmonetized count, bleed percentage, revenue loss) and state an actionable operational remediation recommendation (e.g. rerouting traffic away from the offending SSP/codec combination or adjusting stitcher timeout deadlines).
+
+Strict Grounding Rules:
+1. Every claim, latency figure, failure count, and financial number MUST come directly from ClickHouse queries. Never invent or round unqueried numbers.
+2. Frame classification proves visual appearance on stream, not impression counts or revenue numbers.
+3. Before executing tools for a phase, state your working hypothesis and current phase concisely in text.
 `.trim();
 
     const contents: Array<{ role: 'user' | 'model'; parts: Array<Record<string, unknown>> }> = [
@@ -215,9 +232,8 @@ Rules:
 
     let toolCallsCount = 0;
     let finalDiagnosis = '';
-    const maxTurns = 10;
 
-    for (let turn = 0; turn < maxTurns; turn++) {
+    for (let turn = 0; turn < MAX_INVESTIGATION_TURNS; turn++) {
       yield emit('status', { message: `Reasoning turn ${turn + 1}...` });
 
       let response;
@@ -244,6 +260,20 @@ Rules:
       const functionCalls = modelParts.filter((p: { functionCall?: unknown }) =>
         Boolean(p.functionCall),
       );
+
+      // Emit intermediate reasoning text as events
+      const reasoningParts = (modelParts as Part[])
+        .map((p) => p.text)
+        .filter((t): t is string => Boolean(t && t.trim()));
+
+      if (functionCalls.length > 0 && reasoningParts.length > 0) {
+        for (const text of reasoningParts) {
+          yield emit('reasoning', {
+            hypothesis: text,
+            turn: turn + 1,
+          });
+        }
+      }
 
       if (functionCalls.length > 0) {
         contents.push({
@@ -282,16 +312,10 @@ Rules:
               ...outcome.frame,
             });
           } else {
-            yield emit('tool_result', {
-              name: call.name,
-              result: outcome.modelText,
-              isError: outcome.isError,
-            });
-
+            let qData: RawMcpQueryData | null = null;
             if (!outcome.isError) {
               try {
                 const parsed = JSON.parse(outcome.modelText);
-                let qData: RawMcpQueryData | null = null;
                 if (parsed && Array.isArray(parsed.columns) && Array.isArray(parsed.rows)) {
                   qData = parsed as RawMcpQueryData;
                 } else if (
@@ -301,18 +325,30 @@ Rules:
                 ) {
                   qData = parsed.result as RawMcpQueryData;
                 }
-
-                if (qData && qData.rows.length > 0) {
-                  const derived = this.metricsService.deriveMetrics(qData, {
-                    rowsScanned: qData.rows.length,
-                    queryDurationMs,
-                  });
-                  if (derived.isGroundedFromMcp) {
-                    yield emit('metrics', { ...(derived as unknown as Record<string, unknown>) });
-                  }
-                }
               } catch {
-                // Non-JSON tool result or non-query metadata, ignore derivation
+                // Non-JSON tool result or non-query metadata, ignore
+              }
+            }
+
+            yield emit('tool_result', {
+              name: call.name,
+              sql:
+                call.name === 'run_query' && typeof call.args?.query === 'string'
+                  ? call.args.query
+                  : undefined,
+              result: outcome.modelText,
+              isError: outcome.isError,
+              durationMs: queryDurationMs,
+              rowsReturned: !outcome.isError && qData?.rows ? qData.rows.length : undefined,
+            });
+
+            if (!outcome.isError && qData && qData.rows.length > 0) {
+              const derived = this.metricsService.deriveMetrics(qData, {
+                rowsScanned: qData.rows.length,
+                queryDurationMs,
+              });
+              if (derived.isGroundedFromMcp) {
+                yield emit('metrics', { ...(derived as unknown as Record<string, unknown>) });
               }
             }
           }
@@ -332,7 +368,7 @@ Rules:
           parts: responseParts,
         });
       } else {
-        // Model returned final text response
+        // Model returned text response without function calls
         const textParts = (modelParts as Part[])
           .map((p) => p.text)
           .filter((t): t is string => Boolean(t))
@@ -349,7 +385,7 @@ Rules:
     }
 
     if (!finalDiagnosis || !finalDiagnosis.trim()) {
-      const errorMsg = `Investigation turn budget exhausted (${maxTurns} turns) without reaching a grounded conclusion.`;
+      const errorMsg = `Investigation turn budget exhausted (${MAX_INVESTIGATION_TURNS} turns) without reaching a grounded conclusion.`;
       yield emit('error', { error: errorMsg });
       throw new ServiceUnavailableError(errorMsg);
     }

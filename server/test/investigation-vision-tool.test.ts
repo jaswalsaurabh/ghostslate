@@ -6,6 +6,8 @@ import {
 import type { McpClientService } from '../src/services/mcp.service.js';
 import type { VisionService, FrameClassification } from '../src/services/vision.service.js';
 
+import { InvestigateSpikeSchema } from '../src/controllers/investigation.controller.js';
+
 interface ContentTurn {
   role: string;
   parts: Array<{
@@ -23,6 +25,12 @@ describe('InvestigationService — Vision Tool Wiring', () => {
   let mockMcpService: McpClientService;
   let mockVisionService: VisionService;
   let mockGenerateContent: ReturnType<typeof vi.fn>;
+
+  const defaultContext = {
+    channel: 'ch-01',
+    from: '2026-08-14T19:00:00.000Z',
+    to: '2026-08-14T23:00:00.000Z',
+  };
 
   const mockFrameResult: FrameClassification = {
     classification: 'slate',
@@ -114,7 +122,7 @@ describe('InvestigationService — Vision Tool Wiring', () => {
       });
 
     const service = createServiceWithMockedAI();
-    const generator = service.investigateSpike('Check if slate bled');
+    const generator = service.investigateSpike('Check if slate bled', defaultContext);
 
     const events: InvestigationEvent[] = [];
     for await (const ev of generator) {
@@ -166,7 +174,7 @@ describe('InvestigationService — Vision Tool Wiring', () => {
       });
 
     const service = createServiceWithMockedAI();
-    const generator = service.investigateSpike('Check telemetry');
+    const generator = service.investigateSpike('Check telemetry', defaultContext);
 
     const events: InvestigationEvent[] = [];
     for await (const ev of generator) {
@@ -217,7 +225,7 @@ describe('InvestigationService — Vision Tool Wiring', () => {
       });
 
     const service = createServiceWithMockedAI();
-    const generator = service.investigateSpike('Inspect frame at 12s');
+    const generator = service.investigateSpike('Inspect frame at 12s', defaultContext);
 
     const events: InvestigationEvent[] = [];
     for await (const ev of generator) {
@@ -276,7 +284,7 @@ describe('InvestigationService — Vision Tool Wiring', () => {
       });
 
     const service = createServiceWithMockedAI();
-    const generator = service.investigateSpike('Check malicious file');
+    const generator = service.investigateSpike('Check malicious file', defaultContext);
 
     const events: InvestigationEvent[] = [];
     for await (const ev of generator) {
@@ -329,7 +337,7 @@ describe('InvestigationService — Vision Tool Wiring', () => {
       });
 
     const service = createServiceWithMockedAI();
-    const generator = service.investigateSpike('Check negative timestamp');
+    const generator = service.investigateSpike('Check negative timestamp', defaultContext);
 
     const events: InvestigationEvent[] = [];
     for await (const ev of generator) {
@@ -389,7 +397,7 @@ describe('InvestigationService — Vision Tool Wiring', () => {
       });
 
     const service = createServiceWithMockedAI();
-    const generator = service.investigateSpike('Analyze telemetry');
+    const generator = service.investigateSpike('Analyze telemetry', defaultContext);
 
     const events: InvestigationEvent[] = [];
     for await (const ev of generator) {
@@ -404,5 +412,109 @@ describe('InvestigationService — Vision Tool Wiring', () => {
     expect(metricsEvent?.data.slateBleedRate).toBe('84.2%');
     // 5 unmonetized impressions * ($25 fallback CPM / 1000) = $0.125 -> $0.13
     expect(metricsEvent?.data.revenueLoss).toBe('$0.13');
+  });
+
+  it('emits reasoning event when text accompanies a function call, but NOT on text-only final diagnosis turn', async () => {
+    mockGenerateContent
+      .mockResolvedValueOnce({
+        candidates: [
+          {
+            content: {
+              parts: [
+                { text: 'Hypothesis: Checking cue events for anomaly pattern.' },
+                {
+                  functionCall: {
+                    name: 'run_query',
+                    args: { query: 'SELECT count() FROM ghostslate.scte35_cue_events' },
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        candidates: [
+          {
+            content: {
+              parts: [
+                { text: 'Part 1: Summary of findings.' },
+                { text: 'Part 2: Root cause isolated to ssp-beta.' },
+              ],
+            },
+          },
+        ],
+      });
+
+    const defaultContext = {
+      channel: 'ch-01',
+      from: '2026-08-14T19:00:00.000Z',
+      to: '2026-08-14T23:00:00.000Z',
+    };
+
+    const service = createServiceWithMockedAI();
+    const generator = service.investigateSpike('Check cues and diagnose', defaultContext);
+
+    const events: InvestigationEvent[] = [];
+    for await (const ev of generator) {
+      events.push(ev);
+    }
+
+    // 1. Turn 1 accompanied function call -> reasoning emitted
+    const reasoningEvents = events.filter((e) => e.type === 'reasoning');
+    expect(reasoningEvents).toHaveLength(1);
+    expect(reasoningEvents[0]?.data.hypothesis).toBe(
+      'Hypothesis: Checking cue events for anomaly pattern.',
+    );
+    expect(reasoningEvents[0]?.data.turn).toBe(1);
+
+    // 2. Turn 2 was text-only (final diagnosis) -> NO reasoning events from turn 2
+    expect(reasoningEvents.some((e) => e.data.turn === 2)).toBe(false);
+
+    // 3. Final diagnosis joins all text parts
+    const diagnosisEvent = events.find((e) => e.type === 'diagnosis');
+    expect(diagnosisEvent).toBeDefined();
+    expect(diagnosisEvent?.data.diagnosis).toBe(
+      'Part 1: Summary of findings.\nPart 2: Root cause isolated to ssp-beta.',
+    );
+  });
+
+  it('interpolates the primary incident window and channel into the Gemini system instruction', async () => {
+    mockGenerateContent.mockResolvedValueOnce({
+      candidates: [
+        {
+          content: {
+            parts: [{ text: 'Investigation complete.' }],
+          },
+        },
+      ],
+    });
+
+    const service = createServiceWithMockedAI();
+    const generator = service.investigateSpike('Forensic check', {
+      channel: 'ch-01',
+      from: '2026-08-14T19:00:00.000Z',
+      to: '2026-08-14T23:00:00.000Z',
+    });
+
+    for await (const _ of generator) {
+      // drain
+    }
+
+    expect(mockGenerateContent).toHaveBeenCalledTimes(1);
+    const callConfig = mockGenerateContent.mock.calls[0][0];
+    const systemText = callConfig.config?.systemInstruction?.parts?.[0]?.text;
+    expect(systemText).toBeDefined();
+    expect(systemText).toContain('- Target channel: `ch-01`');
+    expect(systemText).toContain(
+      '- Incident investigation window: `2026-08-14T19:00:00.000Z` to `2026-08-14T23:00:00.000Z` (UTC)',
+    );
+  });
+
+  it('InvestigateSpikeSchema defaults channel and window to primary incident constants when omitted', () => {
+    const parsed = InvestigateSpikeSchema.parse({ prompt: 'Analyze channel anomaly' });
+    expect(parsed.channel).toBe('ch-01');
+    expect(parsed.from).toBe('2026-08-14T19:00:00.000Z');
+    expect(parsed.to).toBe('2026-08-14T23:00:00.000Z');
   });
 });

@@ -44,6 +44,11 @@ export interface GroundingReport {
   checkedClaims: number;
 }
 
+export interface InvestigationRunResponse {
+  runKey: string;
+  created: boolean;
+}
+
 export interface InvestigationTraceEvent {
   type:
     | 'status'
@@ -61,10 +66,15 @@ export interface InvestigationTraceEvent {
     message?: string;
     name?: string;
     args?: Record<string, unknown>;
+    sql?: string;
     result?: string;
+    rowsReturned?: number;
+    durationMs?: number;
     isError?: boolean;
     error?: string;
     diagnosis?: string;
+    hypothesis?: string;
+    turn?: number;
     grounding?: GroundingReport;
     [key: string]: unknown;
   };

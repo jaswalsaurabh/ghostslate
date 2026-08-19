@@ -10,6 +10,7 @@ import { HealthController } from './controllers/health.controller.js';
 import { createHealthRouter } from './routes/health.route.js';
 import { McpClientService } from './services/mcp.service.js';
 import { InvestigationService } from './services/investigation.service.js';
+import { InvestigationRunsService } from './services/investigation-runs.service.js';
 import { InvestigationController } from './controllers/investigation.controller.js';
 import { createInvestigationRouter } from './routes/investigation.route.js';
 import { VisionService } from './services/vision.service.js';
@@ -44,7 +45,14 @@ export function createApp({ logger }: AppContext): Express {
   const visionService = new VisionService();
   const metricsService = new MetricsService();
   const investigationService = new InvestigationService(mcpService, visionService, metricsService);
-  const investigationController = new InvestigationController(investigationService);
+  const investigationRunsService = new InvestigationRunsService((input) =>
+    investigationService.investigateSpike(input.prompt, {
+      channel: input.channel,
+      from: input.from,
+      to: input.to,
+    }),
+  );
+  const investigationController = new InvestigationController(investigationRunsService);
 
   const visionController = new VisionController(visionService);
 
