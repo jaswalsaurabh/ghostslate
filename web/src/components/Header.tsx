@@ -25,20 +25,16 @@ export const Header: React.FC<HeaderProps> = ({ health, healthLoading, healthErr
   return (
     <header className="border-b border-border-subtle bg-surface-panel/95 px-6 py-3.5 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-sticky backdrop-blur-md shadow-sm">
       {/* Brand Section */}
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-lg bg-linear-to-br from-interactive to-interactive-border flex items-center justify-center text-interactive-fg shadow-[0_0_15px_var(--color-interactive-subtle)] font-mono font-bold text-sm">
-          GS
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="flex shrink-0 items-center gap-1.5">
+          <img src="/brand/mark-256.png" alt="" className="h-7 w-7" aria-hidden="true" />
+          <h1 className="text-base font-extrabold tracking-tight text-text-primary">GhostSlate</h1>
         </div>
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-base font-extrabold tracking-tight text-text-primary">
-              GhostSlate AI
-            </h1>
-          </div>
-          <p className="text-[11px] font-mono text-text-muted">
-            FAST / SSAI Intelligent Forensics &bull; ClickHouse MCP + Gemini Vision
-          </p>
-        </div>
+        <p className="hidden max-w-52 text-[10px] leading-relaxed font-mono text-text-muted lg:block">
+          FAST / SSAI Intelligent Forensics
+          <br />
+          ClickHouse MCP + Gemini Vision
+        </p>
       </div>
 
       {/* Target Feed & Status Section */}
