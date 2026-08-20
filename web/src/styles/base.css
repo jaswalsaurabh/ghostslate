@@ -36,6 +36,10 @@
   }
 }
 
+[data-theme='dark'] .brand-lockup {
+  filter: invert(1) hue-rotate(180deg);
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;

@@ -26,10 +26,11 @@ export const Header: React.FC<HeaderProps> = ({ health, healthLoading, healthErr
     <header className="border-b border-border-subtle bg-surface-panel/95 px-6 py-3.5 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-sticky backdrop-blur-md shadow-sm">
       {/* Brand Section */}
       <div className="flex min-w-0 items-center gap-3">
-        <div className="flex shrink-0 items-center gap-1.5">
-          <img src="/brand/mark-256.png" alt="" className="h-7 w-7" aria-hidden="true" />
-          <h1 className="text-base font-extrabold tracking-tight text-text-primary">GhostSlate</h1>
-        </div>
+        <img
+          src="/brand/ghostslate-lockup.png"
+          alt="GhostSlate"
+          className="brand-lockup h-10 w-auto shrink-0 sm:h-11"
+        />
         <p className="hidden max-w-52 text-[10px] leading-relaxed font-mono text-text-muted lg:block">
           FAST / SSAI Intelligent Forensics
           <br />
