@@ -123,8 +123,8 @@ Database Context:
   - \`ghostslate.slate_observations\` (session_id UUID, channel_id LowCardinality(String), observed_at DateTime64(3, 'UTC'), frame_class LowCardinality(String) ['SLATE', 'CONTENT', 'AD'], confidence Float32)
   - \`ghostslate.advertiser_inventory\` (channel_id LowCardinality(String), daypart LowCardinality(String), cpm_usd Decimal(8, 2), fill_target_pct Float32)
 - Target channel: \`${channel}\`
-- Incident investigation window: \`${fromTime}\` to \`${toTime}\` (UTC). Note: in ClickHouse SQL, write DateTime64 literals as 'YYYY-MM-DD HH:MM:SS.NNN' (e.g. toDateTime64('${fromTime.replace('T', ' ').replace('Z', '')}', 3, 'UTC')).
-- Critical Thresholds: Stitcher deadline is ${STITCHER_DEADLINE_MS} ms (latencies above ${STITCHER_DEADLINE_MS} ms result in SLATE_FALLBACK); Hard auction timeout is ${HARD_AUCTION_TIMEOUT_MS} ms (TIMEOUT). Unmonetized failure is defined as SLATE_FALLBACK + TIMEOUT.
+- Incident investigation window: \`${fromTime}\` to \`${toTime}\` (UTC). Note: in ClickHouse SQL, write DateTime64 literals as 'YYYY-MM-DD HH:MM:SS.NNN' (e.g. toDateTime64('${fromTime.replace('T', ' ').replace('Z', '')}', 3, 'UTC')). Use the investigation window as a half-open UTC interval in every exploratory query: timestamp >= from AND timestamp < to. Never use BETWEEN or include the end timestamp.
+- Critical Thresholds: Stitcher deadline is ${STITCHER_DEADLINE_MS} ms (latencies above ${STITCHER_DEADLINE_MS} ms result in SLATE_FALLBACK); Hard auction timeout is ${HARD_AUCTION_TIMEOUT_MS} ms (TIMEOUT). Unmonetized failure is defined as SLATE_FALLBACK + TIMEOUT. Cohorts with fewer than ${MINIMUM_COHORT_CUES} cues (< ${MINIMUM_COHORT_CUES}) lack statistical significance and cannot establish a root cause.
 
 Available tools:
 - \`run_query\`: Execute read-only ClickHouse SQL for exploratory analysis.
@@ -146,9 +146,10 @@ Investigation Procedure (Follow These 5 Sequential Phases):
    Call \`finalize_investigation\` (with no arguments, alone in its turn) to conclude the investigation and publish the diagnosis.
 
 Strict Grounding Rules:
-1. Grounded facts and published metrics are owned by the server-rendered evidence snapshot.
-2. If an anomaly is identified, visual confirmation via \`classify_frame\` is required before finalization.
-3. Before executing tools for a phase, state your working hypothesis concisely in text.
+1. Grounded facts and published metrics are owned exclusively by the authoritative \`collect_diagnosis_evidence\` snapshot.
+2. Canonical Evidence Rule: If \`collect_diagnosis_evidence\` returns zero qualifying rows (because cues < ${MINIMUM_COHORT_CUES}), this explicitly and conclusively INVALIDATES all prior exploratory candidates due to insufficient qualifying evidence. You MUST NOT assert any root cause cohort, MUST NOT assert slate bleed or financial loss, and MUST NOT propose reroutes. You must conclude insufficient qualifying evidence and immediately finalize.
+3. If an anomaly is identified, visual confirmation via \`classify_frame\` is required before finalization.
+4. Before executing tools for a phase, state your working hypothesis concisely in text.
 `.trim();
 
     const contents: Array<{ role: 'user' | 'model'; parts: Array<Record<string, unknown>> }> = [

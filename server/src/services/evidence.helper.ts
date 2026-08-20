@@ -135,7 +135,7 @@ export function renderLossAttributionQuery(
     throw new Error(`Rendered query contains unresolved placeholder: ${remainingMatch[0]}`);
   }
 
-  return rendered;
+  return rendered.trim().replace(/;+$/, '');
 }
 
 /**
@@ -154,6 +154,10 @@ export function decodeDiagnosisRows(raw: unknown, expectedChannel?: string): Dia
 
   if (!Array.isArray(queryResult.columns) || !Array.isArray(queryResult.rows)) {
     throw new Error('Canonical evidence response must contain columns and rows arrays.');
+  }
+
+  if (queryResult.rows.length === 0 && queryResult.columns.length === 0) {
+    return [];
   }
 
   const colMap = new Map<string, number>();

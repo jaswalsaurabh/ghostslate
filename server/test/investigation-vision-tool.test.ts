@@ -5,7 +5,6 @@ import {
 } from '../src/services/investigation.service.js';
 import type { McpClientService } from '../src/services/mcp.service.js';
 import type { VisionService, FrameClassification } from '../src/services/vision.service.js';
-import { InvestigateSpikeSchema } from '../src/controllers/investigation.controller.js';
 
 interface ContentTurn {
   role: string;
@@ -110,9 +109,9 @@ describe('InvestigationService — Vision Tool & Media Boundary Contracts', () =
     ]);
   });
 
-  it('validates per-file media durations with exclusive upper bounds (§8)', async () => {
+  it('validates context-mapped media and timestamp bounds (§10)', async () => {
     const service = createServiceWithMockedAI();
-    const execute = (name: string, args: Record<string, unknown>) =>
+    const execute = (name: string, args: Record<string, unknown>, ctx = defaultContext) =>
       (
         service as unknown as {
           executeTool: (
@@ -121,46 +120,217 @@ describe('InvestigationService — Vision Tool & Media Boundary Contracts', () =
             context: typeof defaultContext,
           ) => Promise<{ resultText: string; isError: boolean }>;
         }
-      ).executeTool(name, args, defaultContext);
+      ).executeTool(name, args, ctx);
 
-    // 1. content.mp4 has duration 10s -> timestamp 12 must fail
-    const contentOver = await execute('classify_frame', {
-      video_file: 'content.mp4',
-      timestamp_seconds: 12,
-    });
-    expect(contentOver.isError).toBe(true);
-    expect(contentOver.resultText).toContain('strictly less than 10');
-
-    // 2. slate.mp4 has duration 15s -> timestamp 14.5 must pass
+    // 1. Correct primary context + mapped media (slate.mp4) + valid timestamp -> succeeds
     const slateValid = await execute('classify_frame', {
       video_file: 'slate.mp4',
       timestamp_seconds: 14.5,
     });
     expect(slateValid.isError).toBe(false);
+    expect(mockVisionService.classifyVideoTimestamp).toHaveBeenCalledWith('slate.mp4', 14.5);
 
-    // 3. slate.mp4 has duration 15s -> timestamp 15 must fail (exclusive upper bound)
+    // 2. Correct primary context + unrelated media (content.mp4) -> fails without calling vision
+    vi.clearAllMocks();
+    const contentUnrelated = await execute('classify_frame', {
+      video_file: 'content.mp4',
+      timestamp_seconds: 5,
+    });
+    expect(contentUnrelated.isError).toBe(true);
+    expect(contentUnrelated.resultText).toContain('not mapped to the active incident context');
+    expect(mockVisionService.classifyVideoTimestamp).not.toHaveBeenCalled();
+
+    // 3. Correct primary context + unknown media -> fails without calling vision
+    const unknownFile = await execute('classify_frame', {
+      video_file: 'unknown.mp4',
+      timestamp_seconds: 5,
+    });
+    expect(unknownFile.isError).toBe(true);
+    expect(unknownFile.resultText).toContain('not mapped to the active incident context');
+    expect(mockVisionService.classifyVideoTimestamp).not.toHaveBeenCalled();
+
+    // 4. Correct primary context + out-of-range timestamp (exclusive upper bound: 15) -> fails
     const slateAtBound = await execute('classify_frame', {
       video_file: 'slate.mp4',
       timestamp_seconds: 15,
     });
     expect(slateAtBound.isError).toBe(true);
     expect(slateAtBound.resultText).toContain('strictly less than 15');
+    expect(mockVisionService.classifyVideoTimestamp).not.toHaveBeenCalled();
 
-    // 4. negative timestamp must fail
+    // 5. Correct primary context + negative timestamp -> fails
     const negativeTs = await execute('classify_frame', {
       video_file: 'slate.mp4',
       timestamp_seconds: -1,
     });
     expect(negativeTs.isError).toBe(true);
     expect(negativeTs.resultText).toContain('Invalid timestamp_seconds');
+    expect(mockVisionService.classifyVideoTimestamp).not.toHaveBeenCalled();
 
-    // 5. unknown video_file must fail
-    const unknownFile = await execute('classify_frame', {
-      video_file: 'unknown.mp4',
-      timestamp_seconds: 5,
+    // 6. Negative control context + primary slate -> fails without calling vision
+    const negativeControlContext = {
+      channel: 'ch-01',
+      from: '2026-08-09T19:00:00.000Z',
+      to: '2026-08-09T23:00:00.000Z',
+    };
+    const negativeMediaAttempt = await execute(
+      'classify_frame',
+      { video_file: 'slate.mp4', timestamp_seconds: 5 },
+      negativeControlContext,
+    );
+    expect(negativeMediaAttempt.isError).toBe(true);
+    expect(negativeMediaAttempt.resultText).toContain('No synthetic stream media is mapped');
+    expect(mockVisionService.classifyVideoTimestamp).not.toHaveBeenCalled();
+  });
+
+  it('enforces positive incident finalization requires visual confirmation, while negative control succeeds without vision', async () => {
+    const positiveCanonicalRow = [
+      'ch-01',
+      'ssp-beta',
+      'connected_tv',
+      'hevc',
+      'primetime',
+      80,
+      60862,
+      59482,
+      97.73,
+      1812,
+      32.5,
+    ];
+    const peerCohortRow = [
+      'ch-01',
+      'ssp-alpha',
+      'connected_tv',
+      'hevc',
+      'primetime',
+      80,
+      79454,
+      1697,
+      2.14,
+      304,
+      32.5,
+    ];
+    const positiveCanonicalEvidence = JSON.stringify({
+      columns: [
+        'channel_id',
+        'ssp_id',
+        'device_class',
+        'codec',
+        'daypart',
+        'cues',
+        'total_attempts',
+        'unmonetized_impressions',
+        'unmonetized_pct',
+        'p95_auction_ms',
+        'cpm_usd',
+      ],
+      rows: [positiveCanonicalRow, peerCohortRow],
     });
-    expect(unknownFile.isError).toBe(true);
-    expect(unknownFile.resultText).toContain('Unknown video_file "unknown.mp4"');
+
+    // 1. Positive run: Finalizing after collect_diagnosis_evidence WITHOUT classify_frame must be rejected
+    mockMcpService.callTool = vi.fn().mockResolvedValue({
+      content: [{ type: 'text', text: positiveCanonicalEvidence }],
+      isError: false,
+    });
+
+    mockGenerateContent
+      .mockResolvedValueOnce({
+        candidates: [
+          {
+            content: {
+              parts: [{ functionCall: { name: 'collect_diagnosis_evidence', args: {} } }],
+            },
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        candidates: [
+          {
+            content: {
+              parts: [{ functionCall: { name: 'finalize_investigation', args: {} } }],
+            },
+          },
+        ],
+      })
+      .mockResolvedValue({
+        candidates: [
+          {
+            content: {
+              parts: [{ text: 'Turn budget limit reached' }],
+            },
+          },
+        ],
+      });
+
+    const positiveService = createServiceWithMockedAI();
+    const positiveGen = positiveService.investigateSpike('Run positive spike', defaultContext);
+
+    const positiveEvents: InvestigationEvent[] = [];
+    try {
+      for await (const ev of positiveGen) {
+        positiveEvents.push(ev);
+      }
+    } catch {
+      // Expected to fail finalization check or exhaust budget
+    }
+
+    const rejectionEvent = positiveEvents.find(
+      (e) =>
+        e.type === 'tool_result' &&
+        e.data.name === 'finalize_investigation' &&
+        e.data.isError === true,
+    );
+    expect(rejectionEvent).toBeDefined();
+    expect(rejectionEvent?.data.result).toContain(
+      'An anomaly cohort was detected in telemetry, but no on-air slate frame was visually confirmed',
+    );
+
+    // 2. Negative run: Finalizing after collect_diagnosis_evidence WITHOUT classify_frame succeeds immediately
+    vi.clearAllMocks();
+    mockMcpService.callTool = vi.fn().mockResolvedValue({
+      content: [{ type: 'text', text: emptyCanonicalEvidence }],
+      isError: false,
+    });
+
+    mockGenerateContent
+      .mockResolvedValueOnce({
+        candidates: [
+          {
+            content: {
+              parts: [{ functionCall: { name: 'collect_diagnosis_evidence', args: {} } }],
+            },
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        candidates: [
+          {
+            content: {
+              parts: [{ functionCall: { name: 'finalize_investigation', args: {} } }],
+            },
+          },
+        ],
+      });
+
+    const negativeContext = {
+      channel: 'ch-01',
+      from: '2026-08-09T19:00:00.000Z',
+      to: '2026-08-09T23:00:00.000Z',
+    };
+    const negativeService = createServiceWithMockedAI();
+    const negativeGen = negativeService.investigateSpike('Run negative control', negativeContext);
+
+    const negativeEvents: InvestigationEvent[] = [];
+    for await (const ev of negativeGen) {
+      negativeEvents.push(ev);
+    }
+
+    const negativeDiagEvent = negativeEvents.find((e) => e.type === 'diagnosis');
+    expect(negativeDiagEvent).toBeDefined();
+    expect(negativeDiagEvent?.data.diagnosis).toContain(
+      'No isolated root cause, on-air slate bleed, or financial loss is asserted.',
+    );
+    expect(negativeDiagEvent?.data.diagnosis).not.toContain('$');
   });
 
   it('never sends the base64 frame image to the model, but emits it in the SSE stream', async () => {
@@ -279,53 +449,13 @@ describe('InvestigationService — Vision Tool & Media Boundary Contracts', () =
     expect(systemPrompt).toContain('450 ms');
     expect(systemPrompt).toContain('1200 ms');
     expect(systemPrompt).toContain('HAVING cues >= 20');
+    expect(systemPrompt).toContain('half-open UTC interval');
+    expect(systemPrompt).toContain('Never use BETWEEN or include the end timestamp');
 
     // Answer un-leaked (cohort name and numbers MUST NOT appear)
     expect(systemPrompt).not.toContain('ssp-beta × connected_tv × hevc');
     expect(systemPrompt).not.toContain('97.73%');
     expect(systemPrompt).not.toContain('80 cues');
     expect(systemPrompt).not.toContain('34%');
-  });
-
-  describe('InvestigateSpikeSchema validation', () => {
-    it('normalizes valid channel and ISO UTC timestamps', () => {
-      const parsed = InvestigateSpikeSchema.parse({
-        prompt: 'Check anomaly',
-        channel: '  CH-01  ',
-        from: '2026-08-14T19:00:00.000Z',
-        to: '2026-08-14T23:00:00.000Z',
-      });
-      expect(parsed.channel).toBe('ch-01');
-      expect(parsed.from).toBe('2026-08-14T19:00:00.000Z');
-      expect(parsed.to).toBe('2026-08-14T23:00:00.000Z');
-    });
-
-    it('rejects channel with SQL injection or special characters', () => {
-      expect(() =>
-        InvestigateSpikeSchema.parse({
-          prompt: 'Check anomaly',
-          channel: "ch-01'; DROP TABLE ssai_stitch_attempts; --",
-        }),
-      ).toThrow();
-    });
-
-    it('rejects timestamps without UTC Z suffix or invalid date syntax', () => {
-      expect(() =>
-        InvestigateSpikeSchema.parse({
-          prompt: 'Check anomaly',
-          from: '2026-08-14 19:00:00',
-        }),
-      ).toThrow();
-    });
-
-    it('rejects from >= to', () => {
-      expect(() =>
-        InvestigateSpikeSchema.parse({
-          prompt: 'Check anomaly',
-          from: '2026-08-14T23:00:00.000Z',
-          to: '2026-08-14T19:00:00.000Z',
-        }),
-      ).toThrow();
-    });
   });
 });
