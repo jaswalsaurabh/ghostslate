@@ -156,6 +156,10 @@ export function decodeDiagnosisRows(raw: unknown, expectedChannel?: string): Dia
     throw new Error('Canonical evidence response must contain columns and rows arrays.');
   }
 
+  if (queryResult.rows.length === 0 && queryResult.columns.length === 0) {
+    return [];
+  }
+
   const colMap = new Map<string, number>();
   queryResult.columns.forEach((col, idx) => {
     const name = String(col).toLowerCase().trim();

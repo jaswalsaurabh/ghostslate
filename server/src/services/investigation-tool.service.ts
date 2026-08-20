@@ -219,8 +219,17 @@ export class InvestigationToolService {
 
     try {
       const evidenceRows = decodeDiagnosisRows(parsed, context.channel);
+      let modelText = truncateQueryResultForModel(resultText);
+      if (evidenceRows.length === 0) {
+        modelText = JSON.stringify({
+          columns: [],
+          rows: [],
+          notice:
+            'Canonical evidence returned no cohort meeting the cues >= 20 guard. Insufficient qualifying evidence exists to evaluate incident failure thresholds. All exploratory candidates are invalidated. Conclude insufficient qualifying evidence and finalize without asserting a root cause, slate bleed, loss, or remediation.',
+        });
+      }
       return {
-        modelText: truncateQueryResultForModel(resultText),
+        modelText,
         resultText,
         isError: false,
         evidenceRows,

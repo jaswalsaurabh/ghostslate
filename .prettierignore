@@ -10,3 +10,4 @@ coverage
 pnpm-lock.yaml
 infra/mcp-direct-verification.txt
 infra/evidence/*.json
+eval/evidence/*.json

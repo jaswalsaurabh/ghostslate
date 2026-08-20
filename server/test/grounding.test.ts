@@ -95,14 +95,28 @@ describe('GroundingService & renderDiagnosis', () => {
     expect(diagnosis).not.toContain('$32.50');
   });
 
-  it('renders deterministic negative control diagnosis when no cohort meets incident criteria', () => {
+  it('renders deterministic negative control diagnosis when non-empty cohorts meet no incident criteria', () => {
+    const mockNegativeRow: DiagnosisRow = {
+      channelId: 'ch-01',
+      sspId: 'ssp-beta',
+      deviceClass: 'connected_tv',
+      codec: 'hevc',
+      daypart: 'primetime',
+      cues: 80,
+      totalAttempts: 60710,
+      unmonetizedImpressions: 2363,
+      unmonetizedPct: 3.89,
+      p95AuctionMs: 414.0,
+      cpmUsd: 32.5,
+    };
+
     const negativeEvidence: DiagnosisEvidence = {
       context: {
         channel: 'ch-01',
         from: '2026-08-09T19:00:00.000Z',
         to: '2026-08-09T23:00:00.000Z',
       },
-      rows: [],
+      rows: [mockNegativeRow],
       incident: null,
       frame: null,
     };
@@ -121,6 +135,39 @@ describe('GroundingService & renderDiagnosis', () => {
     expect(diagnosis).not.toContain('$');
     expect(diagnosis).not.toContain('Root Cause Cohort');
     expect(diagnosis).not.toContain('reroute');
+    expect(countPublishedFigures(negativeEvidence)).toBe(3);
+  });
+
+  it('renders deterministic insufficient sample diagnosis when canonical evidence is empty (cues < 20)', () => {
+    const emptyEvidence: DiagnosisEvidence = {
+      context: {
+        channel: 'ch-01',
+        from: '2026-08-14T19:00:00.000Z',
+        to: '2026-08-14T19:15:00.000Z',
+      },
+      rows: [],
+      incident: null,
+      frame: null,
+    };
+
+    const diagnosis = renderDiagnosis(emptyEvidence);
+
+    expect(diagnosis).toContain('**Target Channel:** `ch-01`');
+    expect(diagnosis).toContain('insufficient qualifying evidence in this window');
+    expect(diagnosis).toContain(
+      'No cohort met the statistical significance threshold of cues >= 20',
+    );
+    expect(diagnosis).toContain(
+      'Insufficient eligible sample size to evaluate incident failure thresholds',
+    );
+    expect(diagnosis).toContain(
+      'No isolated root cause, on-air slate bleed, or financial loss is asserted.',
+    );
+    expect(diagnosis).toContain('No remediation action required for this window.');
+    expect(diagnosis).not.toContain('$');
+    expect(diagnosis).not.toContain('Root Cause Cohort');
+    expect(diagnosis).not.toContain('reroute');
+    expect(countPublishedFigures(emptyEvidence)).toBe(1);
   });
 
   it('builds GroundingReport counting exact verified figures directly from evidence snapshot', () => {

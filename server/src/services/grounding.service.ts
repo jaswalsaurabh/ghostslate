@@ -32,8 +32,13 @@ export interface GroundingReport {
  * in the deterministic diagnosis template.
  */
 export function countPublishedFigures(evidence: DiagnosisEvidence): number {
+  if (evidence.rows.length === 0) {
+    // Insufficient qualifying evidence cites cues >= 20
+    return 1;
+  }
+
   if (!evidence.incident) {
-    // Negative outcome cites 20.0%, 15.0pp dispersion threshold, and cues >= 20
+    // Nominal baseline outcome cites 20.0%, 15.0pp dispersion threshold, and cues >= 20
     return 3;
   }
 
@@ -67,8 +72,25 @@ export function countPublishedFigures(evidence: DiagnosisEvidence): number {
  * publishable numbers.
  */
 export function renderDiagnosis(evidence: DiagnosisEvidence): string {
-  const { context, incident, frame } = evidence;
+  const { context, incident, frame, rows } = evidence;
   const metricsService = new MetricsService();
+
+  if (rows.length === 0) {
+    return [
+      '### Forensic Investigation Diagnosis',
+      '',
+      `**Target Channel:** \`${context.channel}\` | **Investigation Window:** \`${context.from}\` to \`${context.to}\` (UTC)`,
+      '',
+      '**Findings:**',
+      `Telemetry analysis indicates insufficient qualifying evidence in this window. No cohort met the statistical significance threshold of cues >= ${MINIMUM_COHORT_CUES}.`,
+      '',
+      '**Conclusion:**',
+      'Insufficient eligible sample size to evaluate incident failure thresholds. No isolated root cause, on-air slate bleed, or financial loss is asserted.',
+      '',
+      '**Operational Remediation Proposal:**',
+      '- No remediation action required for this window.',
+    ].join('\n');
+  }
 
   if (!incident) {
     return [
