@@ -1,14 +1,16 @@
 [data-theme='light'] {
   /* Surfaces */
-  --color-surface-base: var(--gs-neutral-0);
-  --color-surface-panel: var(--gs-neutral-100);
-  --color-surface-card: var(--gs-neutral-200);
-  --color-surface-hover: var(--gs-neutral-300);
-  --color-surface-scrim: color-mix(in oklab, var(--gs-neutral-950) 40%, transparent);
+  --color-surface-base: var(--gs-sand-50);
+  --color-surface-panel: var(--gs-neutral-0);
+  --color-surface-card: var(--gs-sand-25);
+  --color-surface-hover: var(--gs-sand-100);
+  --color-surface-scrim: color-mix(in oklab, var(--gs-sand-50) 80%, transparent);
+  --color-surface-overlay: color-mix(in oklab, var(--gs-neutral-1000) 70%, transparent);
+  --color-surface-grid: color-mix(in oklab, var(--gs-neutral-600) 6.5%, transparent);
 
   /* Borders */
-  --color-border-subtle: var(--gs-neutral-300);
-  --color-border-strong: var(--gs-neutral-600);
+  --color-border-subtle: var(--gs-sand-200);
+  --color-border-strong: var(--gs-sand-300);
 
   /* Text */
   --color-text-primary: var(--gs-neutral-950);
@@ -16,26 +18,26 @@
   --color-text-muted: var(--gs-neutral-500);
 
   /* Interactive */
-  --color-interactive: var(--gs-sky-700);
+  --color-interactive: var(--gs-cyan-700);
   --color-interactive-fg: var(--gs-neutral-0);
   --color-interactive-surface: color-mix(
     in oklab,
-    var(--gs-sky-700) 15%,
+    var(--gs-cyan-700) 15%,
     var(--color-surface-base)
   );
-  --color-interactive-border: color-mix(in oklab, var(--gs-sky-700) 30%, transparent);
-  --color-interactive-subtle: color-mix(in oklab, var(--gs-sky-700) 20%, transparent);
+  --color-interactive-border: color-mix(in oklab, var(--gs-cyan-700) 30%, transparent);
+  --color-interactive-subtle: color-mix(in oklab, var(--gs-cyan-700) 20%, transparent);
 
   /* Status — Critical */
-  --color-status-critical: var(--gs-red-700);
+  --color-status-critical: var(--gs-rose-700);
   --color-status-critical-surface: color-mix(
     in oklab,
-    var(--gs-red-700) 12%,
+    var(--gs-rose-700) 12%,
     var(--color-surface-base)
   );
-  --color-status-critical-border: color-mix(in oklab, var(--gs-red-700) 30%, transparent);
-  --color-status-critical-subtle: color-mix(in oklab, var(--gs-red-700) 20%, transparent);
-  --color-status-critical-zone: color-mix(in oklab, var(--gs-red-700) 35%, transparent);
+  --color-status-critical-border: color-mix(in oklab, var(--gs-rose-700) 30%, transparent);
+  --color-status-critical-subtle: color-mix(in oklab, var(--gs-rose-700) 20%, transparent);
+  --color-status-critical-zone: color-mix(in oklab, var(--gs-rose-700) 35%, transparent);
 
   /* Status — Warning */
   --color-status-warning: var(--gs-amber-700);
@@ -56,6 +58,7 @@
     var(--color-surface-base)
   );
   --color-status-success-border: color-mix(in oklab, var(--gs-emerald-700) 30%, transparent);
+  --color-status-success-subtle: color-mix(in oklab, var(--gs-emerald-700) 20%, transparent);
   --color-status-success-zone: color-mix(in oklab, var(--gs-emerald-700) 35%, transparent);
 
   /* Data / query surface — the ClickHouse terminal aesthetic */
@@ -65,33 +68,33 @@
   --color-data-border: color-mix(in oklab, var(--gs-emerald-700) 35%, transparent);
 
   /* Agent Reasoning */
-  --color-reasoning-fg: var(--gs-purple-700);
+  --color-reasoning-fg: var(--gs-violet-700);
   --color-reasoning-surface: color-mix(
     in oklab,
-    var(--gs-purple-700) 10%,
+    var(--gs-violet-700) 10%,
     var(--color-surface-base)
   );
-  --color-reasoning-border: color-mix(in oklab, var(--gs-purple-700) 30%, transparent);
+  --color-reasoning-border: color-mix(in oklab, var(--gs-violet-700) 30%, transparent);
 
   /* Domain — agent confidence */
   --color-confidence-high: var(--gs-emerald-700);
   --color-confidence-medium: var(--gs-amber-700);
-  --color-confidence-low: var(--gs-red-700);
+  --color-confidence-low: var(--gs-rose-700);
 
   /* Domain — telemetry severity */
   --color-severity-nominal: var(--gs-emerald-700);
   --color-severity-degraded: var(--gs-amber-700);
-  --color-severity-anomalous: var(--gs-red-700);
+  --color-severity-anomalous: var(--gs-rose-700);
 
   /* Domain — frame classification. Slate is critical (red). */
-  --color-classification-slate: var(--gs-red-700);
+  --color-classification-slate: var(--gs-rose-700);
   --color-classification-slate-surface: color-mix(
     in oklab,
-    var(--gs-red-700) 12%,
+    var(--gs-rose-700) 12%,
     var(--color-surface-base)
   );
-  --color-classification-slate-border: color-mix(in oklab, var(--gs-red-700) 35%, transparent);
-  --color-classification-slate-subtle: color-mix(in oklab, var(--gs-red-700) 20%, transparent);
+  --color-classification-slate-border: color-mix(in oklab, var(--gs-rose-700) 35%, transparent);
+  --color-classification-slate-subtle: color-mix(in oklab, var(--gs-rose-700) 20%, transparent);
 
   --color-classification-ad: var(--gs-blue-700);
   --color-classification-ad-surface: color-mix(
@@ -112,4 +115,9 @@
     var(--gs-emerald-700) 35%,
     transparent
   );
+
+  --shadow-panel: 0 24px 70px color-mix(in oklab, var(--gs-sand-300) 40%, transparent);
+  --shadow-glow-interactive: 0 0 20px var(--color-interactive-subtle);
+  --shadow-glow-critical: 0 0 20px var(--color-status-critical-subtle);
+  --shadow-glow-success: 0 0 20px var(--color-status-success-subtle);
 }

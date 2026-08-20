@@ -1,122 +1,87 @@
-import React from 'react';
-import {
-  Activity,
-  Server,
-  CheckCircle2,
-  AlertCircle,
-  Loader2,
-  Sun,
-  Moon,
-  Database,
-} from 'lucide-react';
-import type { SystemHealth } from '../types.js';
+import { AlertCircle, CheckCircle2, Cloud, Database, Moon, Sun } from 'lucide-react';
 import { useTheme } from '../hooks/use-theme.js';
-import { Button } from './ui/index.js';
+import type { SystemHealth } from '../types.js';
+import { Button, StatusIndicator } from './ui/index.js';
+
+export type VertexRuntimeState = 'idle' | 'running' | 'verified' | 'error';
 
 interface HeaderProps {
   health: SystemHealth | null;
   healthLoading: boolean;
   healthError: string | null;
+  vertexState: VertexRuntimeState;
 }
 
-export const Header: React.FC<HeaderProps> = ({ health, healthLoading, healthError }) => {
+export function Header({ health, healthLoading, healthError, vertexState }: HeaderProps) {
   const { theme, toggleTheme } = useTheme();
+  const mcpConnected = Boolean(health?.mcp?.connected);
+  const vertexCopy = {
+    idle: 'Runtime idle',
+    running: 'Vertex active',
+    verified: 'Vertex verified',
+    error: 'Vertex error',
+  }[vertexState];
+  const vertexTone =
+    vertexState === 'verified'
+      ? 'success'
+      : vertexState === 'running'
+        ? 'warning'
+        : vertexState === 'error'
+          ? 'error'
+          : 'idle';
 
   return (
-    <header className="border-b border-border-subtle bg-surface-panel/95 px-6 py-3.5 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-sticky backdrop-blur-md shadow-sm">
-      {/* Brand Section */}
-      <div className="flex min-w-0 items-center gap-3">
+    <header className="sticky top-0 z-sticky border-b border-border-subtle bg-surface-panel/95 backdrop-blur-md">
+      <div className="mx-auto flex w-full max-w-screen-2xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
         <img
           src="/brand/ghostslate-lockup.png"
           alt="GhostSlate"
-          className="brand-lockup h-10 w-auto shrink-0 sm:h-11"
+          className="brand-lockup h-8 w-auto"
         />
-        <p className="hidden max-w-52 text-[10px] leading-relaxed font-mono text-text-muted lg:block">
-          FAST / SSAI Intelligent Forensics
-          <br />
-          ClickHouse MCP + Gemini Vision
-        </p>
-      </div>
 
-      {/* Target Feed & Status Section */}
-      <div className="flex flex-wrap items-center gap-3 text-xs font-mono">
-        {/* Active Feed Pill */}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-card border border-border-subtle shadow-xs">
-          <span className="w-2 h-2 rounded-full bg-status-critical animate-ping opacity-75 shrink-0" />
-          <span className="text-text-muted text-[10px] uppercase tracking-wider font-semibold whitespace-nowrap">
-            Target Feed:
-          </span>
-          <span className="text-interactive font-bold flex items-center gap-1 whitespace-nowrap">
-            <Activity className="w-3.5 h-3.5 text-interactive shrink-0" />
-            FAST-01 (Sports HD)
-          </span>
+        <div className="flex flex-wrap items-center justify-end gap-2 font-mono text-xs">
+          <StatusIndicator
+            icon={<Cloud className="h-3.5 w-3.5 text-text-muted" />}
+            label={vertexCopy}
+            tone={vertexTone}
+            className="hidden sm:inline-flex"
+          />
+
+          <StatusIndicator
+            icon={<Database className="h-3.5 w-3.5 text-data-fg" />}
+            label={
+              healthLoading
+                ? 'MCP checking'
+                : mcpConnected
+                  ? 'ClickHouse MCP connected'
+                  : 'MCP unavailable'
+            }
+            tone={healthLoading ? 'warning' : mcpConnected ? 'success' : 'error'}
+            loading={healthLoading}
+          />
+
+          <StatusIndicator
+            icon={
+              healthError ? (
+                <AlertCircle className="h-3.5 w-3.5 text-status-critical" />
+              ) : (
+                <CheckCircle2 className="h-3.5 w-3.5 text-status-success" />
+              )
+            }
+            label={healthError ? 'API offline' : health ? 'API online' : 'API checking'}
+            tone={healthError ? 'error' : health ? 'success' : 'idle'}
+            className="hidden md:inline-flex"
+          />
+
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={toggleTheme}
+            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+            icon={theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          />
         </div>
-
-        {/* ClickHouse MCP Pill */}
-        <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-surface-card border border-border-subtle">
-          <Database className="w-3.5 h-3.5 text-data-fg" />
-          <span className="text-text-muted text-[10px] uppercase font-semibold">MCP:</span>
-          {healthLoading && (
-            <span className="text-status-warning flex items-center gap-1 font-semibold">
-              <Loader2 className="w-3 h-3 animate-spin" />
-              Connecting...
-            </span>
-          )}
-          {!healthLoading && health?.mcp?.connected && (
-            <span className="text-data-fg font-bold flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5 text-status-success" />
-              ONLINE ({health.mcp.latencyMs ?? 0}ms)
-            </span>
-          )}
-          {!healthLoading && (!health?.mcp?.connected || healthError) && (
-            <span className="text-status-critical flex items-center gap-1 font-semibold">
-              <AlertCircle className="w-3 h-3 text-status-critical" />
-              OFFLINE
-            </span>
-          )}
-        </div>
-
-        {/* Server Health Pill */}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-surface-card border border-border-subtle">
-          <Server className="w-3.5 h-3.5 text-text-muted" />
-          <span className="text-text-muted text-[10px] uppercase font-semibold">API:</span>
-          {healthLoading && (
-            <span className="text-status-warning flex items-center gap-1 font-semibold">
-              <Loader2 className="w-3 h-3 animate-spin" />
-              Connecting...
-            </span>
-          )}
-          {healthError && (
-            <span className="text-status-critical flex items-center gap-1 font-semibold">
-              <AlertCircle className="w-3 h-3 text-status-critical" />
-              Offline ({healthError})
-            </span>
-          )}
-          {health && (
-            <span className="text-status-success flex items-center gap-1.5 font-semibold">
-              <CheckCircle2 className="w-3.5 h-3.5 text-status-success" />
-              ONLINE ({health.uptimeSeconds}s)
-            </span>
-          )}
-        </div>
-
-        {/* Theme Switcher Button */}
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={toggleTheme}
-          title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-          icon={
-            theme === 'dark' ? (
-              <Sun className="w-3.5 h-3.5 text-interactive" />
-            ) : (
-              <Moon className="w-3.5 h-3.5 text-interactive" />
-            )
-          }
-        >
-          {theme === 'dark' ? 'Light' : 'Dark'}
-        </Button>
       </div>
     </header>
   );
-};
+}

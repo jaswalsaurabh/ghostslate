@@ -60,7 +60,7 @@ export const RemediationPanel: React.FC<RemediationPanelProps> = ({
         <div
           role="alert"
           aria-live="polite"
-          className="p-3 bg-surface-subtle border border-status-critical-border rounded-lg text-xs flex flex-col gap-2 animate-fadeIn"
+          className="p-3 bg-status-critical-surface border border-status-critical-border rounded-lg text-xs flex flex-col gap-2 animate-fadeIn"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5 text-status-critical font-bold uppercase tracking-wider text-[11px]">

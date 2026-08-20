@@ -87,7 +87,7 @@ export const GroundedDiagnosisCard: React.FC<GroundedDiagnosisCardProps> = ({
 
       {/* Violation Alert Banner if claims were not grounded in ClickHouse data */}
       {grounding && !grounding.grounded && grounding.violations.length > 0 && (
-        <div className="p-3 bg-surface-subtle border border-status-critical-border rounded-lg text-xs flex flex-col gap-2">
+        <div className="p-3 bg-status-critical-surface border border-status-critical-border rounded-lg text-xs flex flex-col gap-2">
           <div className="flex items-center gap-1.5 text-status-critical font-bold uppercase tracking-wider text-[11px]">
             <AlertOctagon className="w-3.5 h-3.5" />
             <span>Unverified Claims Detected by Grounding Engine</span>

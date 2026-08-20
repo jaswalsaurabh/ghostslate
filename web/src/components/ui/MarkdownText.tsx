@@ -23,7 +23,7 @@ export const renderFormattedInline = (text: string): React.ReactNode => {
       return (
         <code
           key={idx}
-          className={`px-1.5 py-0.5 mx-0.5 rounded font-mono text-[11px] font-semibold tracking-tight ${
+          className={`px-1.5 py-0.5 mx-0.5 rounded font-mono text-xs font-semibold tracking-tight ${
             isCritical
               ? 'bg-status-critical-surface text-status-critical border border-status-critical-border/50'
               : 'bg-surface-card text-text-primary border border-border-subtle'
@@ -46,7 +46,7 @@ export const renderFormattedInline = (text: string): React.ReactNode => {
       return (
         <span
           key={idx}
-          className="inline-flex items-center px-2 py-0.5 mx-0.5 rounded-full bg-status-critical-surface text-status-critical border border-status-critical-border font-mono text-[10px] font-bold tracking-wide"
+          className="inline-flex items-center px-2 py-0.5 mx-0.5 rounded-full bg-status-critical-surface text-status-critical border border-status-critical-border font-mono text-xs font-bold tracking-wide"
         >
           {part}
         </span>
@@ -80,7 +80,7 @@ export const MarkdownText: React.FC<MarkdownTextProps> = ({ content, className =
           <div key={`list-${blockKey++}`} className="flex flex-col gap-2 my-1.5 pl-1">
             {currentList.items.map((item, i) => (
               <div key={i} className="flex items-start gap-2.5 text-xs text-text-primary">
-                <span className="w-4 h-4 rounded-full bg-interactive-surface text-interactive border border-interactive-border flex items-center justify-center font-mono text-[10px] font-bold shrink-0 mt-0.5 shadow-xs">
+                <span className="w-4 h-4 rounded-full bg-interactive-surface text-interactive border border-interactive-border flex items-center justify-center font-mono text-xs font-bold shrink-0 mt-0.5 shadow-xs">
                   {i + 1}
                 </span>
                 <div className="flex-1 leading-relaxed">{item}</div>

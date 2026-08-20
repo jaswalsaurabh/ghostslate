@@ -1,6 +1,18 @@
 @layer base {
   body {
     font-family: var(--font-sans);
+    min-width: 320px;
+    color: var(--color-text-primary);
+    background-color: var(--color-surface-base);
+    background-image:
+      linear-gradient(var(--color-surface-grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--color-surface-grid) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-interactive);
+    outline-offset: 3px;
   }
 
   code,

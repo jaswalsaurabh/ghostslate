@@ -1,23 +1,32 @@
 @layer theme {
   :root {
-    /* Neutrals — Dark theme */
-    --gs-neutral-950: #070b12;
-    --gs-neutral-900: #0d1424;
-    --gs-neutral-850: #141f36;
-    --gs-neutral-800: #1e2d4a;
-    --gs-neutral-750: #1f2e4d;
-    --gs-neutral-700: #2a3d63;
+    /* Neutrals */
+    --gs-neutral-1000: #05070a;
+    --gs-neutral-950: #080c12;
+    --gs-neutral-900: #0d131c;
+    --gs-neutral-850: #121a25;
+    --gs-neutral-800: #192331;
+    --gs-neutral-750: #202c3a;
+    --gs-neutral-700: #263547;
+    --gs-neutral-600: #415368;
     --gs-neutral-500: #64748b;
     --gs-neutral-450: #7c8ba1;
     --gs-neutral-400: #94a3b8;
     --gs-neutral-50: #f8fafc;
     --gs-neutral-0: #ffffff;
 
-    /* Neutrals — Light theme */
+    /* Cool neutrals */
     --gs-neutral-100: #f1f5f9;
     --gs-neutral-200: #e2e8f0;
     --gs-neutral-300: #cbd5e1;
-    --gs-neutral-600: #475569;
+
+    /* Redesign surfaces. Sand-50 is the approved light canvas. */
+    --gs-ocean-950: #06141b;
+    --gs-sand-25: #fcfaf6;
+    --gs-sand-50: #f3f4f1;
+    --gs-sand-100: #f1ebe1;
+    --gs-sand-200: #e4d9ca;
+    --gs-sand-300: #d3c2ae;
 
     /* Accents — Dark theme (400 step) */
     --gs-sky-400: #38bdf8;
@@ -27,6 +36,12 @@
     --gs-blue-400: #60a5fa;
     --gs-purple-400: #c084fc;
 
+    /* Redesign accents — distinct from the legacy blue/red/purple family. */
+    --gs-cyan-300: #67e8f9;
+    --gs-cyan-400: #22d3ee;
+    --gs-rose-400: #fb7185;
+    --gs-violet-400: #a78bfa;
+
     /* Accents — Light theme (700 step for WCAG AA >= 4.5:1) */
     --gs-sky-700: #0369a1;
     --gs-amber-700: #b45309;
@@ -34,5 +49,8 @@
     --gs-emerald-700: #047857;
     --gs-blue-700: #1d4ed8;
     --gs-purple-700: #7e22ce;
+    --gs-cyan-700: #0e7490;
+    --gs-rose-700: #be123c;
+    --gs-violet-700: #6d28d9;
   }
 }

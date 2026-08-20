@@ -1,10 +1,12 @@
 @theme static {
   /* Surfaces */
-  --color-surface-base: var(--gs-neutral-950);
+  --color-surface-base: var(--gs-ocean-950);
   --color-surface-panel: var(--gs-neutral-900);
   --color-surface-card: var(--gs-neutral-850);
   --color-surface-hover: var(--gs-neutral-750);
   --color-surface-scrim: color-mix(in oklab, var(--gs-neutral-950) 80%, transparent);
+  --color-surface-overlay: color-mix(in oklab, var(--gs-neutral-1000) 76%, transparent);
+  --color-surface-grid: color-mix(in oklab, var(--gs-cyan-300) 4.5%, transparent);
 
   /* Borders */
   --color-border-subtle: var(--gs-neutral-800);
@@ -16,26 +18,26 @@
   --color-text-muted: var(--gs-neutral-450);
 
   /* Interactive */
-  --color-interactive: var(--gs-sky-400);
-  --color-interactive-fg: var(--gs-neutral-950);
+  --color-interactive: var(--gs-cyan-400);
+  --color-interactive-fg: var(--gs-neutral-1000);
   --color-interactive-surface: color-mix(
     in oklab,
-    var(--gs-sky-400) 15%,
+    var(--gs-cyan-400) 15%,
     var(--color-surface-base)
   );
-  --color-interactive-border: color-mix(in oklab, var(--gs-sky-400) 30%, transparent);
-  --color-interactive-subtle: color-mix(in oklab, var(--gs-sky-400) 20%, transparent);
+  --color-interactive-border: color-mix(in oklab, var(--gs-cyan-400) 30%, transparent);
+  --color-interactive-subtle: color-mix(in oklab, var(--gs-cyan-400) 20%, transparent);
 
   /* Status — Critical */
-  --color-status-critical: var(--gs-red-400);
+  --color-status-critical: var(--gs-rose-400);
   --color-status-critical-surface: color-mix(
     in oklab,
-    var(--gs-red-400) 15%,
+    var(--gs-rose-400) 15%,
     var(--color-surface-base)
   );
-  --color-status-critical-border: color-mix(in oklab, var(--gs-red-400) 30%, transparent);
-  --color-status-critical-subtle: color-mix(in oklab, var(--gs-red-400) 20%, transparent);
-  --color-status-critical-zone: color-mix(in oklab, var(--gs-red-400) 40%, transparent);
+  --color-status-critical-border: color-mix(in oklab, var(--gs-rose-400) 30%, transparent);
+  --color-status-critical-subtle: color-mix(in oklab, var(--gs-rose-400) 20%, transparent);
+  --color-status-critical-zone: color-mix(in oklab, var(--gs-rose-400) 40%, transparent);
 
   /* Status — Warning */
   --color-status-warning: var(--gs-amber-400);
@@ -56,6 +58,7 @@
     var(--color-surface-base)
   );
   --color-status-success-border: color-mix(in oklab, var(--gs-emerald-400) 30%, transparent);
+  --color-status-success-subtle: color-mix(in oklab, var(--gs-emerald-400) 20%, transparent);
   --color-status-success-zone: color-mix(in oklab, var(--gs-emerald-400) 40%, transparent);
 
   /* Data / query surface — the ClickHouse terminal aesthetic */
@@ -65,26 +68,26 @@
   --color-data-border: color-mix(in oklab, var(--gs-emerald-400) 30%, transparent);
 
   /* Agent Reasoning */
-  --color-reasoning-fg: var(--gs-purple-400);
+  --color-reasoning-fg: var(--gs-violet-400);
   --color-reasoning-surface: color-mix(
     in oklab,
-    var(--gs-purple-400) 12%,
+    var(--gs-violet-400) 12%,
     var(--color-surface-base)
   );
-  --color-reasoning-border: color-mix(in oklab, var(--gs-purple-400) 30%, transparent);
+  --color-reasoning-border: color-mix(in oklab, var(--gs-violet-400) 30%, transparent);
 
   /* Domain — agent confidence (§7 of the design system) */
   --color-confidence-high: var(--gs-emerald-400);
   --color-confidence-medium: var(--gs-amber-400);
-  --color-confidence-low: var(--gs-red-400);
+  --color-confidence-low: var(--gs-rose-400);
 
   /* Domain — telemetry severity */
   --color-severity-nominal: var(--gs-emerald-400);
   --color-severity-degraded: var(--gs-amber-400);
-  --color-severity-anomalous: var(--gs-red-400);
+  --color-severity-anomalous: var(--gs-rose-400);
 
   /* Domain — frame classification. Mirrors ClassificationType in web/src/types.ts. Slate is critical (red). */
-  --color-classification-slate: var(--gs-red-400);
+  --color-classification-slate: var(--gs-rose-400);
   --color-classification-slate-surface: color-mix(
     in oklab,
     var(--color-classification-slate) 15%,
@@ -136,6 +139,11 @@
 
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 
-  --z-index-sticky: 40;
-  --z-sticky: 40;
+  --shadow-panel: 0 24px 70px color-mix(in oklab, var(--gs-neutral-1000) 28%, transparent);
+  --shadow-glow-interactive: 0 0 20px var(--color-interactive-subtle);
+  --shadow-glow-critical: 0 0 20px var(--color-status-critical-subtle);
+  --shadow-glow-success: 0 0 20px var(--color-status-success-subtle);
+
+  --z-index-sticky: 20;
+  --z-index-toast: 60;
 }

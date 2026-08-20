@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
-import { z } from 'zod';
-import type { InvestigationTraceEvent } from '../types.js';
+import { groundedKpiPayloadSchema } from '../api/index.js';
+import type { InvestigationEvidenceSummary, InvestigationTraceEvent } from '../types.js';
 
 export interface GroundedKpiMetrics {
+  evidenceSummary?: InvestigationEvidenceSummary | undefined;
   revenueLoss: string;
   revenueLossSubtext: string;
   revenueLossVariant: 'critical' | 'warning' | 'success' | 'interactive' | 'neutral';
@@ -26,37 +27,8 @@ export interface GroundedKpiMetrics {
   rateCardFromQuery: boolean;
 }
 
-const GroundedKpiPayloadSchema = z.object({
-  revenueLoss: z.string().nullable().optional(),
-  revenueLossSubtext: z.string().nullable().optional(),
-  revenueLossVariant: z
-    .enum(['critical', 'warning', 'success', 'interactive', 'neutral'])
-    .default('neutral'),
-  revenueLossTag: z.string().nullable().optional(),
-
-  slateBleedRate: z.string().nullable().optional(),
-  slateBleedSubtext: z.string().nullable().optional(),
-  slateBleedVariant: z
-    .enum(['critical', 'warning', 'success', 'interactive', 'neutral'])
-    .default('neutral'),
-  slateBleedTag: z.string().nullable().optional(),
-
-  offendingSsp: z.string().nullable().optional(),
-  sspLatency: z.string().nullable().optional(),
-  sspSubtext: z.string().nullable().optional(),
-  sspVariant: z
-    .enum(['critical', 'warning', 'success', 'interactive', 'neutral'])
-    .default('neutral'),
-
-  scannedLogs: z.string().nullable().optional(),
-  scannedLogsSubtext: z.string().nullable().optional(),
-  scannedLogsTag: z.string().nullable().optional(),
-
-  isGroundedFromMcp: z.boolean().default(false),
-  rateCardFromQuery: z.boolean().default(false),
-});
-
 const EMPTY_METRICS: GroundedKpiMetrics = {
+  evidenceSummary: undefined,
   revenueLoss: '—',
   revenueLossSubtext: 'Awaiting investigation telemetry',
   revenueLossVariant: 'neutral',
@@ -88,11 +60,12 @@ export function useClickHouseMetrics(
     for (let i = investigationTrace.length - 1; i >= 0; i--) {
       const ev = investigationTrace[i];
       if (ev && ev.type === 'metrics' && ev.data) {
-        const parsed = GroundedKpiPayloadSchema.safeParse(ev.data);
+        const parsed = groundedKpiPayloadSchema.safeParse(ev.data);
         if (parsed.success) {
           const { data } = parsed;
           if (data.isGroundedFromMcp) {
             return {
+              evidenceSummary: data.evidenceSummary ?? undefined,
               revenueLoss: data.revenueLoss ?? '—',
               revenueLossSubtext: data.revenueLossSubtext ?? 'No loss in window',
               revenueLossVariant: data.revenueLossVariant,

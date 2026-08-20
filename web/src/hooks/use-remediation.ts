@@ -1,64 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { z } from 'zod';
+import {
+  decodeApproveRemediationResponse,
+  decodeGetRemediationResponse,
+  getApiErrorMessage,
+} from '../api/index.js';
 import type { RemediationState } from '../types.js';
-
-const RemediationProposalSchema = z.object({
-  action: z.literal('reroute_ssp_cohort'),
-  target: z.object({
-    channelId: z.string(),
-    sspId: z.string(),
-    deviceClass: z.string(),
-    codec: z.string(),
-    daypart: z.string(),
-  }),
-  window: z.object({
-    from: z.string(),
-    to: z.string(),
-  }),
-  evidence: z.object({
-    cues: z.number(),
-    unmonetizedImpressions: z.number(),
-    unmonetizedPct: z.number(),
-    p95AuctionMs: z.number(),
-    stitcherDeadlineMs: z.number(),
-  }),
-});
-
-const RemediationEmissionSchema = z.object({
-  emissionId: z.string(),
-  runKey: z.string(),
-  approvedAt: z.string(),
-  emittedAt: z.string(),
-});
-
-const RemediationStateSchema: z.ZodType<RemediationState> = z.discriminatedUnion('status', [
-  z.object({
-    status: z.literal('unavailable'),
-    reason: z.enum(['UNGROUNDED', 'INSUFFICIENT_EVIDENCE', 'NO_INCIDENT']),
-  }),
-  z.object({
-    status: z.literal('staged'),
-    proposal: RemediationProposalSchema,
-  }),
-  z.object({
-    status: z.literal('emitted'),
-    proposal: RemediationProposalSchema,
-    emission: RemediationEmissionSchema,
-  }),
-]);
-
-const GetRemediationResponseSchema = z.object({
-  remediation: RemediationStateSchema,
-});
-
-const ApproveRemediationResponseSchema = z.object({
-  created: z.boolean(),
-  remediation: z.object({
-    status: z.literal('emitted'),
-    proposal: RemediationProposalSchema,
-    emission: RemediationEmissionSchema,
-  }),
-});
 
 export interface UseRemediationOptions {
   runKey: string | null;
@@ -97,28 +43,13 @@ export function useRemediation({ runKey, ready }: UseRemediationOptions): UseRem
       }
 
       if (!response.ok) {
-        let errMessage = `HTTP ${response.status}`;
-        try {
-          const errData = (await response.json()) as {
-            error?: { code?: string; message?: string };
-          };
-          if (errData?.error?.message) {
-            errMessage = errData.error.message;
-          }
-        } catch {
-          // ignore parse error
-        }
-        throw new Error(errMessage);
+        throw new Error(await getApiErrorMessage(response));
       }
 
-      const json: unknown = await response.json();
-      const parsed = GetRemediationResponseSchema.safeParse(json);
-      if (!parsed.success) {
-        throw new Error('Invalid remediation response received from server.');
-      }
+      const decoded = decodeGetRemediationResponse(await response.json());
 
       if (activeRunKeyRef.current === targetRunKey) {
-        setRemediation(parsed.data.remediation);
+        setRemediation(decoded.remediation);
       }
     } catch (err: unknown) {
       if (activeRunKeyRef.current === targetRunKey) {
@@ -173,28 +104,13 @@ export function useRemediation({ runKey, ready }: UseRemediationOptions): UseRem
       }
 
       if (!response.ok) {
-        let errMessage = `HTTP ${response.status}`;
-        try {
-          const errData = (await response.json()) as {
-            error?: { code?: string; message?: string };
-          };
-          if (errData?.error?.message) {
-            errMessage = errData.error.message;
-          }
-        } catch {
-          // ignore parse error
-        }
-        throw new Error(errMessage);
+        throw new Error(await getApiErrorMessage(response));
       }
 
-      const json: unknown = await response.json();
-      const parsed = ApproveRemediationResponseSchema.safeParse(json);
-      if (!parsed.success) {
-        throw new Error('Invalid approval response received from server.');
-      }
+      const decoded = decodeApproveRemediationResponse(await response.json());
 
       if (activeRunKeyRef.current === runKey) {
-        setRemediation(parsed.data.remediation);
+        setRemediation(decoded.remediation);
       }
     } catch (err: unknown) {
       if (activeRunKeyRef.current === runKey) {

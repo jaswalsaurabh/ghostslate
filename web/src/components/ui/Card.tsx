@@ -30,11 +30,11 @@ export const Card: React.FC<CardProps> = ({
 
   const glowClasses =
     glow === true || glow === 'interactive'
-      ? 'shadow-[0_0_20px_var(--color-interactive-subtle)] border-interactive-border'
+      ? 'shadow-glow-interactive border-interactive-border'
       : glow === 'critical'
-        ? 'shadow-[0_0_20px_var(--color-status-critical-subtle)] border-status-critical-border'
+        ? 'shadow-glow-critical border-status-critical-border'
         : glow === 'success'
-          ? 'shadow-[0_0_20px_var(--color-status-success-subtle)] border-status-success-border'
+          ? 'shadow-glow-success border-status-success-border'
           : '';
 
   return (
