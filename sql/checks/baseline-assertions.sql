@@ -1,4 +1,4 @@
--- GhostSlate Baseline Integrity Assertions (Block 1 / Day 3)
+-- GhostSlate Baseline Integrity Assertions
 -- Every query must return ok = 1.
 
 -- Assertion 1: ssai_stitch_attempts count = 101,400,000 exactly
@@ -88,8 +88,8 @@ FROM (
 
 -- Assertion 12: p95 ad_response_latency_ms per SSP is between 200 and 350 ms, and below 450 ms for all four.
 -- Note: The 200–350 ms range comes from the analytic p95 of the mixture model (5% heavy-tail branch at 6x spread + peak load factor).
--- The earlier 200–300 ms estimate omitted the mixture tail. Measured headroom to the 450 ms deadline is ~104 ms at worst SSP (ssp-delta ~346 ms).
--- Block 2 must not widen the baseline further.
+-- Measured headroom to the 450 ms deadline is ~104 ms at the worst SSP (ssp-delta ~346 ms).
+-- Incident injection must preserve the baseline distribution outside its scoped windows.
 SELECT (
     count() = 4
     AND min(p95) >= 200

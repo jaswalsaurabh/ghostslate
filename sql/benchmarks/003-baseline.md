@@ -1,4 +1,4 @@
-# Baseline Telemetry Performance Benchmarks (Block 1 / Day 3)
+# Baseline Telemetry Performance Benchmarks
 
 Measured against the canonical 101.4M-row dataset running on ClickHouse Server 24.8.
 All timings, rows scanned, and byte metrics are extracted directly from `system.query_log` and `system.parts`.
@@ -130,13 +130,16 @@ The baseline synthetic telemetry incorporates a deterministic ±5% per-day traff
 
 ---
 
-## Known Defect — ASOF Join Direction
+## ASOF Join Direction Finding
 
-During baseline verification, `sql/queries/slate_bleed_correlation.sql` was evaluated. The query currently places `scte35_cue_events` on the left and performs an `ASOF JOIN` against `ssai_stitch_attempts` with `s.attempt_time >= c.cue_time`.
+Baseline verification found that placing `scte35_cue_events` on the left of the `ASOF JOIN` and
+matching `s.attempt_time >= c.cue_time` produced the wrong analytical grain.
 
 Because `ASOF JOIN` returns exactly one match per left row and `>=` matches the earliest attempt after the cue, this selects the fastest auction among thousands of concurrent sessions for that cue. The fastest auction is almost always `FILLED`, suppressing any slate bleed signal and incorrectly counting cues rather than viewer sessions.
 
-Per the architecture plan, this query file is intentionally left untouched in Block 1. Block 3 (Day 5) will reverse the join direction to place stitch attempts on the left and match the preceding cue event (`attempt_time >= cue_time`), aggregating across all sessions and breaks.
+The production query corrects the direction by placing stitch attempts on the left and matching the
+preceding cue event (`attempt_time >= cue_time`), then aggregating across sessions and breaks. The
+corrected query and measured results are documented in `005-query-correctness.md`.
 
 ---
 

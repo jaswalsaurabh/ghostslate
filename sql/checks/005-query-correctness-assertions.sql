@@ -1,4 +1,4 @@
--- GhostSlate Query Correctness Assertions (Block 3 / Day 5 Rework)
+-- GhostSlate Query Correctness Assertions
 -- Validates ASOF join 1-to-1 cardinality (no duplicate cue timestamps),
 -- denominator-of-one trap prevention vs production aggregation grain,
 -- small-sample guard effectiveness, primary incident isolation at 4D grain (including codec),

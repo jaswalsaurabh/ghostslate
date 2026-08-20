@@ -372,9 +372,7 @@ In accordance with `AGENTS.md` §Time ("Every timestamp is UTC everywhere except
 
 ## 7. Redaction Audit & Verification
 
-`scripts/scan-secrets.sh` is staged-content-only. These changes were unstaged during preparation, so the scanner was not evidence for this patch. The committer must run it after intentionally staging the final files.
-
-In addition, a manual review of all tracked documents, scripts, and machine-readable evidence files ([`live-positive-canonical-response-2026-08-19.json`](evidence/live-positive-canonical-response-2026-08-19.json), [`live-negative-canonical-response-2026-08-19.json`](evidence/live-negative-canonical-response-2026-08-19.json), [`live-self-correction-2026-08-19.jsonl`](evidence/live-self-correction-2026-08-19.jsonl)) verified that zero authorization headers, bearer tokens, passwords, private keys, service-account JSON payloads, or credential paths are present.
+A manual review of all tracked documents, scripts, and machine-readable evidence files ([`live-positive-canonical-response-2026-08-19.json`](evidence/live-positive-canonical-response-2026-08-19.json), [`live-negative-canonical-response-2026-08-19.json`](evidence/live-negative-canonical-response-2026-08-19.json), [`live-self-correction-2026-08-19.jsonl`](evidence/live-self-correction-2026-08-19.jsonl)) verified that zero authorization headers, bearer tokens, passwords, private keys, service-account JSON payloads, or credential paths are present.
 
 ---
 

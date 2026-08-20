@@ -123,6 +123,7 @@ Thumbs.db
 # Agent tooling scratch
 # ---------------------------------------------------------------------------
 graphify-out/
+CLAUDE.md
 .claude/settings.local.json
 .agent/docs
 .agent/plans

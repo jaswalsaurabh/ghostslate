@@ -1,4 +1,4 @@
-# Incident Mutation Benchmarks & Ground Truth Ledger (Block 2 / Day 4)
+# Incident Mutation Benchmarks & Ground Truth Ledger
 
 Measured against the canonical 101.4M-row dataset running on ClickHouse Server 24.8.
 All mutations execute with `IN PARTITION 'YYYYMMDD'` and `mutations_sync = 2` (synchronous partition mutation).

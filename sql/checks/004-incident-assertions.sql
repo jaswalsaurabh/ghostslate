@@ -1,4 +1,4 @@
--- GhostSlate Incident Integrity Assertions (Block 2 / Day 4)
+-- GhostSlate Incident Integrity Assertions
 -- Every query must return ok = 1.
 
 -- Assertion 1: Injected incident ledger contains exactly the 4 documented incidents

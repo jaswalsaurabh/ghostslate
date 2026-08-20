@@ -1,4 +1,4 @@
-# Query Correctness Performance Benchmarks (Block 3 / Day 5 Rework)
+# Query Correctness Performance Benchmarks
 
 Measured against the canonical 101.4M-row dataset running on ClickHouse Server 24.8.
 All direct benchmark timings, rows scanned, and byte metrics are extracted from ClickHouse `system.query_log` and `system.parts`. Live end-to-end latencies are measured via the official `mcp-clickhouse` 0.4.1 server.
