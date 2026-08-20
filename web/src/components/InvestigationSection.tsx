@@ -1,18 +1,23 @@
 import React, { useRef, useEffect } from 'react';
 import { Sparkles, Search } from 'lucide-react';
-import type { InvestigationTraceEvent, GroundingReport } from '../types.js';
+import type { InvestigationTraceEvent, GroundingReport, RemediationState } from '../types.js';
 import { GroundedDiagnosisCard } from './GroundedDiagnosisCard.js';
 import { InvestigationEventItem } from './InvestigationEventItem.js';
 import { Button, Badge, Card } from './ui/index.js';
 
 interface InvestigationSectionProps {
   investigating: boolean;
-  reconnecting?: boolean;
+  reconnecting?: boolean | undefined;
   onRunInvestigation: () => void;
   investigationTrace: InvestigationTraceEvent[];
   finalDiagnosis: string | null;
   groundingReport?: GroundingReport | undefined;
-  onRemediate?: (action: 'reroute' | 'buffer') => void;
+  remediation?: RemediationState | null | undefined;
+  remediationLoading?: boolean | undefined;
+  remediationApproving?: boolean | undefined;
+  remediationError?: string | null | undefined;
+  onApproveRemediation?: (() => Promise<void>) | undefined;
+  onRefreshRemediation?: (() => Promise<void>) | undefined;
 }
 
 export const InvestigationSection: React.FC<InvestigationSectionProps> = ({
@@ -22,7 +27,12 @@ export const InvestigationSection: React.FC<InvestigationSectionProps> = ({
   investigationTrace,
   finalDiagnosis,
   groundingReport,
-  onRemediate,
+  remediation = null,
+  remediationLoading = false,
+  remediationApproving = false,
+  remediationError = null,
+  onApproveRemediation,
+  onRefreshRemediation,
 }) => {
   const logContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -97,7 +107,12 @@ export const InvestigationSection: React.FC<InvestigationSectionProps> = ({
         <GroundedDiagnosisCard
           diagnosis={finalDiagnosis}
           grounding={groundingReport}
-          onRemediate={onRemediate}
+          remediation={remediation}
+          remediationLoading={remediationLoading}
+          remediationApproving={remediationApproving}
+          remediationError={remediationError}
+          onApproveRemediation={onApproveRemediation}
+          onRefreshRemediation={onRefreshRemediation}
         />
       )}
     </Card>

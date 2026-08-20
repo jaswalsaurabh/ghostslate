@@ -77,6 +77,56 @@ export interface InvestigationTraceEvent {
     hypothesis?: string;
     turn?: number;
     grounding?: GroundingReport;
+    remediation?: RemediationDecision;
     [key: string]: unknown;
   };
 }
+
+export type RemediationUnavailableReason = 'UNGROUNDED' | 'INSUFFICIENT_EVIDENCE' | 'NO_INCIDENT';
+
+export interface RemediationProposal {
+  action: 'reroute_ssp_cohort';
+  target: {
+    channelId: string;
+    sspId: string;
+    deviceClass: string;
+    codec: string;
+    daypart: string;
+  };
+  window: {
+    from: string;
+    to: string;
+  };
+  evidence: {
+    cues: number;
+    unmonetizedImpressions: number;
+    unmonetizedPct: number;
+    p95AuctionMs: number;
+    stitcherDeadlineMs: number;
+  };
+}
+
+export type RemediationDecision =
+  | {
+      status: 'unavailable';
+      reason: RemediationUnavailableReason;
+    }
+  | {
+      status: 'staged';
+      proposal: RemediationProposal;
+    };
+
+export interface RemediationEmission {
+  emissionId: string;
+  runKey: string;
+  approvedAt: string;
+  emittedAt: string;
+}
+
+export interface EmittedRemediationState {
+  status: 'emitted';
+  proposal: RemediationProposal;
+  emission: RemediationEmission;
+}
+
+export type RemediationState = RemediationDecision | EmittedRemediationState;

@@ -1,40 +1,36 @@
 import React, { useState } from 'react';
-import {
-  ShieldCheck,
-  ShieldAlert,
-  Copy,
-  Check,
-  Zap,
-  Clock,
-  CheckCircle2,
-  AlertOctagon,
-} from 'lucide-react';
+import { ShieldCheck, ShieldAlert, Copy, Check, AlertOctagon } from 'lucide-react';
 import { Button, Badge, Card, MarkdownText } from './ui/index.js';
-import type { GroundingReport } from '../types.js';
+import { RemediationPanel } from './RemediationPanel.js';
+import type { GroundingReport, RemediationState } from '../types.js';
 
 interface GroundedDiagnosisCardProps {
   diagnosis: string;
   grounding?: GroundingReport | undefined;
-  onRemediate?: ((action: 'reroute' | 'buffer') => void) | undefined;
+  remediation?: RemediationState | null | undefined;
+  remediationLoading?: boolean | undefined;
+  remediationApproving?: boolean | undefined;
+  remediationError?: string | null | undefined;
+  onApproveRemediation?: (() => Promise<void>) | undefined;
+  onRefreshRemediation?: (() => Promise<void>) | undefined;
 }
 
 export const GroundedDiagnosisCard: React.FC<GroundedDiagnosisCardProps> = ({
   diagnosis,
   grounding,
-  onRemediate,
+  remediation = null,
+  remediationLoading = false,
+  remediationApproving = false,
+  remediationError = null,
+  onApproveRemediation,
+  onRefreshRemediation,
 }) => {
   const [copied, setCopied] = useState(false);
-  const [appliedAction, setAppliedAction] = useState<string | null>(null);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(diagnosis);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleApply = (action: 'reroute' | 'buffer') => {
-    setAppliedAction(action);
-    if (onRemediate) onRemediate(action);
   };
 
   const isGrounded = grounding ? grounding.grounded : true;
@@ -108,48 +104,15 @@ export const GroundedDiagnosisCard: React.FC<GroundedDiagnosisCardProps> = ({
         </div>
       )}
 
-      {/* Operator Remediation Staging Actions */}
-      <div className="pt-2 border-t border-border-subtle flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <span className="text-[11px] font-mono font-bold text-text-muted uppercase tracking-wider">
-            Remediation &amp; Mitigation Options
-          </span>
-          {appliedAction && (
-            <span className="text-[11px] font-mono text-status-success font-semibold flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              Remediation policy staged for operator review
-            </span>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          <Button
-            variant="critical"
-            size="md"
-            onClick={() => handleApply('reroute')}
-            icon={<Zap className="w-3.5 h-3.5 text-status-critical" />}
-            className="justify-between"
-          >
-            <span>Stage Reroute Policy: Degrade SSP</span>
-            <Badge variant="critical" size="sm">
-              MITIGATION
-            </Badge>
-          </Button>
-
-          <Button
-            variant="secondary"
-            size="md"
-            onClick={() => handleApply('buffer')}
-            icon={<Clock className="w-3.5 h-3.5 text-interactive" />}
-            className="justify-between"
-          >
-            <span>Stage Buffer Policy (+200ms)</span>
-            <Badge variant="primary" size="sm">
-              SLA POLICY
-            </Badge>
-          </Button>
-        </div>
-      </div>
+      {/* Operator Remediation Panel */}
+      <RemediationPanel
+        remediation={remediation}
+        loading={remediationLoading}
+        approving={remediationApproving}
+        error={remediationError}
+        onApprove={onApproveRemediation ?? (async () => {})}
+        onRefresh={onRefreshRemediation}
+      />
     </Card>
   );
 };
