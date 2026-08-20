@@ -11,6 +11,7 @@ import { createHealthRouter } from './routes/health.route.js';
 import { McpClientService } from './services/mcp.service.js';
 import { InvestigationService } from './services/investigation.service.js';
 import { InvestigationRunsService } from './services/investigation-runs.service.js';
+import { RemediationService } from './services/remediation.service.js';
 import { InvestigationController } from './controllers/investigation.controller.js';
 import { createInvestigationRouter } from './routes/investigation.route.js';
 import { VisionService } from './services/vision.service.js';
@@ -52,7 +53,11 @@ export function createApp({ logger }: AppContext): Express {
       to: input.to,
     }),
   );
-  const investigationController = new InvestigationController(investigationRunsService);
+  const remediationService = new RemediationService(logger);
+  const investigationController = new InvestigationController(
+    investigationRunsService,
+    remediationService,
+  );
 
   const visionController = new VisionController(visionService);
 

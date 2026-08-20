@@ -7,6 +7,7 @@ import { InvestigationSection } from './components/InvestigationSection.js';
 import { CheckCircle2 } from 'lucide-react';
 import { useClickHouseMetrics } from './hooks/use-clickhouse-metrics.js';
 import { useInvestigationStream } from './hooks/use-investigation-stream.js';
+import { useRemediation } from './hooks/use-remediation.js';
 
 export const App: React.FC = () => {
   const [health, setHealth] = useState<SystemHealth | null>(null);
@@ -30,6 +31,7 @@ export const App: React.FC = () => {
 
   // Investigation Stream Hook
   const {
+    runKey,
     investigating,
     reconnecting,
     investigationTrace,
@@ -41,6 +43,19 @@ export const App: React.FC = () => {
 
   // Grounded ClickHouse Metrics Hook
   const kpiMetrics = useClickHouseMetrics(investigationTrace);
+
+  // Grounded Remediation Hook
+  const {
+    remediation,
+    loading: remediationLoading,
+    approving: remediationApproving,
+    error: remediationError,
+    approve: approveRemediation,
+    refresh: refreshRemediation,
+  } = useRemediation({
+    runKey,
+    ready: Boolean(finalDiagnosis && !investigating),
+  });
 
   // Toast State
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -198,22 +213,6 @@ export const App: React.FC = () => {
     await startInvestigation({ prompt, channel, from, to });
   };
 
-  const handleRemediate = (action: 'reroute' | 'buffer') => {
-    if (action === 'reroute') {
-      const sspLabel =
-        kpiMetrics.offendingSsp && kpiMetrics.offendingSsp !== '—'
-          ? kpiMetrics.offendingSsp
-          : 'offending SSP';
-      showToast(
-        `📋 Remediation policy generated: Reroute traffic from ${sspLabel}. Staged for operator review.`,
-      );
-    } else {
-      showToast(
-        '📋 Remediation policy generated: Extend SCTE-35 pre-roll buffer to 450ms. Staged for operator review.',
-      );
-    }
-  };
-
   return (
     <div className="min-h-screen bg-surface-base text-text-primary flex flex-col font-sans selection:bg-interactive selection:text-interactive-fg transition-colors duration-base">
       {/* Top Header */}
@@ -254,7 +253,12 @@ export const App: React.FC = () => {
             investigationTrace={investigationTrace}
             finalDiagnosis={finalDiagnosis}
             groundingReport={groundingReport}
-            onRemediate={handleRemediate}
+            remediation={remediation}
+            remediationLoading={remediationLoading}
+            remediationApproving={remediationApproving}
+            remediationError={remediationError}
+            onApproveRemediation={approveRemediation}
+            onRefreshRemediation={refreshRemediation}
           />
         </div>
       </main>

@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { InvestigationRunsService } from '../services/investigation-runs.service.js';
+import { RemediationService } from '../services/remediation.service.js';
 import { NotFoundError, ValidationError } from '../errors/domain-error.js';
 
 const isoUtcString = z
@@ -37,7 +38,10 @@ export const InvestigateSpikeSchema = z
   });
 
 export class InvestigationController {
-  constructor(private readonly runsService: InvestigationRunsService) {}
+  constructor(
+    private readonly runsService: InvestigationRunsService,
+    private readonly remediationService: RemediationService,
+  ) {}
 
   investigateSpike = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -133,6 +137,44 @@ export class InvestigationController {
         }
         return;
       }
+      next(err);
+    }
+  };
+
+  getRemediation = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const runKey = String(req.params.runKey ?? '').trim();
+      if (!runKey) {
+        throw new ValidationError('Run key parameter is required');
+      }
+
+      const run = this.runsService.get(runKey);
+      if (!run) {
+        throw new NotFoundError(`Investigation run not found: ${runKey}`);
+      }
+
+      const remediation = this.remediationService.getState(runKey, run);
+      res.status(200).json({ remediation });
+    } catch (err: unknown) {
+      next(err);
+    }
+  };
+
+  approveRemediation = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const runKey = String(req.params.runKey ?? '').trim();
+      if (!runKey) {
+        throw new ValidationError('Run key parameter is required');
+      }
+
+      const run = this.runsService.get(runKey);
+      if (!run) {
+        throw new NotFoundError(`Investigation run not found: ${runKey}`);
+      }
+
+      const result = this.remediationService.approve(runKey, run);
+      res.status(200).json(result);
+    } catch (err: unknown) {
       next(err);
     }
   };
