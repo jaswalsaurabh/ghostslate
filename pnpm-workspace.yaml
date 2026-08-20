@@ -30,10 +30,13 @@ catalog:
   eslint: 10.8.1
   typescript-eslint: 8.67.0
   prettier: 3.9.6
+  husky: 9.1.7
+  lint-staged: 17.3.0
   react: 19.2.8
   react-dom: 19.2.8
   '@types/react': 19.2.18
   '@types/react-dom': 19.2.4
+  lucide-react: 1.32.0
 
 minimumReleaseAgeExclude:
   - '@vitest/expect@4.1.11'
@@ -44,3 +47,4 @@ minimumReleaseAgeExclude:
   - '@vitest/spy@4.1.11'
   - '@vitest/utils@4.1.11'
   - vitest@4.1.11
+  - lucide-react@1.32.0

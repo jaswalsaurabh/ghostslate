@@ -1,0 +1,13 @@
+node_modules
+dist
+build
+web/dist
+server/dist
+.vite
+coverage
+.vitest
+*.tsbuildinfo
+pnpm-lock.yaml
+infra/mcp-direct-verification.txt
+infra/evidence/*.json
+eval/evidence/*.json

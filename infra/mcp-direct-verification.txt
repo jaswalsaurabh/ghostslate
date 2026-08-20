@@ -1,0 +1,229 @@
+================================================================================
+GhostSlate — MCP Direct Verification Transcript
+Endpoint: http://localhost:8000 (mcp-clickhouse SSE transport)
+Image: ghcr.io/clickhouse/mcp-clickhouse@sha256:f4d9f1502a14a98fd17f3ecf8654bd102ba5b1a5bde86e54a9579ed8871ef8d7
+Server Version: mcp-clickhouse 0.4.1 (FastMCP 2.14.7)
+ClickHouse Transport: TLS (HTTPS, port 8443, verification enabled)
+================================================================================
+
+1. Unauthenticated Request Rejection (Security Check)
+--------------------------------------------------------------------------------
+Request:
+GET /sse HTTP/1.1
+Host: localhost:8000
+Accept: text/event-stream
+
+Observed Response:
+HTTP/1.1 401 Unauthorized
+server: uvicorn
+content-type: application/json
+content-length: 301
+www-authenticate: Bearer error="invalid_token", error_description="Authentication failed. The provided bearer token is invalid, expired, or no longer recognized by the server. To resolve: clear authentication tokens in your MCP client and reconnect. Your client should automatically re-register and obtain new tokens."
+
+{"error": "invalid_token", "error_description": "Authentication failed. The provided bearer token is invalid, expired, or no longer recognized by the server. To resolve: clear authentication tokens in your MCP client and reconnect. Your client should automatically re-register and obtain new tokens."}
+
+
+2. Authenticated SSE Connection & Session Handshake
+--------------------------------------------------------------------------------
+Request:
+GET /sse HTTP/1.1
+Host: localhost:8000
+Authorization: Bearer <REDACTED_BEARER_TOKEN>
+Accept: text/event-stream
+
+Observed SSE Stream Event:
+HTTP/1.1 200 OK
+server: uvicorn
+content-type: text/event-stream
+transfer-encoding: chunked
+
+event: endpoint
+data: /messages/?session_id=802e7d10bead487da11a8e75f08d0a8b
+
+
+3. MCP Protocol Initialization
+--------------------------------------------------------------------------------
+Request:
+POST /messages/?session_id=802e7d10bead487da11a8e75f08d0a8b HTTP/1.1
+Host: localhost:8000
+Authorization: Bearer <REDACTED_BEARER_TOKEN>
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "initialize",
+  "params": {
+    "protocolVersion": "2024-11-05",
+    "capabilities": {},
+    "clientInfo": {
+      "name": "ghostslate-agent",
+      "version": "0.1.0"
+    }
+  }
+}
+
+Observed HTTP POST Response:
+HTTP/1.1 202 Accepted
+Body: Accepted
+
+Observed SSE Stream Event:
+event: message
+data: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{"experimental":{},"prompts":{"listChanged":false},"resources":{"subscribe":false,"listChanged":false},"tools":{"listChanged":false}},"serverInfo":{"name":"mcp-clickhouse","version":"0.4.1"}}}
+
+Notification Sent:
+POST /messages/?session_id=802e7d10bead487da11a8e75f08d0a8b HTTP/1.1
+Host: localhost:8000
+Authorization: Bearer <REDACTED_BEARER_TOKEN>
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "method": "notifications/initialized"
+}
+
+Observed HTTP POST Response:
+HTTP/1.1 202 Accepted
+Body: Accepted
+
+
+4. Discover Tools (tools/list)
+--------------------------------------------------------------------------------
+Request:
+POST /messages/?session_id=802e7d10bead487da11a8e75f08d0a8b HTTP/1.1
+Host: localhost:8000
+Authorization: Bearer <REDACTED_BEARER_TOKEN>
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/list",
+  "params": {}
+}
+
+Observed HTTP POST Response:
+HTTP/1.1 202 Accepted
+Body: Accepted
+
+Observed SSE Stream Event:
+event: message
+data: {"jsonrpc":"2.0","id":2,"result":{"tools":[{"name":"list_databases","description":"List available ClickHouse databases","inputSchema":{"properties":{},"type":"object"},"outputSchema":{"description":"Generic wrapper for non-object return types.","properties":{"result":{"type":"string"}},"required":["result"],"type":"object","x-fastmcp-wrap-result":true},"_meta":{"_fastmcp":{"tags":[]}}},{"name":"list_tables","description":"List available ClickHouse tables in a database, including schema, comment,\nrow count, and column count.\n\nArgs:\n    database: The database to list tables from\n    like: Optional LIKE pattern to filter table names\n    not_like: Optional NOT LIKE pattern to exclude table names\n    page_token: Token for pagination, obtained from a previous call\n    page_size: Number of tables to return per page (default: 50)\n    include_detailed_columns: Whether to include detailed column metadata (default: True).\n        When False, the columns array will be empty but create_table_query still contains\n        all column information. This reduces payload size for large schemas.\n\nReturns:\n    A JSON-encoded string of an object containing:\n    - tables: List of table information (as dictionaries)\n    - next_page_token: Token for the next page, or None if no more pages\n    - total_tables: Total number of tables matching the filters","inputSchema":{"properties":{"database":{"type":"string"},"like":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null},"not_like":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null},"page_token":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null},"page_size":{"default":50,"type":"integer"},"include_detailed_columns":{"default":true,"type":"boolean"}},"required":["database"],"type":"object"},"outputSchema":{"description":"Generic wrapper for non-object return types.","properties":{"result":{"type":"string"}},"required":["result"],"type":"object","x-fastmcp-wrap-result":true},"_meta":{"_fastmcp":{"tags":[]}}},{"name":"run_query","description":"Execute SQL queries in ClickHouse. Queries run in read-only mode by default. Set CLICKHOUSE_ALLOW_WRITE_ACCESS=true to allow DDL and DML operations. Set CLICKHOUSE_ALLOW_DROP=true to additionally allow destructive operations (DROP, TRUNCATE).","inputSchema":{"properties":{"query":{"type":"string"}},"required":["query"],"type":"object"},"outputSchema":{"description":"Generic wrapper for non-object return types.","properties":{"result":{"type":"string"}},"required":["result"],"type":"object","x-fastmcp-wrap-result":true},"_meta":{"_fastmcp":{"tags":[]}}}]}}
+
+
+5. Inspect Schema via list_tables
+--------------------------------------------------------------------------------
+Request:
+POST /messages/?session_id=802e7d10bead487da11a8e75f08d0a8b HTTP/1.1
+Host: localhost:8000
+Authorization: Bearer <REDACTED_BEARER_TOKEN>
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": {
+    "name": "list_tables",
+    "arguments": {
+      "database": "ghostslate",
+      "like": "spike_cue_events",
+      "include_detailed_columns": true
+    }
+  }
+}
+
+Observed HTTP POST Response:
+HTTP/1.1 202 Accepted
+Body: Accepted
+
+Observed SSE Stream Event:
+event: message
+data: {"jsonrpc":"2.0","id":3,"result":{"content":[{"type":"text","text":"{\"tables\": [{\"database\": \"ghostslate\", \"name\": \"spike_cue_events\", \"engine\": \"MergeTree\", \"create_table_query\": \"CREATE TABLE ghostslate.spike_cue_events (`event_time` DateTime, `channel_id` LowCardinality(String), `ssp_id` LowCardinality(String), `latency_ms` UInt32, `stitch_ok` UInt8) ENGINE = MergeTree ORDER BY (channel_id, event_time) SETTINGS index_granularity = 8192\", \"dependencies_database\": [], \"dependencies_table\": [], \"engine_full\": \"MergeTree ORDER BY (channel_id, event_time) SETTINGS index_granularity = 8192\", \"sorting_key\": \"channel_id, event_time\", \"primary_key\": \"channel_id, event_time\", \"total_rows\": 100, \"total_bytes\": 1435, \"total_bytes_uncompressed\": 1525, \"parts\": 1, \"active_parts\": 1, \"total_marks\": 2, \"comment\": \"\", \"columns\": [{\"database\": \"ghostslate\", \"table\": \"spike_cue_events\", \"name\": \"event_time\", \"column_type\": \"DateTime\", \"default_kind\": \"\", \"default_expression\": \"\", \"comment\": \"\"}, {\"database\": \"ghostslate\", \"table\": \"spike_cue_events\", \"name\": \"channel_id\", \"column_type\": \"LowCardinality(String)\", \"default_kind\": \"\", \"default_expression\": \"\", \"comment\": \"\"}, {\"database\": \"ghostslate\", \"table\": \"spike_cue_events\", \"name\": \"ssp_id\", \"column_type\": \"LowCardinality(String)\", \"default_kind\": \"\", \"default_expression\": \"\", \"comment\": \"\"}, {\"database\": \"ghostslate\", \"table\": \"spike_cue_events\", \"name\": \"latency_ms\", \"column_type\": \"UInt32\", \"default_kind\": \"\", \"default_expression\": \"\", \"comment\": \"\"}, {\"database\": \"ghostslate\", \"table\": \"spike_cue_events\", \"name\": \"stitch_ok\", \"column_type\": \"UInt8\", \"default_kind\": \"\", \"default_expression\": \"\", \"comment\": \"\"}]}], \"next_page_token\": null, \"total_tables\": 1}"}],"structuredContent":{"result":"{\"tables\": [{\"database\": \"ghostslate\", \"name\": \"spike_cue_events\", \"engine\": \"MergeTree\", \"create_table_query\": \"CREATE TABLE ghostslate.spike_cue_events (`event_time` DateTime, `channel_id` LowCardinality(String), `ssp_id` LowCardinality(String), `latency_ms` UInt32, `stitch_ok` UInt8) ENGINE = MergeTree ORDER BY (channel_id, event_time) SETTINGS index_granularity = 8192\", \"dependencies_database\": [], \"dependencies_table\": [], \"engine_full\": \"MergeTree ORDER BY (channel_id, event_time) SETTINGS index_granularity = 8192\", \"sorting_key\": \"channel_id, event_time\", \"primary_key\": \"channel_id, event_time\", \"total_rows\": 100, \"total_bytes\": 1435, \"total_bytes_uncompressed\": 1525, \"parts\": 1, \"active_parts\": 1, \"total_marks\": 2, \"comment\": \"\", \"columns\": [{\"database\": \"ghostslate\", \"table\": \"spike_cue_events\", \"name\": \"event_time\", \"column_type\": \"DateTime\", \"default_kind\": \"\", \"default_expression\": \"\", \"comment\": \"\"}, {\"database\": \"ghostslate\", \"table\": \"spike_cue_events\", \"name\": \"channel_id\", \"column_type\": \"LowCardinality(String)\", \"default_kind\": \"\", \"default_expression\": \"\", \"comment\": \"\"}, {\"database\": \"ghostslate\", \"table\": \"spike_cue_events\", \"name\": \"ssp_id\", \"column_type\": \"LowCardinality(String)\", \"default_kind\": \"\", \"default_expression\": \"\", \"comment\": \"\"}, {\"database\": \"ghostslate\", \"table\": \"spike_cue_events\", \"name\": \"latency_ms\", \"column_type\": \"UInt32\", \"default_kind\": \"\", \"default_expression\": \"\", \"comment\": \"\"}, {\"database\": \"ghostslate\", \"table\": \"spike_cue_events\", \"name\": \"stitch_ok\", \"column_type\": \"UInt8\", \"default_kind\": \"\", \"default_expression\": \"\", \"comment\": \"\"}]}], \"next_page_token\": null, \"total_tables\": 1}"},"isError":false}}
+
+
+6. Execute Grounding Query via run_query
+--------------------------------------------------------------------------------
+Request:
+POST /messages/?session_id=802e7d10bead487da11a8e75f08d0a8b HTTP/1.1
+Host: localhost:8000
+Authorization: Bearer <REDACTED_BEARER_TOKEN>
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "method": "tools/call",
+  "params": {
+    "name": "run_query",
+    "arguments": {
+      "query": "SELECT ssp_id, count() AS cues, round(avg(latency_ms)) AS avg_latency_ms, sum(stitch_ok = 0) AS failures FROM ghostslate.spike_cue_events GROUP BY ssp_id ORDER BY avg_latency_ms DESC"
+    }
+  }
+}
+
+Observed HTTP POST Response:
+HTTP/1.1 202 Accepted
+Body: Accepted
+
+Observed SSE Stream Event:
+event: message
+data: {"jsonrpc":"2.0","id":4,"result":{"content":[{"type":"text","text":"{\"columns\": [\"ssp_id\", \"cues\", \"avg_latency_ms\", \"failures\"], \"rows\": [[\"ssp-beta\", 33, 449.0, 5], [\"ssp-gamma\", 33, 106.0, 0], [\"ssp-alpha\", 34, 105.0, 0]]}"}],"structuredContent":{"result":"{\"columns\": [\"ssp_id\", \"cues\", \"avg_latency_ms\", \"failures\"], \"rows\": [[\"ssp-beta\", 33, 449.0, 5], [\"ssp-gamma\", 33, 106.0, 0], [\"ssp-alpha\", 34, 105.0, 0]]}"},"isError":false}}
+
+Grounding Verification:
+The query result deterministically identifies ssp-beta as the offending SSP:
+- ssp-beta: 33 cues, 449 ms average latency, 5 failures
+- ssp-gamma: 33 cues, 106 ms average latency, 0 failures
+- ssp-alpha: 34 cues, 105 ms average latency, 0 failures
+
+
+7. Malformed Query Error Handling & Containment
+--------------------------------------------------------------------------------
+Request:
+POST /messages/?session_id=802e7d10bead487da11a8e75f08d0a8b HTTP/1.1
+Host: localhost:8000
+Authorization: Bearer <REDACTED_BEARER_TOKEN>
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "method": "tools/call",
+  "params": {
+    "name": "run_query",
+    "arguments": {
+      "query": "SELECT * FROM ghostslate.non_existent_table"
+    }
+  }
+}
+
+Observed HTTP POST Response:
+HTTP/1.1 202 Accepted
+Body: Accepted
+
+Observed SSE Stream Event:
+event: message
+data: {"jsonrpc":"2.0","id":5,"result":{"content":[{"type":"text","text":"Query execution failed: Received ClickHouse exception, code: 60, server response: Code: 60. DB::Exception: Unknown table expression identifier 'ghostslate.non_existent_table' in scope SELECT * FROM ghostslate.non_existent_table. (UNKNOWN_TABLE) (for url https://<clickhouse-host>:8443)"}],"isError":true}}
+
+
+8. Application Health & Container Liveness Verification
+--------------------------------------------------------------------------------
+Command:
+curl -i http://localhost:8000/health
+
+Observed Response:
+HTTP/1.1 200 OK
+date: Tue, 18 Aug 2026 16:58:09 GMT
+server: uvicorn
+content-length: 2
+content-type: text/plain; charset=utf-8
+
+OK
+
+Container Status Post-Error:
+Command:
+docker compose -f infra/docker-compose.yml ps mcp-clickhouse
+
+Observed Output:
+NAME                     IMAGE                                                                                                       COMMAND                  SERVICE          CREATED          STATUS          PORTS
+infra-mcp-clickhouse-1   ghcr.io/clickhouse/mcp-clickhouse@sha256:f4d9f1502a14a98fd17f3ecf8654bd102ba5b1a5bde86e54a9579ed8871ef8d7   "python -m mcp_click…"   mcp-clickhouse   18 seconds ago   Up 17 seconds   0.0.0.0:8000->8000/tcp, [::]:8000->8000/tcp

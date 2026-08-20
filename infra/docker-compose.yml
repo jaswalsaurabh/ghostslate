@@ -1,21 +1,84 @@
 services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8-alpine
+    container_name: ghostslate-clickhouse
+    ports:
+      - '127.0.0.1:8123:8123'
+      - '127.0.0.1:9000:9000'
+    environment:
+      - CLICKHOUSE_DB=ghostslate
+      # ClickHouse image contract: CLICKHOUSE_PASSWORD sets the default (admin) user password
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_ADMIN_PASSWORD:-ghostslate_admin_local_dev}
+      - CLICKHOUSE_ADMIN_PASSWORD=${CLICKHOUSE_ADMIN_PASSWORD:-ghostslate_admin_local_dev}
+      - CLICKHOUSE_AGENT_PASSWORD=${CLICKHOUSE_AGENT_PASSWORD:-ghostslate_agent_local_dev}
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
+    volumes:
+      - ../sql/schema/001_initial_tables.sql:/docker-entrypoint-initdb.d/00-schema.sql:ro
+      - ../sql/schema/002_incident_ledger.sql:/docker-entrypoint-initdb.d/00b-incident-ledger.sql:ro
+      - ../sql/01-create-agent-user.sh:/docker-entrypoint-initdb.d/01-create-agent-user.sh:ro
+      - ../sql/seed/002-advertiser-inventory.sql:/docker-entrypoint-initdb.d/02-inventory.sql:ro
+      - ../sql/seed/003-baseline-telemetry.sql:/docker-entrypoint-initdb.d/03-baseline.sql:ro
+      - clickhouse_data:/var/lib/clickhouse
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'clickhouse-client --password "$${CLICKHOUSE_ADMIN_PASSWORD:-ghostslate_admin_local_dev}" --query "SELECT 1" || clickhouse-client --query "SELECT 1"',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 300s
+    restart: unless-stopped
+
+  mcp-clickhouse:
+    image: ghcr.io/clickhouse/mcp-clickhouse@sha256:f4d9f1502a14a98fd17f3ecf8654bd102ba5b1a5bde86e54a9579ed8871ef8d7
+    container_name: ghostslate-mcp-clickhouse
+    ports:
+      - '127.0.0.1:8000:8000'
+    environment:
+      - CLICKHOUSE_HOST=${CLICKHOUSE_HOST:-clickhouse}
+      - CLICKHOUSE_PORT=${CLICKHOUSE_PORT:-8123}
+      - CLICKHOUSE_SECURE=${CLICKHOUSE_SECURE:-false}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-ghostslate_agent}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_AGENT_PASSWORD:-ghostslate_agent_local_dev}
+      - CLICKHOUSE_DATABASE=${CLICKHOUSE_DATABASE:-ghostslate}
+      - CLICKHOUSE_MCP_SERVER_TRANSPORT=sse
+      - CLICKHOUSE_MCP_BIND_HOST=0.0.0.0
+      - CLICKHOUSE_MCP_BIND_PORT=8000
+      - CLICKHOUSE_MCP_AUTH_TOKEN=${CLICKHOUSE_MCP_AUTH_TOKEN}
+      - CLICKHOUSE_MCP_AUTH_DISABLED=${CLICKHOUSE_MCP_AUTH_DISABLED:-true}
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    restart: unless-stopped
+
   app:
     build:
       context: ..
       dockerfile: infra/Dockerfile
     ports:
-      - "8080:8080"
+      - '8080:8080'
     environment:
       - PORT=8080
       - LOG_LEVEL=info
       - NODE_ENV=production
-      - CLICKHOUSE_HOST=${CLICKHOUSE_HOST:-}
-      - CLICKHOUSE_PORT=${CLICKHOUSE_PORT:-8443}
-      - CLICKHOUSE_DATABASE=${CLICKHOUSE_DATABASE:-default}
-      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-default}
-      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-}
+      - CLICKHOUSE_HOST=${CLICKHOUSE_HOST:-clickhouse}
+      - CLICKHOUSE_PORT=${CLICKHOUSE_PORT:-8123}
+      - CLICKHOUSE_DATABASE=${CLICKHOUSE_DATABASE:-ghostslate}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-ghostslate_agent}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_AGENT_PASSWORD:-ghostslate_agent_local_dev}
+      - MCP_SERVER_URL=${MCP_SERVER_URL:-http://mcp-clickhouse:8000}
+      - CLICKHOUSE_MCP_AUTH_TOKEN=${CLICKHOUSE_MCP_AUTH_TOKEN:-}
+      - CLICKHOUSE_MCP_AUTH_DISABLED=${CLICKHOUSE_MCP_AUTH_DISABLED:-true}
       - GCP_PROJECT_ID=${GCP_PROJECT_ID:-}
       - GCP_REGION=${GCP_REGION:-us-central1}
-    env_file:
-      - ../.env
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      mcp-clickhouse:
+        condition: service_started
     restart: unless-stopped
+
+volumes:
+  clickhouse_data:

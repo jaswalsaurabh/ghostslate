@@ -67,10 +67,15 @@ venv/
 # Generated media and caches
 # Frame samples, ffmpeg output and the classification cache are large,
 # regenerable, and must never make the repo look like it ships footage.
+# Exception: web/public/media/* are synthetic SVG-derived demo cards (not footage),
+# committed so the cold-clone demo path needs no external rasteriser.
 # ---------------------------------------------------------------------------
 media/
+!web/public/media/
 frames/
 *.mp4
+!web/public/media/*.mp4
+!web/public/media/*.png
 *.ts
 *.m3u8
 *.mpd
@@ -118,4 +123,10 @@ Thumbs.db
 # Agent tooling scratch
 # ---------------------------------------------------------------------------
 graphify-out/
+CLAUDE.md
 .claude/settings.local.json
+.agent/docs
+.agent/plans
+.agent/backlog
+# Local design explorations are reference material, not shipped application code.
+web/design/

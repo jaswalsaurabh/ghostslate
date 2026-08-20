@@ -1,0 +1,92 @@
+[
+  {
+    "id": "primary-incident",
+    "name": "Primary Incident (ssp-beta auction latency breach)",
+    "kind": "primary",
+    "channel": "ch-01",
+    "from": "2026-08-14T19:00:00.000Z",
+    "to": "2026-08-14T23:00:00.000Z",
+    "canonicalEvidencePath": null,
+    "transcriptPath": "eval/evidence/transcript-primary-incident.jsonl",
+    "expected": {
+      "selectedIncident": {
+        "sspId": "ssp-beta",
+        "deviceClass": "connected_tv",
+        "codec": "hevc",
+        "cues": 80,
+        "totalAttempts": 60862,
+        "unmonetizedImpressions": 59482,
+        "unmonetizedPct": 97.73,
+        "cpmUsd": 32.5,
+        "expectedLoss": 1933.17
+      },
+      "requireVisionConfirmation": true
+    }
+  },
+  {
+    "id": "latency-confounder-isolation",
+    "name": "Latency Confounder Isolation (ssp-gamma subwindow non-breaching latency spike)",
+    "kind": "confounder",
+    "channel": "ch-01",
+    "from": "2026-08-14T20:00:00.000Z",
+    "to": "2026-08-14T21:00:00.000Z",
+    "canonicalEvidencePath": "eval/evidence/canonical-latency-confounder-2026-08-14.json",
+    "transcriptPath": null,
+    "expected": {
+      "selectedIncident": {
+        "sspId": "ssp-beta",
+        "deviceClass": "connected_tv",
+        "codec": "hevc",
+        "cues": 20,
+        "totalAttempts": 17121,
+        "unmonetizedImpressions": 17090,
+        "unmonetizedPct": 99.82,
+        "cpmUsd": 32.5,
+        "expectedLoss": 555.43
+      },
+      "requireVisionConfirmation": false
+    }
+  },
+  {
+    "id": "stb-error-confounder",
+    "name": "Set-Top-Box Error Confounder (hard ad-call errors vs slate fallbacks)",
+    "kind": "confounder",
+    "channel": "ch-01",
+    "from": "2026-08-12T08:00:00.000Z",
+    "to": "2026-08-12T12:00:00.000Z",
+    "canonicalEvidencePath": null,
+    "transcriptPath": "eval/evidence/transcript-stb-error-confounder.jsonl",
+    "expected": {
+      "selectedIncident": null,
+      "requireVisionConfirmation": false
+    }
+  },
+  {
+    "id": "negative-control",
+    "name": "Negative Control (diffuse primetime baseline noise)",
+    "kind": "negative_control",
+    "channel": "ch-01",
+    "from": "2026-08-09T19:00:00.000Z",
+    "to": "2026-08-09T23:00:00.000Z",
+    "canonicalEvidencePath": null,
+    "transcriptPath": "eval/evidence/transcript-negative-control.jsonl",
+    "expected": {
+      "selectedIncident": null,
+      "requireVisionConfirmation": false
+    }
+  },
+  {
+    "id": "small-sample-guard",
+    "name": "Small-Sample Guard (sub-20-cue window suppression)",
+    "kind": "small_sample",
+    "channel": "ch-01",
+    "from": "2026-08-14T19:00:00.000Z",
+    "to": "2026-08-14T19:15:00.000Z",
+    "canonicalEvidencePath": null,
+    "transcriptPath": "eval/evidence/transcript-small-sample-guard-2026-08-20.jsonl",
+    "expected": {
+      "selectedIncident": null,
+      "requireVisionConfirmation": false
+    }
+  }
+]

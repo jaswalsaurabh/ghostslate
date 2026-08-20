@@ -1,0 +1,2 @@
+./scripts/scan-secrets.sh
+pnpm exec lint-staged

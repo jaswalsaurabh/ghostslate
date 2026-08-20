@@ -10,5 +10,5 @@ This directory holds infrastructure configuration for local development and prod
 ## Required Services
 
 1. **ClickHouse Cloud** (or local instance) reachable by `mcp-clickhouse`.
-2. **Vertex AI Agent Builder + Gemini** for multimodal reasoning and vision.
+2. **Gemini on Vertex AI via `@google/genai`** for multimodal reasoning and vision.
 3. **Cloud Run** for hosting.

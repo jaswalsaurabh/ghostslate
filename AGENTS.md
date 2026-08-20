@@ -68,9 +68,37 @@ is the project's core credibility property — treat a violation as a bug, not a
 - Use `LowCardinality` and `AggregatingMergeTree` where the query pattern needs them. Do not add
   ClickHouse features to look impressive; judges recognise feature-stuffing.
 
+## Time
+
+**Every timestamp is UTC everywhere except the moment it is rendered.** ClickHouse columns are
+declared `DateTime64(3, 'UTC')`, SQL literals are written `toDateTime64('...', 3, 'UTC')`, the API
+serialises ISO-8601 with an explicit `Z`, and the agent reasons in UTC. The browser is the only
+place a local timezone exists, and it converts for display only — a localised value is never sent
+back, stored, or compared.
+
+The rule exists because the failure is silent. A naive `datetime` handed to a driver is localised
+against whatever timezone the machine happens to be in, so the same script produces different rows
+in Bengaluru and on Cloud Run, and nothing errors. Incident windows shifted by the host's UTC offset
+still pass every assertion that does not look at the window itself.
+
+Concretely: never construct a naive datetime for storage, never rely on a driver's type conversion
+to attach a zone, and assert stored windows against the constants they came from — an answer key
+that nothing checks is not an answer key.
+
 ## Frontend
 
-- Tailwind v4 token syntax: `bg-(--surface)`, not `bg-[var(--surface)]`.
+- **Design tokens are canonical in `.agent/design-system.md`.** Colour, spacing, radius, type,
+  elevation, motion and layering all resolve through a three-tier chain — primitive, semantic,
+  component. Components read semantic tokens only: a stock palette class or a raw hex under
+  `web/src/components/` is a bug, because it freezes that spot to one theme. Read that file before
+  touching anything visual.
+- **Reusable UI Primitives.** Shared interactive elements (buttons, cards, badges, inputs, KPI metrics)
+  are authored as atomic reusable components under `web/src/components/ui/`. They encapsulate base
+  interactions, focus rings, loading states, accessibility attributes, and variant mappings. Feature
+  components compose these primitives rather than reimplementing inline ad-hoc styles.
+- Tailwind v4: semantic tokens are registered with `@theme static` and consumed as generated
+  utilities (`bg-surface-base`). For a token deliberately left out of `@theme`, the arbitrary form
+  is `bg-(--surface)`, never `bg-[var(--surface)]`.
 - Component files PascalCase and matching their export; everything else kebab-case; hooks camelCase
   beginning with `use`.
 - No `any` for domain or API types. Shapes are decoded once at the API boundary with zod.

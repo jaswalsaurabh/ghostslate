@@ -12,16 +12,31 @@
     "build": "pnpm --filter ./server build && pnpm --filter ./web build",
     "start": "pnpm --filter ./server start",
     "typecheck": "pnpm -r typecheck",
-    "lint": "pnpm -r lint",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test": "pnpm -r test",
     "dedupe:check": "pnpm dedupe --check",
     "deps:why": "pnpm why -r",
-    "deps:outdated": "pnpm -r outdated"
+    "deps:outdated": "pnpm -r outdated",
+    "prepare": "husky"
   },
   "devDependencies": {
     "eslint": "catalog:",
+    "husky": "catalog:",
+    "lint-staged": "catalog:",
     "prettier": "catalog:",
     "typescript": "catalog:",
     "typescript-eslint": "catalog:"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx,mjs,cjs}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,yaml,yml,md,css,html}": [
+      "prettier --write"
+    ]
   }
 }
