@@ -1,7 +1,7 @@
-import { AlertCircle, CheckCircle2, Cloud, Database, Moon, Sun } from 'lucide-react';
+import { Moon, Sun } from 'lucide-react';
 import { useTheme } from '../hooks/use-theme.js';
 import type { SystemHealth } from '../types.js';
-import { Button, StatusIndicator } from './ui/index.js';
+import { IconButton, StatusIndicator, type StatusTone } from './ui/index.js';
 
 export type VertexRuntimeState = 'idle' | 'running' | 'verified' | 'error';
 
@@ -16,69 +16,88 @@ export function Header({ health, healthLoading, healthError, vertexState }: Head
   const { theme, toggleTheme } = useTheme();
   const mcpConnected = Boolean(health?.mcp?.connected);
   const vertexCopy = {
-    idle: 'Runtime idle',
-    running: 'Vertex active',
-    verified: 'Vertex verified',
-    error: 'Vertex error',
+    idle: 'Vertex AI idle',
+    running: 'Vertex AI running',
+    verified: 'Vertex AI ready',
+    error: 'Vertex AI error',
   }[vertexState];
   const vertexTone =
     vertexState === 'verified'
-      ? 'success'
+      ? 'ready'
       : vertexState === 'running'
-        ? 'warning'
+        ? 'running'
         : vertexState === 'error'
           ? 'error'
           : 'idle';
+  const mobileHealth = (() => {
+    if (healthLoading || (!health && !healthError)) {
+      return { label: 'API + MCP checking', tone: 'warning', loading: true } as const;
+    }
+    if (healthError) {
+      return { label: 'API + MCP issue', tone: 'error', loading: false } as const;
+    }
+    if (!mcpConnected) {
+      return { label: 'MCP unavailable', tone: 'error', loading: false } as const;
+    }
+    return { label: 'API + MCP online', tone: 'ready', loading: false } as const;
+  })() satisfies { label: string; tone: StatusTone; loading: boolean };
 
   return (
-    <header className="sticky top-0 z-sticky border-b border-border-subtle bg-surface-panel/95 backdrop-blur-md">
-      <div className="mx-auto flex w-full max-w-screen-2xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
-        <img
-          src="/brand/ghostslate-lockup.png"
-          alt="GhostSlate"
-          className="brand-lockup h-8 w-auto"
-        />
+    <header className="sticky top-0 z-sticky h-17 border-b border-border-subtle bg-surface-base/88 backdrop-blur-header">
+      <div className="war-room-shell flex h-full min-w-0 items-center justify-between gap-5">
+        <div className="min-w-0 shrink-0">
+          <img
+            src="/brand/ghostslate-lockup.png"
+            alt="GhostSlate"
+            className="brand-lockup h-13.5 w-auto object-contain max-sm:h-12"
+          />
+        </div>
 
-        <div className="flex flex-wrap items-center justify-end gap-2 font-mono text-xs">
+        <div className="flex min-w-0 items-center gap-2">
           <StatusIndicator
-            icon={<Cloud className="h-3.5 w-3.5 text-text-muted" />}
-            label={vertexCopy}
-            tone={vertexTone}
-            className="hidden sm:inline-flex"
+            label={mobileHealth.label}
+            tone={mobileHealth.tone}
+            loading={mobileHealth.loading}
+            className="px-2 sm:hidden"
           />
 
-          <StatusIndicator
-            icon={<Database className="h-3.5 w-3.5 text-data-fg" />}
-            label={
-              healthLoading
-                ? 'MCP checking'
-                : mcpConnected
-                  ? 'ClickHouse MCP connected'
-                  : 'MCP unavailable'
-            }
-            tone={healthLoading ? 'warning' : mcpConnected ? 'success' : 'error'}
-            loading={healthLoading}
-          />
+          <span className="hidden sm:block">
+            <StatusIndicator label={vertexCopy} tone={vertexTone} />
+          </span>
 
-          <StatusIndicator
+          <span className="hidden sm:block">
+            <StatusIndicator
+              label={
+                healthLoading
+                  ? 'ClickHouse MCP checking'
+                  : mcpConnected
+                    ? 'ClickHouse MCP connected'
+                    : 'ClickHouse MCP unavailable'
+              }
+              tone={healthLoading ? 'warning' : mcpConnected ? 'ready' : 'error'}
+              loading={healthLoading}
+            />
+          </span>
+
+          <span className="hidden md:block">
+            <StatusIndicator
+              label={healthError ? 'API offline' : health ? 'API online' : 'API checking'}
+              tone={healthError ? 'error' : health ? 'ready' : 'idle'}
+            />
+          </span>
+
+          <IconButton
+            label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+            onClick={toggleTheme}
+            variant="secondary"
+            className="h-8.5 w-8.5 shrink-0"
             icon={
-              healthError ? (
-                <AlertCircle className="h-3.5 w-3.5 text-status-critical" />
+              theme === 'dark' ? (
+                <Sun aria-hidden="true" className="h-4.25 w-4.25" />
               ) : (
-                <CheckCircle2 className="h-3.5 w-3.5 text-status-success" />
+                <Moon aria-hidden="true" className="h-4.25 w-4.25" />
               )
             }
-            label={healthError ? 'API offline' : health ? 'API online' : 'API checking'}
-            tone={healthError ? 'error' : health ? 'success' : 'idle'}
-            className="hidden md:inline-flex"
-          />
-
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={toggleTheme}
-            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
-            icon={theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           />
         </div>
       </div>

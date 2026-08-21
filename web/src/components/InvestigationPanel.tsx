@@ -1,9 +1,14 @@
 import { Database, Play, RotateCw, Sparkles } from 'lucide-react';
 import type { InvestigationCaseConfig } from '../config/investigation-cases.js';
-import type { GroundingReport, InvestigationTraceEvent, RemediationState } from '../types.js';
+import type {
+  GroundingReport,
+  InvestigationEvidenceSummary,
+  InvestigationTraceEvent,
+  RemediationState,
+} from '../types.js';
 import { GroundedDiagnosisCard } from './GroundedDiagnosisCard.js';
 import { InvestigationEventItem } from './InvestigationEventItem.js';
-import { Badge, Button, Card } from './ui/index.js';
+import { Button, SegmentedControl } from './ui/index.js';
 
 export type TraceFilter = 'all' | 'query' | 'reasoning';
 
@@ -17,6 +22,9 @@ interface InvestigationPanelProps {
   onRun: () => void;
   finalDiagnosis: string | null;
   grounding?: GroundingReport | undefined;
+  evidenceSummary?: InvestigationEvidenceSummary | undefined;
+  isGroundedFromMcp: boolean;
+  rateCardFromQuery: boolean;
   remediation: RemediationState | null;
   remediationLoading: boolean;
   remediationApproving: boolean;
@@ -26,6 +34,11 @@ interface InvestigationPanelProps {
 }
 
 const stages = ['Observe', 'Correlate', 'Verify', 'Diagnose'] as const;
+const TRACE_FILTER_OPTIONS = [
+  { value: 'all', label: 'All' },
+  { value: 'query', label: 'Queries' },
+  { value: 'reasoning', label: 'Reasoning' },
+] as const;
 
 function stageIndex(trace: InvestigationTraceEvent[], finalDiagnosis: string | null) {
   if (finalDiagnosis) return 3;
@@ -55,27 +68,45 @@ function formatWindow(value: string) {
 export function InvestigationPanel(props: InvestigationPanelProps) {
   const activeStage = stageIndex(props.trace, props.finalDiagnosis);
   const visibleEvents = props.trace.filter((event) => isVisible(event, props.filter));
+  const hasVisionEvidence = props.trace.some((event) => event.type === 'frame_classified');
+  const hasRateCardEvidence = Boolean(
+    props.evidenceSummary?.outcome === 'incident' && props.rateCardFromQuery,
+  );
 
   return (
-    <Card variant="panel" className="overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle px-4 py-3">
-        <div className="flex items-center gap-3">
-          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-surface-hover font-mono text-xs font-bold text-text-muted">
+    <section
+      className="rounded-2xl border border-border-subtle bg-surface-panel shadow-panel-subtle overflow-hidden"
+      aria-labelledby="investigation-title"
+    >
+      <div className="flex items-start justify-between gap-4 border-b border-border-subtle p-4 sm:px-5">
+        <div className="flex items-start gap-2.5">
+          <span className="mt-0.5 font-mono text-caption font-bold tracking-module text-interactive">
             02
           </span>
           <div>
-            <h2 className="text-sm font-bold text-text-primary">Grounded forensic investigation</h2>
-            <p className="text-xs text-text-muted">
+            <h2
+              id="investigation-title"
+              className="m-0 mb-1 text-section font-bold tracking-tight text-text-primary"
+            >
+              Grounded forensic investigation
+            </h2>
+            <p className="m-0 text-compact leading-section text-text-muted">
               Gemini reasoning · official mcp-clickhouse · observable SQL
             </p>
           </div>
         </div>
         <Button
-          variant="primary"
           onClick={props.onRun}
           loading={props.investigating}
+          variant="primary"
+          size="sm"
+          className="h-8.5 shrink-0 font-sans tracking-wide"
           icon={
-            props.trace.length > 0 ? <RotateCw className="h-4 w-4" /> : <Play className="h-4 w-4" />
+            props.trace.length > 0 ? (
+              <RotateCw aria-hidden="true" className="size-3" />
+            ) : (
+              <Play aria-hidden="true" className="size-3 fill-current" />
+            )
           }
         >
           {props.investigating
@@ -86,102 +117,117 @@ export function InvestigationPanel(props: InvestigationPanelProps) {
         </Button>
       </div>
 
-      <div className="grid gap-3 border-b border-border-subtle bg-surface-base p-4 sm:grid-cols-[minmax(0,1fr)_auto]">
-        <div>
-          <div className="mb-2 flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-interactive">
-            <Sparkles className="h-3.5 w-3.5" /> Operator prompt
-          </div>
-          <p className="text-sm leading-relaxed text-text-primary">{props.activeCase.prompt}</p>
+      <div className="investigation-prompt-grid mx-5 mt-4 gap-4 rounded-inset border border-reasoning-border/40 bg-reasoning-surface p-3 sm:px-4">
+        <div className="min-w-0">
+          <span className="mb-1 block font-mono text-micro font-bold uppercase tracking-widest text-reasoning-fg">
+            <Sparkles className="inline size-2.5 mr-1" />
+            Operator prompt
+          </span>
+          <p className="m-0 text-detail leading-normal text-text-primary">
+            {props.activeCase.prompt}
+          </p>
         </div>
-        <div className="rounded-lg border border-border-subtle bg-surface-panel p-3 font-mono text-xs text-text-secondary sm:min-w-56">
-          <span className="block uppercase text-text-muted">Investigation window · UTC</span>
-          <strong className="mt-1 block text-text-primary">
-            {formatWindow(props.activeCase.from)}
+        <div className="self-center border-l border-border-subtle pl-4 font-mono text-caption leading-evidence text-text-secondary whitespace-nowrap max-md:border-t max-md:border-l-0 max-md:pl-0 max-md:pt-3 max-md:whitespace-normal">
+          <span className="block text-micro uppercase text-text-muted">
+            Investigation window · UTC
+          </span>
+          <strong className="block text-compact text-text-primary">
+            {formatWindow(props.activeCase.from)} → {formatWindow(props.activeCase.to)}
           </strong>
-          <strong className="block text-text-primary">→ {formatWindow(props.activeCase.to)}</strong>
-          <span className="mt-2 block">{props.activeCase.channel} · FAST-01</span>
+          <span className="block text-text-muted">{props.activeCase.channel} · FAST-01</span>
         </div>
       </div>
 
       <ol
-        className="grid grid-cols-4 border-b border-border-subtle"
-        aria-label="Investigation progress"
+        className="grid grid-cols-4 border-b border-border-subtle px-5 py-4 list-none m-0 max-md:px-3.5"
+        aria-label="Investigation pipeline stages"
       >
-        {stages.map((stage, index) => (
-          <li
-            key={stage}
-            className={`flex items-center justify-center gap-2 border-r border-border-subtle px-2 py-3 text-xs font-semibold last:border-r-0 ${index <= activeStage ? 'text-interactive' : 'text-text-muted'}`}
-          >
-            <span
-              className={`h-2 w-2 rounded-full ${index < activeStage ? 'bg-status-success' : index === activeStage ? 'bg-interactive' : 'bg-border-strong'}`}
-            />
-            {stage}
-          </li>
-        ))}
+        {stages.map((stage, index) => {
+          const isDone = index < activeStage || (index === 3 && Boolean(props.finalDiagnosis));
+          const isActive = index === activeStage && !props.finalDiagnosis;
+          return (
+            <li
+              key={stage}
+              className={`relative font-mono text-caption uppercase tracking-micro ${
+                index < stages.length - 1 ? 'pipeline-stage-connector' : ''
+              } ${
+                isDone
+                  ? 'text-status-success'
+                  : isActive
+                    ? 'font-bold text-interactive'
+                    : 'text-text-muted'
+              }`}
+            >
+              <span
+                className={`relative z-content mb-2 block size-2.75 rounded-full border-2 border-surface-panel transition-all ${
+                  isDone
+                    ? 'bg-status-success shadow-status-success-ring'
+                    : isActive
+                      ? 'bg-interactive shadow-glow-interactive'
+                      : 'bg-surface-card shadow-border-ring'
+                }`}
+              />
+              <span>{stage}</span>
+            </li>
+          );
+        })}
       </ol>
 
-      <div className="p-4">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2 font-mono text-xs text-text-muted">
-            <Database className="h-3.5 w-3.5 text-data-fg" />
-            Live evidence trace · {props.trace.length} events
-            {props.reconnecting && <Badge variant="warning">Reconnecting</Badge>}
+      <div className="px-5 pb-5 max-md:px-3.5">
+        <div className="flex h-9.5 items-center justify-between font-mono text-caption uppercase tracking-widest text-text-muted">
+          <div className="flex items-center gap-2">
+            <span>Live evidence trace · {props.trace.length} events</span>
+            {props.reconnecting && <span className="text-status-warning">(Reconnecting...)</span>}
           </div>
-          <div
-            className="flex rounded-lg border border-border-subtle bg-surface-base p-1"
-            aria-label="Trace filters"
-          >
-            {(['all', 'query', 'reasoning'] as const).map((filter) => (
-              <button
-                key={filter}
-                type="button"
-                aria-pressed={props.filter === filter}
-                onClick={() => props.onFilter(filter)}
-                className={`rounded-md px-3 py-1 text-xs font-semibold capitalize transition-colors duration-fast focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-interactive ${props.filter === filter ? 'bg-surface-hover text-text-primary' : 'text-text-muted hover:text-text-primary'}`}
-              >
-                {filter === 'query' ? 'Queries' : filter}
-              </button>
-            ))}
-          </div>
+          <SegmentedControl
+            label="Trace filters"
+            options={TRACE_FILTER_OPTIONS}
+            value={props.filter}
+            onValueChange={props.onFilter}
+            size="sm"
+            className="font-mono uppercase"
+          />
         </div>
 
-        <div className="min-h-72 space-y-3 rounded-lg border border-border-subtle bg-surface-base p-3">
-          {visibleEvents.length === 0 ? (
-            <div className="flex min-h-64 flex-col items-center justify-center px-6 text-center">
-              <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-border-subtle bg-surface-panel">
-                <Database className="h-5 w-5 text-data-fg" />
-              </span>
-              <p className="text-sm font-bold text-text-primary">Forensic pipeline ready</p>
-              <p className="mt-1 max-w-md text-xs leading-relaxed text-text-muted">
-                Run this case to stream real MCP calls, SQL, query results, reasoning, Vision
-                evidence, and the grounded conclusion.
-              </p>
+        {visibleEvents.length === 0 ? (
+          <div className="flex min-h-35 flex-col items-center justify-center border-t border-border-subtle py-8 text-center">
+            <div className="mb-2.5 grid size-9 place-items-center rounded-full border border-border-subtle bg-surface-card text-data-fg">
+              <Database className="size-4" />
             </div>
-          ) : (
-            visibleEvents.map((event, index) => (
+            <p className="m-0 text-xs font-bold text-text-primary">Forensic pipeline ready</p>
+            <p className="m-0 mt-1 max-w-sm text-compact leading-normal text-text-muted">
+              Run this case to stream real MCP calls, SQL, query results, reasoning, Vision
+              evidence, and the grounded conclusion.
+            </p>
+          </div>
+        ) : (
+          <div className="mb-4">
+            {visibleEvents.map((event, index) => (
               <InvestigationEventItem
                 key={`${event.timestamp}-${event.type}-${index}`}
                 event={event}
               />
-            ))
-          )}
-        </div>
-
-        {props.finalDiagnosis && (
-          <div className="mt-4">
-            <GroundedDiagnosisCard
-              diagnosis={props.finalDiagnosis}
-              grounding={props.grounding}
-              remediation={props.remediation}
-              remediationLoading={props.remediationLoading}
-              remediationApproving={props.remediationApproving}
-              remediationError={props.remediationError}
-              onApproveRemediation={props.onApproveRemediation}
-              onRefreshRemediation={props.onRefreshRemediation}
-            />
+            ))}
           </div>
         )}
       </div>
-    </Card>
+
+      {props.finalDiagnosis && (
+        <GroundedDiagnosisCard
+          diagnosis={props.finalDiagnosis}
+          outcome={props.evidenceSummary?.outcome}
+          grounding={props.grounding}
+          hasClickHouseEvidence={props.isGroundedFromMcp}
+          hasVisionEvidence={hasVisionEvidence}
+          hasRateCardEvidence={hasRateCardEvidence}
+          remediation={props.remediation}
+          remediationLoading={props.remediationLoading}
+          remediationApproving={props.remediationApproving}
+          remediationError={props.remediationError}
+          onApproveRemediation={props.onApproveRemediation}
+          onRefreshRemediation={props.onRefreshRemediation}
+        />
+      )}
+    </section>
   );
 }

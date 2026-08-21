@@ -1,10 +1,12 @@
 import { useEffect, useState, type RefObject } from 'react';
-import { Camera, Pause, Play, Radio, ScanLine } from 'lucide-react';
 import type { InvestigationCaseConfig } from '../config/investigation-cases.js';
 import type { FrameClassificationData, InvestigationEvidenceSummary } from '../types.js';
 import { EvidenceGateCard } from './EvidenceGateCard.js';
-import { Badge, Button, Card, SegmentedControl } from './ui/index.js';
-import { BroadcastSampleStrip, formatTime } from './vision/BroadcastSampleStrip.js';
+import { BroadcastPlayer } from './vision/BroadcastPlayer.js';
+import { BroadcastSampleStrip } from './vision/BroadcastSampleStrip.js';
+import { VisionClassificationCard } from './vision/VisionClassificationCard.js';
+import { classificationStyles } from './vision/classification-styles.js';
+import { SegmentedControl } from './ui/index.js';
 
 interface VisionPanelProps {
   activeCase: InvestigationCaseConfig;
@@ -27,10 +29,7 @@ interface VisionPanelProps {
   evidenceSummary?: InvestigationEvidenceSummary | undefined;
 }
 
-const SOURCE_OPTIONS = [
-  { value: 'agent', label: 'Agent evidence' },
-  { value: 'manual', label: 'Operator sample' },
-] as const;
+const TIMESTAMP_TOLERANCE_SECONDS = 0.5;
 
 export function VisionPanel(props: VisionPanelProps) {
   const [selectedSource, setSelectedSource] = useState<'agent' | 'manual'>('agent');
@@ -38,14 +37,38 @@ export function VisionPanel(props: VisionPanelProps) {
   useEffect(() => {
     if (props.manualResult) {
       setSelectedSource('manual');
+      if (
+        typeof props.manualResult.timestampSeconds === 'number' &&
+        Number.isFinite(props.manualResult.timestampSeconds)
+      ) {
+        props.onSeek(props.manualResult.timestampSeconds);
+      }
     }
   }, [props.manualResult]);
 
   useEffect(() => {
     if (props.agentResult) {
       setSelectedSource('agent');
+      if (
+        typeof props.agentResult.timestampSeconds === 'number' &&
+        Number.isFinite(props.agentResult.timestampSeconds)
+      ) {
+        props.onSeek(props.agentResult.timestampSeconds);
+      }
     }
   }, [props.agentResult]);
+
+  const handleSelectSource = (nextSource: 'agent' | 'manual') => {
+    setSelectedSource(nextSource);
+    const targetResult = nextSource === 'agent' ? props.agentResult : props.manualResult;
+    if (
+      targetResult &&
+      typeof targetResult.timestampSeconds === 'number' &&
+      Number.isFinite(targetResult.timestampSeconds)
+    ) {
+      props.onSeek(targetResult.timestampSeconds);
+    }
+  };
 
   const activeSource =
     selectedSource === 'manual' && props.manualResult
@@ -70,207 +93,142 @@ export function VisionPanel(props: VisionPanelProps) {
         ? (props.agentResult?.latencyMs ?? null)
         : null;
 
-  const sourceLabel =
-    activeSource === 'agent'
-      ? 'Agent evidence'
-      : activeSource === 'manual'
-        ? 'Operator sample'
-        : null;
-
   const confidence = displayed ? `${Math.round(displayed.confidence * 100)}%` : '—';
-  const selectedTime = displayed?.timestampSeconds ?? props.currentTime;
-  const classificationTone =
-    displayed?.classification === 'slate'
-      ? 'text-classification-slate'
-      : displayed?.classification === 'ad'
-        ? 'text-classification-ad'
-        : displayed?.classification === 'content'
-          ? 'text-classification-content'
-          : 'text-text-muted';
-  const classificationBorder =
-    displayed?.classification === 'slate'
-      ? 'border-classification-slate-border'
-      : displayed?.classification === 'ad'
-        ? 'border-classification-ad-border'
-        : 'border-classification-content-border';
+  const selectedTime = props.currentTime;
+  const displayedStyles = displayed ? classificationStyles[displayed.classification] : null;
 
-  const hasBothSources = Boolean(props.agentResult && props.manualResult);
+  const isAtPlayhead = Boolean(
+    displayed &&
+    typeof displayed.timestampSeconds === 'number' &&
+    Number.isFinite(displayed.timestampSeconds) &&
+    Math.abs(props.currentTime - displayed.timestampSeconds) <= TIMESTAMP_TOLERANCE_SECONDS,
+  );
+
+  const evidenceAtPlayhead = isAtPlayhead ? displayed : null;
+  const playerConfidence = evidenceAtPlayhead
+    ? `${Math.round(evidenceAtPlayhead.confidence * 100)}%`
+    : '—';
 
   return (
     <section
-      className="self-start lg:sticky lg:top-24 [@media(max-height:960px)]:static"
+      className="self-start overflow-hidden rounded-2xl border border-border-subtle bg-surface-panel shadow-panel-subtle war-room:sticky war-room:top-21 war-room:short-viewport:static"
       aria-labelledby="vision-title"
     >
-      <Card variant="panel" className="overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle px-4 py-3">
-          <div className="flex items-center gap-3">
-            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-surface-hover font-mono text-xs font-bold text-text-muted">
-              01
-            </span>
-            <div>
-              <h2 id="vision-title" className="text-sm font-bold text-text-primary">
-                Vision signal
-              </h2>
-              <p className="text-xs text-text-muted">
-                Gemini multimodal · sampled at operator-selected timestamps
-              </p>
-            </div>
-          </div>
-          <Badge variant={props.activeCase.id === 'primary' ? 'critical' : 'success'}>
-            {props.activeCase.shortLabel}
-          </Badge>
-        </div>
-
-        <div className="bg-surface-scrim p-3">
-          <div className="relative overflow-hidden rounded-lg border border-border-strong bg-surface-base">
-            <video
-              ref={props.videoRef}
-              key={props.activeCase.mediaSource}
-              src={props.activeCase.mediaSource}
-              poster={
-                props.activeCase.id === 'primary'
-                  ? '/media/content_frame.png'
-                  : '/media/ad_frame.png'
-              }
-              className="aspect-video w-full object-cover"
-              preload="metadata"
-              onLoadedMetadata={props.onLoadedMetadata}
-              onTimeUpdate={props.onTimeUpdate}
-              onPlay={props.onPlay}
-              onPause={props.onPause}
-            />
-            <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full border border-border-strong bg-surface-scrim px-2 py-1 font-mono text-xs text-text-primary backdrop-blur-md">
-              <Radio className="h-3 w-3 text-status-critical" /> Live ·{' '}
-              {formatTime(props.currentTime)}
-            </div>
-            {displayed && (
-              <div
-                className={`absolute inset-x-4 top-1/2 -translate-y-1/2 rounded-lg border bg-surface-scrim px-4 py-3 text-center backdrop-blur-md ${classificationBorder}`}
-              >
-                <strong className="block text-sm uppercase text-text-primary">
-                  {displayed.classification} detected
-                </strong>
-                <span className={`mt-1 block font-mono text-xs ${classificationTone}`}>
-                  {confidence} confidence · {displayed.slate_type ?? 'frame sample'}
-                </span>
-              </div>
-            )}
-          </div>
-
-          <div className="mt-3 flex items-center gap-3">
-            <button
-              type="button"
-              onClick={props.onTogglePlay}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-text-primary text-surface-base transition-transform duration-fast hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-interactive"
-              aria-label={props.isPlaying ? 'Pause synthetic stream' : 'Play synthetic stream'}
+      <div className="flex items-start justify-between gap-4 border-b border-border-subtle p-4 sm:px-5">
+        <div className="flex items-start gap-2.5">
+          <span className="mt-0.5 font-mono text-caption font-bold tracking-module text-interactive">
+            01
+          </span>
+          <div>
+            <h2
+              id="vision-title"
+              className="m-0 mb-1 text-section font-bold tracking-tight text-text-primary"
             >
-              {props.isPlaying ? (
-                <Pause className="h-3.5 w-3.5" />
-              ) : (
-                <Play className="h-3.5 w-3.5" />
-              )}
-            </button>
-            <span className="w-10 font-mono text-xs text-text-primary">
-              {formatTime(props.currentTime)}
-            </span>
-            <input
-              type="range"
-              min={0}
-              max={props.duration || 35}
-              step={0.1}
-              value={Math.min(props.currentTime, props.duration || 35)}
-              onChange={(event) => props.onSeek(Number(event.currentTarget.value))}
-              className="h-1.5 min-w-0 flex-1 cursor-pointer accent-interactive"
-              aria-label="Synthetic stream timeline"
-            />
-            <span className="font-mono text-xs text-text-primary">
-              {formatTime(props.duration || 35)}
-            </span>
+              Vision signal
+            </h2>
+            <p className="m-0 text-compact leading-section text-text-muted">
+              Gemini multimodal · synthetic evidence stream
+            </p>
           </div>
         </div>
-
-        <div className="grid grid-cols-3 border-b border-border-subtle">
-          <div className="p-3">
-            <span className="block text-xs uppercase text-text-muted">Classification</span>
-            <strong className={`mt-1 block font-mono text-sm ${classificationTone}`}>
-              {displayed?.classification.toUpperCase() ?? 'AWAITING'}
-            </strong>
-          </div>
-          <div className="border-l border-border-subtle p-3">
-            <span className="block text-xs uppercase text-text-muted">Vision latency</span>
-            <strong className="mt-1 block font-mono text-sm text-text-primary">
-              {displayedLatency === null ? '—' : `${Math.round(displayedLatency)} ms`}
-            </strong>
-          </div>
-          <div className="border-l border-border-subtle p-3">
-            <span className="block text-xs uppercase text-text-muted">Frame hash</span>
-            <strong className="mt-1 block truncate font-mono text-sm text-text-primary">
-              {displayed
-                ? `${displayed.contentHash.slice(0, 4)}…${displayed.contentHash.slice(-4)}`
-                : '—'}
-            </strong>
-          </div>
-        </div>
-
-        <BroadcastSampleStrip
-          activeCase={props.activeCase}
-          selectedTime={selectedTime}
-          onSeek={props.onSeek}
-        />
-
-        <div className="space-y-3 border-t border-border-subtle p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <ScanLine className="h-4 w-4 text-interactive" />
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-bold text-text-primary">
-                    {sourceLabel ?? 'No frame classified yet'}
-                  </p>
-                  {hasBothSources && (
-                    <SegmentedControl
-                      size="sm"
-                      label="Displayed frame source"
-                      options={SOURCE_OPTIONS}
-                      value={activeSource ?? 'agent'}
-                      onValueChange={(v) => setSelectedSource(v as 'agent' | 'manual')}
-                    />
-                  )}
-                </div>
-                <p className="text-xs text-text-muted">
-                  {displayed?.visual_summary ??
-                    'Run the investigation or classify the selected frame.'}
-                </p>
-              </div>
-            </div>
-            <Button
-              variant="secondary"
+        <div className="flex items-center gap-2">
+          {props.agentResult && props.manualResult ? (
+            <SegmentedControl
+              label="Selected Vision evidence"
+              options={[
+                { value: 'agent', label: 'Agent evidence' },
+                { value: 'manual', label: 'Operator sample' },
+              ]}
+              value={selectedSource}
+              onValueChange={handleSelectSource}
               size="sm"
-              loading={props.classifying}
-              onClick={props.onClassify}
-              icon={<Camera className="h-3.5 w-3.5" />}
-            >
-              Classify {formatTime(props.currentTime)}
-            </Button>
-          </div>
-          {displayed?.text_detected && (
-            <p className="rounded-md bg-surface-base p-2 font-mono text-xs text-text-secondary">
-              OCR · “{displayed.text_detected}”
-            </p>
+              className="font-mono"
+            />
+          ) : (
+            <span className="font-mono text-caption text-text-muted whitespace-nowrap">
+              {props.agentResult
+                ? 'Agent evidence'
+                : props.manualResult
+                  ? 'Operator sample'
+                  : 'Awaiting evidence'}
+            </span>
           )}
-          {props.classificationError && (
-            <p role="alert" className="text-xs text-status-critical">
-              {props.classificationError}
-            </p>
-          )}
-          <EvidenceGateCard
-            summary={props.evidenceSummary}
-            visionConfirmed={Boolean(
-              props.agentResult && props.agentResult.classification === 'slate',
-            )}
-          />
         </div>
-      </Card>
+      </div>
+
+      <BroadcastPlayer
+        activeCase={props.activeCase}
+        videoRef={props.videoRef}
+        currentTime={props.currentTime}
+        duration={props.duration}
+        isPlaying={props.isPlaying}
+        onTogglePlay={props.onTogglePlay}
+        onSeek={props.onSeek}
+        onLoadedMetadata={props.onLoadedMetadata}
+        onTimeUpdate={props.onTimeUpdate}
+        onPlay={props.onPlay}
+        onPause={props.onPause}
+        displayed={evidenceAtPlayhead}
+        confidence={playerConfidence}
+      />
+
+      <div className="mx-5 mt-3 grid grid-cols-3 gap-2" aria-label="Selected frame evidence">
+        <div className="min-w-0 rounded-inset border border-border-subtle bg-surface-card p-2.5">
+          <span className="block font-mono text-micro uppercase tracking-widest text-text-muted">
+            Classification
+          </span>
+          <strong
+            className={`mt-1 block truncate font-mono text-detail font-bold ${displayedStyles?.text ?? 'text-text-muted'}`}
+          >
+            {displayed?.classification.toUpperCase() ?? 'AWAITING'}
+          </strong>
+        </div>
+        <div className="min-w-0 rounded-inset border border-border-subtle bg-surface-card p-2.5">
+          <span className="block font-mono text-micro uppercase tracking-widest text-text-muted">
+            Vision latency
+          </span>
+          <strong className="mt-1 block truncate font-mono text-detail font-bold text-text-primary">
+            {displayedLatency === null ? '—' : `${(displayedLatency / 1000).toFixed(2)} s`}
+          </strong>
+        </div>
+        <div className="min-w-0 rounded-inset border border-border-subtle bg-surface-card p-2.5">
+          <span className="block font-mono text-micro uppercase tracking-widest text-text-muted">
+            Frame hash
+          </span>
+          <strong className="mt-1 block truncate font-mono text-detail font-bold text-text-primary">
+            {displayed
+              ? `${displayed.contentHash.slice(0, 4)}…${displayed.contentHash.slice(-4)}`
+              : '—'}
+          </strong>
+        </div>
+      </div>
+
+      <BroadcastSampleStrip
+        activeCase={props.activeCase}
+        selectedTime={selectedTime}
+        onSeek={props.onSeek}
+      />
+
+      <VisionClassificationCard
+        displayed={displayed}
+        confidence={confidence}
+        activeSource={activeSource}
+        currentTime={props.currentTime}
+        classifying={props.classifying}
+        onClassify={props.onClassify}
+      />
+
+      {props.classificationError && (
+        <p role="alert" className="mx-5 mb-3 text-xs text-status-critical">
+          {props.classificationError}
+        </p>
+      )}
+
+      <EvidenceGateCard
+        summary={props.evidenceSummary}
+        visionConfirmed={Boolean(props.agentResult && props.agentResult.classification === 'slate')}
+        visionConfidence={props.agentResult?.confidence}
+      />
     </section>
   );
 }

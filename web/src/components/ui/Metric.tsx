@@ -15,7 +15,7 @@ export interface MetricProps {
 }
 
 const toneValueClasses: Record<MetricTone, string> = {
-  neutral: 'text-text-primary',
+  neutral: 'text-text-secondary',
   critical: 'text-status-critical',
   warning: 'text-status-warning',
   success: 'text-status-success',
@@ -45,27 +45,34 @@ export function Metric({
     return (
       <section
         aria-busy={loading || undefined}
-        className={`min-w-0 border-t border-border-subtle p-4 sm:border-l sm:border-t-0 ${className}`}
+        className={`min-w-0 p-5 border-l border-border-subtle max-lg:border-t max-lg:border-l-0 ${className}`}
       >
-        <div className="mb-3 flex items-center justify-between text-text-muted">
-          <span className="font-mono text-xs font-semibold uppercase tracking-wider text-text-muted">
-            {label}
-          </span>
-          {icon}
+        <div className="flex items-center justify-between text-compact font-mono uppercase tracking-label text-text-muted">
+          <span>{label}</span>
+          {icon ? (
+            <span
+              aria-hidden="true"
+              className="grid size-6.25 place-items-center rounded-md bg-surface-card text-text-muted"
+            >
+              {icon}
+            </span>
+          ) : null}
         </div>
         {loading ? (
           <div
-            className="my-1 h-8 w-28 animate-pulse rounded bg-surface-hover"
+            className="my-1.5 h-6 w-28 animate-pulse rounded bg-surface-hover"
             aria-hidden="true"
           />
         ) : (
-          <div className={`font-mono text-2xl font-bold tracking-tight ${toneValueClasses[tone]}`}>
+          <div
+            className={`mt-3 font-mono text-metric font-semibold leading-none tracking-metric ${toneValueClasses[tone]}`}
+          >
             {value ?? '—'}
           </div>
         )}
-        <div className="mt-2 flex min-w-0 items-center justify-between gap-2 text-xs">
-          <span className="truncate text-text-secondary">{detail}</span>
-          {tag ? <span className="shrink-0 font-mono text-text-muted">{tag}</span> : null}
+        <div className="mt-2.5 flex min-w-0 items-center justify-between gap-2 text-compact">
+          <span className="truncate text-text-muted">{detail}</span>
+          {tag ? <span className="shrink-0 font-semibold text-text-secondary">{tag}</span> : null}
         </div>
       </section>
     );
@@ -77,22 +84,29 @@ export function Metric({
       className={`min-w-0 rounded-lg border bg-surface-panel p-3 shadow-sm ${toneBorderClasses[tone]} ${className}`}
     >
       <div className="flex items-center justify-between text-text-muted">
-        <p className="font-mono text-xs font-semibold uppercase tracking-wider text-text-muted">
-          {label}
-        </p>
-        {icon}
+        <p className="font-mono text-compact uppercase tracking-label text-text-muted">{label}</p>
+        {icon ? (
+          <span
+            aria-hidden="true"
+            className="grid size-6.25 place-items-center rounded-md bg-surface-card text-text-muted"
+          >
+            {icon}
+          </span>
+        ) : null}
       </div>
       {loading ? (
         <div className="mt-2 h-5 w-24 animate-pulse rounded bg-surface-hover" aria-hidden="true" />
       ) : (
-        <p className={`mt-1 font-mono text-lg font-bold tracking-tight ${toneValueClasses[tone]}`}>
+        <p
+          className={`mt-2 font-mono text-lg font-semibold tracking-tight ${toneValueClasses[tone]}`}
+        >
           {value ?? '—'}
         </p>
       )}
       {!loading && (detail || tag) ? (
-        <div className="mt-1 flex min-w-0 items-center justify-between gap-2 text-xs">
-          {detail ? <span className="truncate text-text-secondary">{detail}</span> : null}
-          {tag ? <span className="shrink-0 font-mono text-text-muted">{tag}</span> : null}
+        <div className="mt-1.5 flex min-w-0 items-center justify-between gap-2 text-compact">
+          {detail ? <span className="truncate text-text-muted">{detail}</span> : null}
+          {tag ? <span className="shrink-0 font-semibold text-text-secondary">{tag}</span> : null}
         </div>
       ) : null}
     </section>

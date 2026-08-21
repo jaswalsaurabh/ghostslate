@@ -1,6 +1,6 @@
 import React from 'react';
-import { Zap, Send, X } from 'lucide-react';
-import { Button, Badge } from '../ui/index.js';
+import { Send, X } from 'lucide-react';
+import { Button } from '../ui/index.js';
 import { RemediationProposalDetails } from './RemediationProposalDetails.js';
 import type { RemediationProposal } from '../../types.js';
 
@@ -8,7 +8,6 @@ interface RemediationStagedStateProps {
   proposal: RemediationProposal;
   isReviewing: boolean;
   approving: boolean;
-  onStartReview: () => void;
   onCancelReview: () => void;
   onApprove: () => Promise<void>;
 }
@@ -17,87 +16,58 @@ export const RemediationStagedState: React.FC<RemediationStagedStateProps> = ({
   proposal,
   isReviewing,
   approving,
-  onStartReview,
   onCancelReview,
   onApprove,
-}) => (
-  <div className="p-4 rounded-lg bg-surface-base border border-border-subtle space-y-3.5">
-    <div className="flex items-center justify-between border-b border-border-subtle pb-2.5">
-      <div className="flex items-center gap-2">
-        <Badge variant="warning" size="sm">
-          STAGED
-        </Badge>
-        <span className="text-xs font-bold text-text-primary">Action: {proposal.action}</span>
-      </div>
-      <Badge variant="neutral" size="sm">
-        {proposal.target.channelId}
-      </Badge>
-    </div>
+}) => {
+  if (!isReviewing) {
+    return null;
+  }
 
-    {/* Shared Authoritative Proposal & Telemetry Details */}
-    <RemediationProposalDetails proposal={proposal} />
-
-    <p className="text-[11px] text-text-muted italic font-sans">
-      This emits an operator-approved proposal only. It does not modify ad infrastructure.
-    </p>
-
-    {!isReviewing ? (
-      <div className="pt-1">
-        <Button
-          variant="critical"
-          size="md"
-          onClick={onStartReview}
-          icon={<Zap className="w-3.5 h-3.5 text-status-critical" />}
-        >
-          Review Reroute Policy
-        </Button>
-      </div>
-    ) : (
-      <div className="p-3 bg-surface-card rounded-lg border border-border-strong space-y-2.5 animate-fadeIn">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-bold text-text-primary flex items-center gap-1.5 font-sans">
-            <Zap className="w-3.5 h-3.5 text-status-warning" />
-            Confirm Policy Emission
+  return (
+    <div className="-mt-5 mx-5 mb-5 rounded-b-inset border border-status-warning-border bg-status-warning-surface p-4 text-compact shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <span className="block font-mono text-micro uppercase tracking-widest text-text-muted">
+            Staged · not emitted
           </span>
-          <Badge variant="warning" size="sm">
-            OPERATOR APPROVAL REQUIRED
-          </Badge>
+          <h3 className="m-0 mt-1 font-sans text-xs font-bold text-text-primary">
+            Review cohort reroute
+          </h3>
         </div>
+        <span className="rounded-md border border-status-warning-border px-2 py-1 font-mono text-caption font-bold text-status-warning">
+          Operator approval required
+        </span>
+      </div>
 
-        <p className="text-xs text-text-secondary font-sans">
-          Execute <strong className="text-text-primary font-mono">{proposal.action}</strong> away
-          from <strong className="text-text-primary font-mono">{proposal.target.sspId}</strong> for{' '}
-          <strong className="text-text-primary font-mono">{proposal.target.deviceClass}</strong> (
-          <span className="font-mono">{proposal.target.codec}</span>) on{' '}
-          <strong className="text-text-primary font-mono">{proposal.target.channelId}</strong>.
+      <RemediationProposalDetails proposal={proposal} />
+
+      <div className="flex items-center justify-between gap-3 pt-3 border-t border-border-subtle">
+        <p className="m-0 text-caption text-text-muted">
+          Approval is recorded and emitted once as an immutable operational event.
         </p>
-
-        <p className="text-[11px] font-mono text-status-warning">
-          Warning: Approval is recorded and emitted once as an immutable operational event.
-        </p>
-
-        <div className="flex items-center gap-2 pt-1">
+        <div className="flex items-center gap-2 shrink-0">
           <Button
-            variant="primary"
-            size="sm"
-            loading={approving}
-            disabled={approving}
-            onClick={() => void onApprove()}
-            icon={<Send className="w-3.5 h-3.5 text-interactive-fg" />}
-          >
-            {approving ? 'Emitting Policy...' : 'Approve & Emit'}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={approving}
             onClick={onCancelReview}
-            icon={<X className="w-3.5 h-3.5" />}
+            disabled={approving}
+            variant="secondary"
+            size="sm"
+            className="font-mono"
+            icon={<X aria-hidden="true" className="size-2.5" />}
           >
             Cancel
           </Button>
+          <Button
+            onClick={() => void onApprove()}
+            loading={approving}
+            variant="warning"
+            size="sm"
+            className="font-mono"
+            icon={<Send aria-hidden="true" className="size-2.5" />}
+          >
+            {approving ? 'Emitting...' : 'Confirm and emit'}
+          </Button>
         </div>
       </div>
-    )}
-  </div>
-);
+    </div>
+  );
+};

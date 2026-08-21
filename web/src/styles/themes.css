@@ -30,6 +30,7 @@
 
   /* Status — Critical */
   --color-status-critical: var(--gs-rose-700);
+  --color-status-critical-fg: var(--gs-neutral-0);
   --color-status-critical-surface: color-mix(
     in oklab,
     var(--gs-rose-700) 12%,
@@ -52,6 +53,7 @@
 
   /* Status — Success */
   --color-status-success: var(--gs-emerald-700);
+  --color-status-success-fg: var(--gs-neutral-0);
   --color-status-success-surface: color-mix(
     in oklab,
     var(--gs-emerald-700) 12%,
@@ -116,7 +118,15 @@
     transparent
   );
 
+  /* On-media tokens (video overlay elements that always sit on dark media surfaces) */
+  --color-media-text-primary: var(--gs-neutral-0);
+  --color-media-text-muted: var(--gs-neutral-0);
+  --color-media-overlay: color-mix(in oklab, var(--gs-neutral-1000) 65%, transparent);
+  --color-media-border: color-mix(in oklab, var(--gs-neutral-0) 18%, transparent);
+  --color-media-track: color-mix(in oklab, var(--gs-neutral-0) 24%, transparent);
+
   --shadow-panel: 0 24px 70px color-mix(in oklab, var(--gs-sand-300) 40%, transparent);
+  --shadow-panel-subtle: 0 12px 34px color-mix(in oklab, var(--gs-sand-300) 28%, transparent);
   --shadow-glow-interactive: 0 0 20px var(--color-interactive-subtle);
   --shadow-glow-critical: 0 0 20px var(--color-status-critical-subtle);
   --shadow-glow-success: 0 0 20px var(--color-status-success-subtle);

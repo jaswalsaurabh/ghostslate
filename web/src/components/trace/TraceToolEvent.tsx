@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { AlertOctagon, Check, Copy, Eye, Wrench } from 'lucide-react';
+import { AlertOctagon, Check, Copy, Database, Eye } from 'lucide-react';
 import type { InvestigationTraceEvent } from '../../types.js';
 import { ClickHouseResultViewer } from '../ClickHouseResultViewer.js';
-import { Card, IconButton } from '../ui/index.js';
+import { Button } from '../ui/index.js';
 
 function eventTime(timestamp: string) {
   return timestamp.split('T')[1]?.slice(0, 8) ?? '';
@@ -15,20 +15,38 @@ function SqlDisclosure({ sql }: { sql: string }) {
     setCopied(true);
     window.setTimeout(() => setCopied(false), 2_000);
   };
+
   return (
-    <div className="rounded-md border border-data-border bg-data-surface">
-      <div className="flex items-center justify-between gap-2 border-b border-data-border px-3 py-2">
-        <span className="font-mono text-xs font-semibold text-data-fg">Executed SQL</span>
-        <IconButton
-          label="Copy SQL"
-          icon={copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-          onClick={() => void copy()}
-        />
+    <details className="group mt-2 overflow-hidden rounded-md border border-status-success-border/40 bg-status-success-surface/40">
+      <summary className="flex cursor-pointer select-none items-center justify-between px-2.5 py-1.5 font-mono text-caption font-bold text-status-success">
+        <span>Executed SQL</span>
+        <span className="font-normal text-text-muted group-open:hidden">Show</span>
+        <span className="hidden font-normal text-text-muted group-open:inline">Hide</span>
+      </summary>
+      <div className="border-t border-border-subtle bg-surface-base/80 p-2.5">
+        <div className="mb-1.5 flex justify-end">
+          <Button
+            onClick={() => void copy()}
+            variant="secondary"
+            size="sm"
+            aria-live="polite"
+            className="font-mono text-micro"
+            icon={
+              copied ? (
+                <Check aria-hidden="true" className="size-2.5 text-status-success" />
+              ) : (
+                <Copy aria-hidden="true" className="size-2.5" />
+              )
+            }
+          >
+            {copied ? 'Copied' : 'Copy SQL'}
+          </Button>
+        </div>
+        <pre className="m-0 max-h-48 overflow-auto font-mono text-caption leading-relaxed text-text-primary whitespace-pre-wrap">
+          {sql}
+        </pre>
       </div>
-      <pre className="max-h-64 overflow-auto whitespace-pre-wrap p-3 font-mono text-xs leading-relaxed text-text-primary">
-        {sql}
-      </pre>
-    </div>
+    </details>
   );
 }
 
@@ -37,21 +55,28 @@ export function TraceToolEvent({
 }: {
   event: Extract<InvestigationTraceEvent, { type: 'tool_call' | 'tool_result' | 'vision_call' }>;
 }) {
+  const time = eventTime(event.timestamp);
+
   if (event.type === 'vision_call') {
     const { name, args } = event.data;
     return (
-      <Card variant="card" className="flex items-center justify-between gap-3 p-3">
-        <div className="flex items-center gap-2 text-xs">
-          <Eye className="h-4 w-4 text-interactive" />
-          <strong className="text-text-primary">Vision tool · {name}</strong>
-          <span className="font-mono text-text-muted">
-            {String(args.video_file ?? '')} @ {String(args.timestamp_seconds ?? '')}s
-          </span>
+      <article className="evidence-event-grid py-2.5 border-t border-border-subtle">
+        <time className="pt-0.5 font-mono text-caption text-text-muted">{time}</time>
+        <span className="grid size-6 place-items-center rounded-md bg-interactive-surface text-interactive shrink-0">
+          <Eye className="size-3" aria-hidden="true" />
+        </span>
+        <div className="min-w-0">
+          <div className="mt-0.5 mb-1 flex items-center justify-between gap-2 text-detail font-bold text-text-primary">
+            <span>Vision tool · {name}</span>
+            <span className="font-mono text-caption font-normal text-text-muted">
+              {String(args.video_file ?? '')} @ {String(args.timestamp_seconds ?? '')}s
+            </span>
+          </div>
+          <p className="m-0 text-compact leading-evidence text-text-secondary">
+            Gemini Vision sampled multimodal frame for visual anomaly detection.
+          </p>
         </div>
-        <time className="shrink-0 font-mono text-xs text-text-muted">
-          {eventTime(event.timestamp)}
-        </time>
-      </Card>
+      </article>
     );
   }
 
@@ -59,20 +84,27 @@ export function TraceToolEvent({
     const { name, args } = event.data;
     const sql = typeof args.query === 'string' ? args.query : null;
     return (
-      <Card variant="card" className="space-y-2 p-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-xs">
-            <Wrench className="h-4 w-4 text-interactive" />
-            <strong className="text-text-primary">MCP tool · {name}</strong>
+      <article className="evidence-event-grid py-2.5 border-t border-border-subtle">
+        <time className="pt-0.5 font-mono text-caption text-text-muted">{time}</time>
+        <span className="grid size-6 place-items-center rounded-md bg-status-success-surface text-status-success shrink-0">
+          <Database className="size-3" aria-hidden="true" />
+        </span>
+        <div className="min-w-0">
+          <div className="mt-0.5 mb-1 flex items-center justify-between gap-2 text-detail font-bold text-text-primary">
+            <span>MCP tool · {name}</span>
+            <span className="font-mono text-caption font-normal text-text-muted">
+              mcp-clickhouse
+            </span>
           </div>
-          <time className="font-mono text-xs text-text-muted">{eventTime(event.timestamp)}</time>
+          {sql ? (
+            <SqlDisclosure sql={sql} />
+          ) : (
+            <p className="m-0 font-mono text-caption text-text-muted">
+              Arguments · {JSON.stringify(args)}
+            </p>
+          )}
         </div>
-        {sql ? (
-          <SqlDisclosure sql={sql} />
-        ) : (
-          <p className="font-mono text-xs text-text-muted">Arguments · {JSON.stringify(args)}</p>
-        )}
-      </Card>
+      </article>
     );
   }
 
@@ -80,42 +112,66 @@ export function TraceToolEvent({
 
   if (isError) {
     return (
-      <div
-        role="alert"
-        className="flex items-start gap-2 rounded-lg border border-status-critical-border bg-status-critical-surface p-3 text-xs text-status-critical"
-      >
-        <AlertOctagon className="mt-0.5 h-4 w-4 shrink-0" />
-        <div>
-          <strong>{name} failed</strong>
-          <pre className="mt-1 whitespace-pre-wrap font-mono">
+      <article className="evidence-event-grid py-2.5 border-t border-border-subtle" role="alert">
+        <time className="pt-0.5 font-mono text-caption text-text-muted">{time}</time>
+        <span className="grid size-6 place-items-center rounded-md bg-status-critical-surface text-status-critical shrink-0">
+          <AlertOctagon className="size-3" aria-hidden="true" />
+        </span>
+        <div className="min-w-0">
+          <div className="mt-0.5 mb-1 text-detail font-bold text-status-critical">
+            {name} failed
+          </div>
+          <pre className="m-0 overflow-auto font-mono text-caption text-status-critical whitespace-pre-wrap">
             {String(result ?? 'Unknown error')}
           </pre>
         </div>
-      </div>
+      </article>
     );
   }
 
   if (name === 'finalize_investigation') {
     return (
-      <div className="flex items-center justify-between gap-3 rounded-lg border border-status-success-border bg-status-success-surface p-3 text-xs">
-        <span className="flex items-center gap-2 font-semibold text-status-success">
-          <Check className="h-4 w-4" />
-          MCP tool · finalize_investigation
+      <article className="evidence-event-grid py-2.5 border-t border-border-subtle">
+        <time className="pt-0.5 font-mono text-caption text-text-muted">{time}</time>
+        <span className="grid size-6 place-items-center rounded-md bg-status-success-surface text-status-success shrink-0">
+          <Check className="size-3" aria-hidden="true" />
         </span>
-        <span className="font-mono text-text-muted">{durationMs ?? '—'} ms</span>
-      </div>
+        <div className="min-w-0">
+          <div className="mt-0.5 mb-1 flex items-center justify-between gap-2 text-detail font-bold text-status-success">
+            <span>MCP tool · finalize_investigation</span>
+            <span className="font-mono text-caption font-normal text-text-muted">
+              {durationMs ? `${durationMs} ms` : 'completed'}
+            </span>
+          </div>
+          <p className="m-0 text-compact leading-evidence text-text-secondary">
+            Grounding completed. Every numeric claim maps to returned ClickHouse evidence.
+          </p>
+        </div>
+      </article>
     );
   }
 
   return (
-    <div className="space-y-2">
-      {sql && name !== 'run_query' && <SqlDisclosure sql={sql} />}
-      <ClickHouseResultViewer
-        rawResult={String(result ?? '')}
-        durationMs={typeof durationMs === 'number' ? durationMs : undefined}
-        rowsReturned={typeof rowsReturned === 'number' ? rowsReturned : undefined}
-        rowsScanned={typeof rowsScanned === 'number' ? rowsScanned : undefined}
-      />
-    </div>
+    <article className="evidence-event-grid py-2.5 border-t border-border-subtle">
+      <time className="pt-0.5 font-mono text-caption text-text-muted">{time}</time>
+      <span className="grid size-6 place-items-center rounded-md bg-status-success-surface text-status-success shrink-0">
+        <Database className="size-3" aria-hidden="true" />
+      </span>
+      <div className="min-w-0">
+        <div className="mt-0.5 mb-1 flex items-center justify-between gap-2 text-detail font-bold text-text-primary">
+          <span>MCP query completed · {name}</span>
+          <span className="font-mono text-caption font-normal text-text-muted">
+            {durationMs ? `${durationMs} ms` : ''}
+          </span>
+        </div>
+        {sql && name !== 'run_query' && <SqlDisclosure sql={sql} />}
+        <ClickHouseResultViewer
+          rawResult={String(result ?? '')}
+          durationMs={typeof durationMs === 'number' ? durationMs : undefined}
+          rowsReturned={typeof rowsReturned === 'number' ? rowsReturned : undefined}
+          rowsScanned={typeof rowsScanned === 'number' ? rowsScanned : undefined}
+        />
+      </div>
+    </article>
   );
 }

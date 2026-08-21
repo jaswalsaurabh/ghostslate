@@ -52,5 +52,25 @@
     --gs-cyan-700: #0e7490;
     --gs-rose-700: #be123c;
     --gs-violet-700: #6d28d9;
+
+    /* Redesign typography scale. */
+    --gs-text-frame: 0.4375rem;
+    --gs-text-micro: 0.5rem;
+    --gs-text-caption: 0.5625rem;
+    --gs-text-compact: 0.625rem;
+    --gs-text-detail: 0.6875rem;
+    --gs-text-section: 0.8125rem;
+    --gs-text-diagnosis: 1.0625rem;
+    --gs-text-mobile-title: 1.1875rem;
+    --gs-text-incident-title: 1.375rem;
+    --gs-text-metric: 1.5rem;
+
+    /* Repeated redesign geometry. */
+    --gs-radius-inset: 0.625rem;
+    --gs-layout-war-room-max: 97.5rem;
+    --gs-layout-gutter: 1.25rem;
+    --gs-layout-gutter-mobile: 0.75rem;
+    --gs-layout-vision-min: 22.5rem;
+    --gs-layout-investigation-min: 32.5rem;
   }
 }

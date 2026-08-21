@@ -1,8 +1,8 @@
-import { Activity, DollarSign, Gauge, ServerCrash } from 'lucide-react';
+import { Activity, DollarSign, Percent, Zap } from 'lucide-react';
 import type { InvestigationCaseConfig } from '../config/investigation-cases.js';
 import type { GroundedKpiMetrics } from '../hooks/use-clickhouse-metrics.js';
 import type { EvidenceGateReason } from '../types.js';
-import { Badge, Card, Metric, SegmentedControl } from './ui/index.js';
+import { Metric, SegmentedControl } from './ui/index.js';
 
 interface CaseOverviewProps {
   activeCase: InvestigationCaseConfig;
@@ -55,11 +55,11 @@ function getOverviewTitle({
     case 'LONE_COHORT':
       return 'Insufficient peer cohorts to verify anomaly isolation';
     case 'BELOW_FAILURE_THRESHOLD':
-      return 'Monetization window remains within normal baseline';
+      return 'Monetization window did not exceed incident failure threshold';
     case 'NO_DATA':
       return 'No telemetry records found for investigation window';
     default:
-      return 'Control window remains within monetization baseline';
+      return 'Control window did not meet the incident evidence gate';
   }
 }
 
@@ -73,37 +73,67 @@ function getOverviewSummary({
   reason?: EvidenceGateReason | undefined;
   thresholds?: { minimumCues: number; cohortDispersionPp: number } | undefined;
   visionConfirmed: boolean;
-}): string {
+}): { text: string; highlight?: string; highlightTone?: 'critical' | 'success' } {
   if (!outcome) {
-    return 'Run the investigation to populate this workspace from grounded runtime evidence.';
+    return {
+      text: 'Run the investigation to populate this workspace from grounded runtime evidence.',
+    };
   }
 
   if (outcome === 'incident') {
-    return visionConfirmed
-      ? 'Critical anomaly confirmed with ClickHouse telemetry and Gemini Vision slate evidence.'
-      : 'Critical anomaly isolated from ClickHouse telemetry. Awaiting Gemini Vision slate confirmation.';
+    return {
+      highlight: 'Critical anomaly',
+      highlightTone: 'critical',
+      text: visionConfirmed
+        ? ' detected across the window. Evidence is grounded in live MCP queries and Gemini Vision.'
+        : ' isolated from ClickHouse telemetry. Awaiting Gemini Vision confirmation.',
+    };
   }
 
   switch (reason) {
     case 'INSUFFICIENT_SAMPLE_SIZE':
-      return `All cohorts had fewer than ${thresholds?.minimumCues ?? 20} cues; small-sample guard prevented ungrounded causal attribution.`;
+      return {
+        highlight: 'Sample guard held',
+        highlightTone: 'success',
+        text: thresholds
+          ? `: all cohorts had fewer than ${thresholds.minimumCues} cues. Small-sample guard prevented ungrounded causal attribution.`
+          : ': the available evidence did not satisfy the small-sample guard.',
+      };
     case 'DIFFUSE_VARIATION':
-      return `Cohort dispersion remained below ${thresholds?.cohortDispersionPp ?? 15}pp against peer cohorts, indicating diffuse variation rather than isolated failure.`;
+      return {
+        highlight: 'Diffuse variation',
+        highlightTone: 'success',
+        text: thresholds
+          ? `: cohort dispersion remained below the ${thresholds.cohortDispersionPp}pp isolation threshold against peer cohorts.`
+          : ': peer variation did not establish an isolated cohort failure.',
+      };
     case 'LONE_COHORT':
-      return 'No peer cohorts were available in the daypart to evaluate dispersion and verify anomaly isolation.';
+      return {
+        text: 'No peer cohorts were available in the daypart to evaluate dispersion and verify anomaly isolation.',
+      };
     case 'BELOW_FAILURE_THRESHOLD':
-      return 'Failure rate remained below the incident threshold across all observed cohorts.';
+      return {
+        highlight: 'At or below threshold',
+        highlightTone: 'success',
+        text: ': no observed cohort exceeded the incident failure threshold.',
+      };
     case 'NO_DATA':
-      return 'No telemetry rows matched the query parameters for this investigation window.';
+      return {
+        text: 'No telemetry rows matched the query parameters for this investigation window.',
+      };
     default:
-      return 'No cohort crossed the evidence threshold, so no root cause or loss was asserted.';
+      return {
+        highlight: 'Evidence gate held',
+        highlightTone: 'success',
+        text: ': no cohort crossed the evidence threshold, so no root cause or loss was asserted.',
+      };
   }
 }
 
 export function CaseOverview({
   activeCase,
   metrics,
-  investigating,
+  investigating: _investigating,
   visionConfirmed = false,
   onSelectCase,
 }: CaseOverviewProps) {
@@ -118,6 +148,13 @@ export function CaseOverview({
   const hasDeadline = Boolean(
     candidate && thresholds && candidate.p95AuctionMs > thresholds.stitcherDeadlineMs,
   );
+
+  const outcomeAccent =
+    outcome === 'incident'
+      ? 'bg-linear-to-r from-status-critical-surface/70 to-transparent before:bg-status-critical'
+      : outcome === 'no_incident'
+        ? 'bg-linear-to-r from-status-success-surface/70 to-transparent before:bg-status-success'
+        : 'before:bg-border-strong';
 
   const title = getOverviewTitle({
     activeCase,
@@ -136,63 +173,82 @@ export function CaseOverview({
   });
 
   return (
-    <Card variant="panel" className="overflow-hidden">
-      <div className="grid lg:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))]">
-        <div className="p-5 sm:p-6">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <Badge variant={outcome === 'incident' ? 'critical' : 'neutral'} size="sm">
-                {activeCase.eyebrow}
-              </Badge>
-              {investigating && <Badge variant="primary">Live run</Badge>}
-            </div>
-            <SegmentedControl
-              label="Investigation case"
-              options={CASE_OPTIONS}
-              value={activeCase.id}
-              onValueChange={(id) => onSelectCase(id as InvestigationCaseConfig['id'])}
-            />
+    <section
+      aria-labelledby="incident-title"
+      className="incident-overview-grid overflow-hidden rounded-2xl border border-border-subtle bg-surface-panel shadow-panel"
+    >
+      <div
+        className={`relative p-5 sm:px-6 max-md:col-span-2 before:absolute before:inset-y-0 before:left-0 before:w-0.75 ${outcomeAccent}`}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3 max-sm:flex-col max-sm:items-start">
+          <div className="font-mono text-compact uppercase tracking-eyebrow text-text-muted">
+            {activeCase.eyebrow}
           </div>
-          <h1 className="max-w-3xl text-xl font-bold tracking-tight text-text-primary sm:text-2xl">
-            {title}
-          </h1>
-          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-text-secondary">{summary}</p>
+          <SegmentedControl
+            label="Investigation case"
+            options={CASE_OPTIONS}
+            value={activeCase.id}
+            onValueChange={onSelectCase}
+            size="sm"
+            className="font-mono uppercase"
+          />
         </div>
-
-        <Metric
-          label="Revenue at risk"
-          value={metrics.revenueLoss}
-          detail={metrics.revenueLossSubtext}
-          tag={metrics.revenueLossTag}
-          tone={metrics.revenueLossVariant}
-          icon={<DollarSign className="h-4 w-4" />}
-          variant="column"
-        />
-        <Metric
-          label="Slate bleed"
-          value={metrics.slateBleedRate}
-          detail={metrics.slateBleedSubtext}
-          tag={metrics.slateBleedTag}
-          tone={metrics.slateBleedVariant}
-          icon={<Gauge className="h-4 w-4" />}
-          variant="column"
-        />
-        <Metric
-          label="Offending SSP"
-          value={metrics.offendingSsp}
-          detail={metrics.sspSubtext}
-          tag={metrics.sspLatency}
-          tone={metrics.sspVariant}
-          icon={
-            outcome === 'no_incident' ? (
-              <Activity className="h-4 w-4" />
-            ) : (
-              <ServerCrash className="h-4 w-4" />
-            )
-          }
-          variant="column"
-        />
+        <h1
+          id="incident-title"
+          className="mb-1.75 mt-1.5 text-incident-title font-bold leading-title tracking-incident text-text-primary max-sm:text-mobile-title"
+        >
+          {title}
+        </h1>
+        <p className="m-0 text-xs leading-evidence text-text-secondary">
+          {summary.highlight ? (
+            <b
+              className={`font-bold ${
+                summary.highlightTone === 'critical'
+                  ? 'text-status-critical'
+                  : 'text-status-success'
+              }`}
+            >
+              {summary.highlight}
+            </b>
+          ) : null}
+          {summary.text}
+        </p>
       </div>
-    </Card>
+
+      <Metric
+        label="Revenue at risk"
+        value={metrics.revenueLoss}
+        detail={metrics.revenueLossSubtext}
+        tag={metrics.revenueLossTag}
+        tone={metrics.revenueLossVariant}
+        icon={<DollarSign className="h-3.5 w-3.5" />}
+        variant="column"
+      />
+      <Metric
+        label="Slate bleed"
+        value={metrics.slateBleedRate}
+        detail={metrics.slateBleedSubtext}
+        tag={metrics.slateBleedTag}
+        tone={metrics.slateBleedVariant}
+        icon={<Percent className="h-3.5 w-3.5" />}
+        variant="column"
+      />
+      <Metric
+        label="Offending SSP"
+        value={metrics.offendingSsp}
+        detail={metrics.sspSubtext}
+        tag={metrics.sspLatency}
+        tone={metrics.sspVariant}
+        icon={
+          outcome === 'no_incident' ? (
+            <Activity className="h-3.5 w-3.5" />
+          ) : (
+            <Zap className="h-3.5 w-3.5" />
+          )
+        }
+        variant="column"
+        className="max-md:col-span-2"
+      />
+    </section>
   );
 }

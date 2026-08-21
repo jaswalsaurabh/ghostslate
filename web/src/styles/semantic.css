@@ -30,6 +30,7 @@
 
   /* Status — Critical */
   --color-status-critical: var(--gs-rose-400);
+  --color-status-critical-fg: var(--gs-neutral-950);
   --color-status-critical-surface: color-mix(
     in oklab,
     var(--gs-rose-400) 15%,
@@ -52,6 +53,7 @@
 
   /* Status — Success */
   --color-status-success: var(--gs-emerald-400);
+  --color-status-success-fg: var(--gs-neutral-950);
   --color-status-success-surface: color-mix(
     in oklab,
     var(--gs-emerald-400) 15%,
@@ -128,11 +130,42 @@
     transparent
   );
 
+  /* On-media tokens (video overlay elements that always sit on dark media surfaces) */
+  --color-media-text-primary: var(--gs-neutral-0);
+  --color-media-text-muted: var(--gs-neutral-0);
+  --color-media-overlay: color-mix(in oklab, var(--gs-neutral-1000) 65%, transparent);
+  --color-media-border: color-mix(in oklab, var(--gs-neutral-0) 18%, transparent);
+  --color-media-track: color-mix(in oklab, var(--gs-neutral-0) 24%, transparent);
+
   /* Non-colour scales */
-  --font-sans:
-    'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-    sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-sans: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+
+  --text-frame: var(--gs-text-frame);
+  --text-micro: var(--gs-text-micro);
+  --text-caption: var(--gs-text-caption);
+  --text-compact: var(--gs-text-compact);
+  --text-detail: var(--gs-text-detail);
+  --text-section: var(--gs-text-section);
+  --text-diagnosis: var(--gs-text-diagnosis);
+  --text-mobile-title: var(--gs-text-mobile-title);
+  --text-incident-title: var(--gs-text-incident-title);
+  --text-metric: var(--gs-text-metric);
+
+  --leading-dense: 1.35;
+  --leading-title: 1.2;
+  --leading-section: 1.4;
+  --leading-evidence: 1.55;
+  --leading-diagnosis: 1.65;
+
+  --tracking-micro: 0.06em;
+  --tracking-label: 0.08em;
+  --tracking-module: 0.12em;
+  --tracking-eyebrow: 0.14em;
+  --tracking-incident: -0.035em;
+  --tracking-metric: -0.06em;
+
+  --radius-inset: var(--gs-radius-inset);
 
   --duration-fast: 150ms;
   --duration-base: 250ms;
@@ -140,10 +173,35 @@
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 
   --shadow-panel: 0 24px 70px color-mix(in oklab, var(--gs-neutral-1000) 28%, transparent);
+  --shadow-panel-subtle: 0 12px 34px color-mix(in oklab, var(--gs-neutral-1000) 8%, transparent);
+  --shadow-status-critical-ring: 0 0 0 1px var(--color-status-critical);
+  --shadow-status-success-ring: 0 0 0 1px var(--color-status-success);
+  --shadow-status-warning-ring: 0 0 0 1px var(--color-status-warning);
+  --shadow-interactive-ring: 0 0 0 1px var(--color-interactive);
+  --shadow-border-ring: 0 0 0 1px var(--color-border-strong);
+  --shadow-text-muted-ring: 0 0 0 1px var(--color-text-muted);
+  --shadow-status-critical-halo: 0 0 0 4px var(--color-status-critical-subtle);
+  --shadow-status-success-halo: 0 0 0 4px var(--color-status-success-subtle);
+  --shadow-status-warning-halo: 0 0 0 4px var(--color-status-warning-subtle);
+  --shadow-interactive-halo: 0 0 0 4px var(--color-interactive-subtle);
+  --shadow-text-muted-halo: 0 0 0 3px color-mix(in oklab, var(--color-text-muted) 12%, transparent);
   --shadow-glow-interactive: 0 0 20px var(--color-interactive-subtle);
   --shadow-glow-critical: 0 0 20px var(--color-status-critical-subtle);
   --shadow-glow-success: 0 0 20px var(--color-status-success-subtle);
 
+  --blur-header: 1.125rem;
+
+  --breakpoint-war-room: 65.626rem;
+
+  --z-index-content: 1;
+  --z-index-media-overlay: 2;
+  --z-index-media-controls: 3;
   --z-index-sticky: 20;
   --z-index-toast: 60;
+
+  --layout-war-room-max: var(--gs-layout-war-room-max);
+  --layout-gutter: var(--gs-layout-gutter);
+  --layout-gutter-mobile: var(--gs-layout-gutter-mobile);
+  --layout-vision-min: var(--gs-layout-vision-min);
+  --layout-investigation-min: var(--gs-layout-investigation-min);
 }

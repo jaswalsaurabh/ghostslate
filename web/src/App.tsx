@@ -101,7 +101,7 @@ export function App() {
     <div className="min-h-screen bg-surface-base font-sans text-text-primary selection:bg-interactive selection:text-interactive-fg">
       <a
         href="#war-room"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-toast focus:rounded-md focus:bg-interactive focus:px-3 focus:py-2 focus:text-interactive-fg"
+        className="skip-link fixed left-3 top-3 z-toast rounded-md bg-interactive px-3 py-2 text-interactive-fg transition-transform"
       >
         Skip to forensic workspace
       </a>
@@ -112,10 +112,7 @@ export function App() {
         vertexState={vertexState}
       />
 
-      <main
-        id="war-room"
-        className="mx-auto flex w-full max-w-screen-2xl flex-col gap-4 px-4 py-5 sm:px-6"
-      >
+      <main id="war-room" className="war-room-shell pb-10 pt-6 max-md:pt-3">
         <CaseOverview
           activeCase={activeCase}
           metrics={metrics}
@@ -124,49 +121,48 @@ export function App() {
           onSelectCase={selectCase}
         />
 
-        <div className="grid items-start gap-4 lg:grid-cols-12">
-          <div className="lg:col-span-5">
-            <VisionPanel
-              activeCase={activeCase}
-              videoRef={player.videoRef}
-              currentTime={player.currentTime}
-              duration={player.duration}
-              isPlaying={player.isPlaying}
-              onTogglePlay={player.togglePlay}
-              onSeek={player.seek}
-              onLoadedMetadata={player.handleLoadedMetadata}
-              onTimeUpdate={player.handleTimeUpdate}
-              onPlay={player.handlePlay}
-              onPause={player.handlePause}
-              classifying={manualVision.classifying}
-              manualResult={manualVision.classification}
-              manualLatency={manualVision.latencyMs}
-              classificationError={manualVision.error}
-              onClassify={() => void classifyFrame()}
-              agentResult={agentFrame}
-              evidenceSummary={metrics.evidenceSummary}
-            />
-          </div>
+        <div className="war-room-workspace mt-4">
+          <VisionPanel
+            activeCase={activeCase}
+            videoRef={player.videoRef}
+            currentTime={player.currentTime}
+            duration={player.duration}
+            isPlaying={player.isPlaying}
+            onTogglePlay={player.togglePlay}
+            onSeek={player.seek}
+            onLoadedMetadata={player.handleLoadedMetadata}
+            onTimeUpdate={player.handleTimeUpdate}
+            onPlay={player.handlePlay}
+            onPause={player.handlePause}
+            classifying={manualVision.classifying}
+            manualResult={manualVision.classification}
+            manualLatency={manualVision.latencyMs}
+            classificationError={manualVision.error}
+            onClassify={() => void classifyFrame()}
+            agentResult={agentFrame}
+            evidenceSummary={metrics.evidenceSummary}
+          />
 
-          <div className="lg:col-span-7">
-            <InvestigationPanel
-              activeCase={activeCase}
-              investigating={investigation.investigating}
-              reconnecting={investigation.reconnecting}
-              trace={investigation.investigationTrace}
-              filter={traceFilter}
-              onFilter={setTraceFilter}
-              onRun={runInvestigation}
-              finalDiagnosis={investigation.finalDiagnosis}
-              grounding={investigation.groundingReport}
-              remediation={remediation.remediation}
-              remediationLoading={remediation.loading}
-              remediationApproving={remediation.approving}
-              remediationError={remediation.error}
-              onApproveRemediation={remediation.approve}
-              onRefreshRemediation={remediation.refresh}
-            />
-          </div>
+          <InvestigationPanel
+            activeCase={activeCase}
+            investigating={investigation.investigating}
+            reconnecting={investigation.reconnecting}
+            trace={investigation.investigationTrace}
+            filter={traceFilter}
+            onFilter={setTraceFilter}
+            onRun={runInvestigation}
+            finalDiagnosis={investigation.finalDiagnosis}
+            grounding={investigation.groundingReport}
+            evidenceSummary={metrics.evidenceSummary}
+            isGroundedFromMcp={metrics.isGroundedFromMcp}
+            rateCardFromQuery={metrics.rateCardFromQuery}
+            remediation={remediation.remediation}
+            remediationLoading={remediation.loading}
+            remediationApproving={remediation.approving}
+            remediationError={remediation.error}
+            onApproveRemediation={remediation.approve}
+            onRefreshRemediation={remediation.refresh}
+          />
         </div>
       </main>
 

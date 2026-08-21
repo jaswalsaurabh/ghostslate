@@ -41,6 +41,117 @@
   }
 }
 
+@layer components {
+  .war-room-shell {
+    width: min(var(--layout-war-room-max), calc(100% - (var(--layout-gutter) * 2)));
+    margin-inline: auto;
+  }
+
+  .skip-link {
+    transform: translateY(-160%);
+  }
+
+  .skip-link:focus {
+    transform: none;
+  }
+
+  .war-room-workspace {
+    display: grid;
+    grid-template-columns:
+      minmax(var(--layout-vision-min), 0.86fr)
+      minmax(var(--layout-investigation-min), 1.4fr);
+    align-items: start;
+    gap: 1rem;
+  }
+
+  .evidence-event-grid {
+    display: grid;
+    grid-template-columns: 4rem 1.5rem minmax(0, 1fr);
+    gap: 0.5625rem;
+  }
+
+  .incident-overview-grid {
+    display: grid;
+    grid-template-columns: minmax(16.25rem, 1.4fr) repeat(3, minmax(9.375rem, 0.65fr));
+  }
+
+  .investigation-prompt-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .pipeline-stage-connector::after {
+    position: absolute;
+    top: 0.3125rem;
+    right: 0.5rem;
+    left: 1.125rem;
+    height: 1px;
+    content: '';
+    background: var(--color-border-strong);
+  }
+
+  .broadcast-player-media {
+    filter: saturate(0.82) contrast(1.04);
+  }
+
+  .broadcast-transport-grid {
+    grid-template-columns: 1.75rem auto minmax(0, 1fr) auto;
+  }
+
+  .broadcast-cue-zone {
+    left: 28.5%;
+    width: 43%;
+  }
+
+  .broadcast-playhead::before {
+    left: -0.09375rem;
+  }
+
+  .broadcast-thumbnail {
+    aspect-ratio: 1.65;
+  }
+
+  .broadcast-thumbnail-image {
+    filter: saturate(0.72);
+  }
+
+  .broadcast-thumbnail:hover .broadcast-thumbnail-image {
+    transform: scale(1.03);
+    filter: saturate(1);
+  }
+
+  @media (max-width: 65.625rem) {
+    .war-room-workspace {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .incident-overview-grid {
+      grid-template-columns: 1.4fr repeat(3, 0.7fr);
+    }
+  }
+
+  @media (max-width: 47.999rem) {
+    .war-room-shell {
+      width: min(var(--layout-war-room-max), calc(100% - (var(--layout-gutter-mobile) * 2)));
+    }
+
+    .incident-overview-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .investigation-prompt-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  @media (max-width: 39.999rem) {
+    .evidence-event-grid {
+      grid-template-columns: 2.875rem 1.25rem minmax(0, 1fr);
+      gap: 0.4375rem;
+    }
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   :root {
     --duration-fast: 0ms;
