@@ -25,18 +25,15 @@ export const Badge: React.FC<BadgeProps> = ({
     'inline-flex items-center font-mono font-semibold tracking-wide rounded border select-none whitespace-nowrap shrink-0';
 
   const sizeClasses: Record<BadgeSize, string> = {
-    sm: 'text-[10px] px-1.5 py-0.5 gap-1',
+    sm: 'text-xs px-1.5 py-0.5 gap-1',
     md: 'text-xs px-2.5 py-1 gap-1.5',
   };
 
   const variantClasses: Record<BadgeVariant, string> = {
-    primary:
-      'bg-interactive-surface text-interactive border-interactive-border shadow-[0_0_8px_var(--color-interactive-subtle)]',
-    critical:
-      'bg-status-critical-surface text-status-critical border-status-critical-border shadow-[0_0_8px_var(--color-status-critical-subtle)]',
+    primary: 'bg-interactive-surface text-interactive border-interactive-border',
+    critical: 'bg-status-critical-surface text-status-critical border-status-critical-border',
     warning: 'bg-status-warning-surface text-status-warning border-status-warning-border',
-    success:
-      'bg-status-success-surface text-status-success border-status-success-border shadow-[0_0_8px_var(--color-status-success-subtle)]',
+    success: 'bg-status-success-surface text-status-success border-status-success-border',
     reasoning: 'bg-reasoning-surface text-reasoning-fg border-reasoning-border',
     neutral: 'bg-surface-card text-text-secondary border-border-subtle',
     data: 'bg-data-surface text-data-fg border-data-border',

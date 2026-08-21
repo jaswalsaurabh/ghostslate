@@ -363,6 +363,8 @@ Strict Grounding Rules:
             yield emit('frame_classified', {
               name: call.name,
               args: call.args,
+              durationMs: queryDurationMs,
+              latencyMs: queryDurationMs,
               ...outcome.frame,
             });
           } else if (call.name === 'collect_diagnosis_evidence') {
@@ -388,6 +390,9 @@ Strict Grounding Rules:
               // Emit KPI metrics exclusively from a valid canonical evidence response.
               const derived = this.metricsService.deriveMetrics(rows, {
                 rowsReturned: rows.length,
+                ...(typeof outcome.rowsScanned === 'number'
+                  ? { rowsScanned: outcome.rowsScanned }
+                  : {}),
                 queryDurationMs,
               });
               if (derived.isGroundedFromMcp) {

@@ -1,10 +1,12 @@
 @theme static {
   /* Surfaces */
-  --color-surface-base: var(--gs-neutral-950);
+  --color-surface-base: var(--gs-ocean-950);
   --color-surface-panel: var(--gs-neutral-900);
   --color-surface-card: var(--gs-neutral-850);
   --color-surface-hover: var(--gs-neutral-750);
   --color-surface-scrim: color-mix(in oklab, var(--gs-neutral-950) 80%, transparent);
+  --color-surface-overlay: color-mix(in oklab, var(--gs-neutral-1000) 76%, transparent);
+  --color-surface-grid: color-mix(in oklab, var(--gs-cyan-300) 4.5%, transparent);
 
   /* Borders */
   --color-border-subtle: var(--gs-neutral-800);
@@ -16,26 +18,27 @@
   --color-text-muted: var(--gs-neutral-450);
 
   /* Interactive */
-  --color-interactive: var(--gs-sky-400);
-  --color-interactive-fg: var(--gs-neutral-950);
+  --color-interactive: var(--gs-cyan-400);
+  --color-interactive-fg: var(--gs-neutral-1000);
   --color-interactive-surface: color-mix(
     in oklab,
-    var(--gs-sky-400) 15%,
+    var(--gs-cyan-400) 15%,
     var(--color-surface-base)
   );
-  --color-interactive-border: color-mix(in oklab, var(--gs-sky-400) 30%, transparent);
-  --color-interactive-subtle: color-mix(in oklab, var(--gs-sky-400) 20%, transparent);
+  --color-interactive-border: color-mix(in oklab, var(--gs-cyan-400) 30%, transparent);
+  --color-interactive-subtle: color-mix(in oklab, var(--gs-cyan-400) 20%, transparent);
 
   /* Status — Critical */
-  --color-status-critical: var(--gs-red-400);
+  --color-status-critical: var(--gs-rose-400);
+  --color-status-critical-fg: var(--gs-neutral-950);
   --color-status-critical-surface: color-mix(
     in oklab,
-    var(--gs-red-400) 15%,
+    var(--gs-rose-400) 15%,
     var(--color-surface-base)
   );
-  --color-status-critical-border: color-mix(in oklab, var(--gs-red-400) 30%, transparent);
-  --color-status-critical-subtle: color-mix(in oklab, var(--gs-red-400) 20%, transparent);
-  --color-status-critical-zone: color-mix(in oklab, var(--gs-red-400) 40%, transparent);
+  --color-status-critical-border: color-mix(in oklab, var(--gs-rose-400) 30%, transparent);
+  --color-status-critical-subtle: color-mix(in oklab, var(--gs-rose-400) 20%, transparent);
+  --color-status-critical-zone: color-mix(in oklab, var(--gs-rose-400) 40%, transparent);
 
   /* Status — Warning */
   --color-status-warning: var(--gs-amber-400);
@@ -50,12 +53,14 @@
 
   /* Status — Success */
   --color-status-success: var(--gs-emerald-400);
+  --color-status-success-fg: var(--gs-neutral-950);
   --color-status-success-surface: color-mix(
     in oklab,
     var(--gs-emerald-400) 15%,
     var(--color-surface-base)
   );
   --color-status-success-border: color-mix(in oklab, var(--gs-emerald-400) 30%, transparent);
+  --color-status-success-subtle: color-mix(in oklab, var(--gs-emerald-400) 20%, transparent);
   --color-status-success-zone: color-mix(in oklab, var(--gs-emerald-400) 40%, transparent);
 
   /* Data / query surface — the ClickHouse terminal aesthetic */
@@ -65,26 +70,26 @@
   --color-data-border: color-mix(in oklab, var(--gs-emerald-400) 30%, transparent);
 
   /* Agent Reasoning */
-  --color-reasoning-fg: var(--gs-purple-400);
+  --color-reasoning-fg: var(--gs-violet-400);
   --color-reasoning-surface: color-mix(
     in oklab,
-    var(--gs-purple-400) 12%,
+    var(--gs-violet-400) 12%,
     var(--color-surface-base)
   );
-  --color-reasoning-border: color-mix(in oklab, var(--gs-purple-400) 30%, transparent);
+  --color-reasoning-border: color-mix(in oklab, var(--gs-violet-400) 30%, transparent);
 
   /* Domain — agent confidence (§7 of the design system) */
   --color-confidence-high: var(--gs-emerald-400);
   --color-confidence-medium: var(--gs-amber-400);
-  --color-confidence-low: var(--gs-red-400);
+  --color-confidence-low: var(--gs-rose-400);
 
   /* Domain — telemetry severity */
   --color-severity-nominal: var(--gs-emerald-400);
   --color-severity-degraded: var(--gs-amber-400);
-  --color-severity-anomalous: var(--gs-red-400);
+  --color-severity-anomalous: var(--gs-rose-400);
 
   /* Domain — frame classification. Mirrors ClassificationType in web/src/types.ts. Slate is critical (red). */
-  --color-classification-slate: var(--gs-red-400);
+  --color-classification-slate: var(--gs-rose-400);
   --color-classification-slate-surface: color-mix(
     in oklab,
     var(--color-classification-slate) 15%,
@@ -125,17 +130,88 @@
     transparent
   );
 
+  /* On-media tokens (video overlay elements that always sit on dark media surfaces) */
+  --color-media-text-primary: var(--gs-neutral-0);
+  --color-media-text-muted: var(--gs-neutral-0);
+  --color-media-overlay: color-mix(in oklab, var(--gs-neutral-1000) 65%, transparent);
+  --color-media-border: color-mix(in oklab, var(--gs-neutral-0) 18%, transparent);
+  --color-media-track: color-mix(in oklab, var(--gs-neutral-0) 24%, transparent);
+
   /* Non-colour scales */
-  --font-sans:
-    'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-    sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-sans: 'Inter', ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+
+  --text-frame: var(--gs-text-frame);
+  --text-micro: var(--gs-text-micro);
+  --text-caption: var(--gs-text-caption);
+  --text-compact: var(--gs-text-compact);
+  --text-detail: var(--gs-text-detail);
+  --text-section: var(--gs-text-section);
+  --text-mobile-title: var(--gs-text-mobile-title);
+  --text-incident-title: var(--gs-text-incident-title);
+  --text-metric: var(--gs-text-metric);
+
+  --text-forensic-meta: var(--gs-text-forensic-meta);
+  --text-forensic-code: var(--gs-text-forensic-code);
+  --text-forensic-heading: var(--gs-text-forensic-heading);
+  --text-forensic-body: var(--gs-text-forensic-body);
+  --text-forensic-title: var(--gs-text-forensic-title);
+  --text-diagnosis: var(--gs-text-diagnosis);
+
+  --leading-dense: 1.35;
+  --leading-title: 1.2;
+  --leading-section: 1.4;
+  --leading-evidence: 1.55;
+  --leading-diagnosis: 1.5;
+
+  --tracking-micro: 0.06em;
+  --tracking-label: 0.08em;
+  --tracking-module: 0.12em;
+  --tracking-eyebrow: 0.14em;
+  --tracking-incident: -0.035em;
+  --tracking-metric: -0.06em;
+
+  --radius-inset: var(--gs-radius-inset);
 
   --duration-fast: 150ms;
   --duration-base: 250ms;
 
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 
-  --z-index-sticky: 40;
-  --z-sticky: 40;
+  --shadow-panel: 0 24px 70px color-mix(in oklab, var(--gs-neutral-1000) 28%, transparent);
+  --shadow-panel-subtle: 0 12px 34px color-mix(in oklab, var(--gs-neutral-1000) 8%, transparent);
+  --shadow-status-critical-ring: 0 0 0 1px var(--color-status-critical);
+  --shadow-status-success-ring: 0 0 0 1px var(--color-status-success);
+  --shadow-status-warning-ring: 0 0 0 1px var(--color-status-warning);
+  --shadow-interactive-ring: 0 0 0 1px var(--color-interactive);
+  --shadow-border-ring: 0 0 0 1px var(--color-border-strong);
+  --shadow-text-muted-ring: 0 0 0 1px var(--color-text-muted);
+  --shadow-status-critical-halo: 0 0 0 4px var(--color-status-critical-subtle);
+  --shadow-status-success-halo: 0 0 0 4px var(--color-status-success-subtle);
+  --shadow-status-warning-halo: 0 0 0 4px var(--color-status-warning-subtle);
+  --shadow-interactive-halo: 0 0 0 4px var(--color-interactive-subtle);
+  --shadow-text-muted-halo: 0 0 0 3px color-mix(in oklab, var(--color-text-muted) 12%, transparent);
+  --shadow-glow-interactive: 0 0 20px var(--color-interactive-subtle);
+  --shadow-glow-critical: 0 0 20px var(--color-status-critical-subtle);
+  --shadow-glow-success: 0 0 20px var(--color-status-success-subtle);
+
+  --blur-header: 1.125rem;
+
+  --breakpoint-war-room: 65.626rem;
+
+  --z-index-content: 1;
+  --z-index-media-overlay: 2;
+  --z-index-media-controls: 3;
+  --z-index-sticky: 20;
+  --z-index-toast: 60;
+  --z-index-tooltip: 70;
+
+  --layout-war-room-max: var(--gs-layout-war-room-max);
+  --layout-gutter: var(--gs-layout-gutter);
+  --layout-gutter-mobile: var(--gs-layout-gutter-mobile);
+  --layout-gutter-desktop: var(--gs-layout-gutter-desktop);
+  --layout-vision-min: var(--gs-layout-vision-min);
+  --layout-investigation-min: var(--gs-layout-investigation-min);
+  --layout-sticky-top: var(--gs-layout-sticky-top);
+  --layout-sticky-clearance: var(--gs-layout-sticky-clearance);
 }

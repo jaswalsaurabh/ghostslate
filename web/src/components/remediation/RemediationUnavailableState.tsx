@@ -1,6 +1,5 @@
 import React from 'react';
-import { ShieldAlert, AlertTriangle, Info } from 'lucide-react';
-import { Badge } from '../ui/index.js';
+import { AlertOctagon, CheckCircle2 } from 'lucide-react';
 import type { RemediationUnavailableReason } from '../../types.js';
 
 interface RemediationUnavailableStateProps {
@@ -10,45 +9,50 @@ interface RemediationUnavailableStateProps {
 export const RemediationUnavailableState: React.FC<RemediationUnavailableStateProps> = ({
   reason,
 }) => {
-  const configs = {
-    UNGROUNDED: {
-      badge: 'critical' as const,
-      badgeText: 'BLOCKED',
-      title: 'Grounding Validation Failure',
-      titleClass: 'text-status-critical',
-      icon: <ShieldAlert className="w-4 h-4 text-status-critical shrink-0 mt-0.5" />,
-      desc: 'Approval blocked because the diagnosis failed grounding validation.',
-    },
-    INSUFFICIENT_EVIDENCE: {
-      badge: 'warning' as const,
-      badgeText: 'NO ACTION',
-      title: 'Insufficient Evidence',
-      titleClass: 'text-text-primary',
-      icon: <AlertTriangle className="w-4 h-4 text-status-warning shrink-0 mt-0.5" />,
-      desc: 'No remediation is available because no cohort met the minimum evidence threshold.',
-    },
-    NO_INCIDENT: {
-      badge: 'success' as const,
-      badgeText: 'NOMINAL',
-      title: 'Nominal Traffic',
-      titleClass: 'text-text-primary',
-      icon: <Info className="w-4 h-4 text-interactive shrink-0 mt-0.5" />,
-      desc: 'No remediation is required because no incident cohort was selected.',
-    },
-  }[reason];
+  const isNominal = reason === 'NO_INCIDENT';
+  const isUngrounded = reason === 'UNGROUNDED';
 
   return (
-    <div className="p-3.5 rounded-lg bg-surface-base border border-border-subtle text-xs flex items-start gap-2.5">
-      {configs.icon}
-      <div className="space-y-1">
-        <div className="flex items-center gap-2">
-          <Badge variant={configs.badge} size="sm">
-            {configs.badgeText}
-          </Badge>
-          <span className={`font-bold text-xs ${configs.titleClass}`}>{configs.title}</span>
-        </div>
-        <p className="text-text-secondary text-[11px]">{configs.desc}</p>
+    <section
+      className={`mx-5 mb-5 mt-4 overflow-hidden rounded-inset border shadow-sm ${
+        isUngrounded
+          ? 'border-status-critical-border bg-status-critical-surface'
+          : 'border-status-success-border bg-status-success-surface'
+      }`}
+      aria-label="Remediation status"
+    >
+      <div
+        className={`flex items-center gap-2 border-b px-4 py-2.5 ${
+          isUngrounded ? 'border-status-critical-border/40' : 'border-status-success-border/40'
+        }`}
+      >
+        {isUngrounded ? (
+          <AlertOctagon className="size-4.5 text-status-critical shrink-0" aria-hidden="true" />
+        ) : (
+          <CheckCircle2 className="size-4.5 text-status-success shrink-0" aria-hidden="true" />
+        )}
+        <strong
+          className={`font-sans text-forensic-heading font-bold ${
+            isUngrounded ? 'text-status-critical' : 'text-status-success'
+          }`}
+        >
+          {isNominal
+            ? 'No remediation required'
+            : isUngrounded
+              ? 'Grounding validation blocked remediation'
+              : 'No remediation available'}
+        </strong>
       </div>
-    </div>
+
+      <div className="p-4">
+        <p className="m-0 font-sans text-section leading-relaxed text-text-secondary">
+          {isNominal
+            ? 'No incident was established from the available evidence. The agent declined to stage remediation.'
+            : isUngrounded
+              ? 'The agent generated unverified claims that did not match ClickHouse evidence. Remediation emission is blocked.'
+              : 'Telemetry did not cross the minimum evidence threshold to justify an automated reroute.'}
+        </p>
+      </div>
+    </section>
   );
 };

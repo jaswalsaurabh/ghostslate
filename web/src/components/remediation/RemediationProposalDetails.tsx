@@ -8,63 +8,55 @@ interface RemediationProposalDetailsProps {
 export const RemediationProposalDetails: React.FC<RemediationProposalDetailsProps> = ({
   proposal,
 }) => (
-  <div className="space-y-3 font-mono text-[11px]">
-    {/* Target Cohort & Action Grid */}
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-      <div className="p-2 bg-surface-card rounded border border-border-subtle">
-        <span className="text-text-muted block text-[10px] uppercase">Action</span>
-        <span className="font-bold text-text-primary">{proposal.action}</span>
-      </div>
-      <div className="p-2 bg-surface-card rounded border border-border-subtle">
-        <span className="text-text-muted block text-[10px] uppercase">Channel &bull; SSP</span>
-        <span className="font-bold text-status-critical">
-          {proposal.target.channelId} &bull; {proposal.target.sspId}
-        </span>
-      </div>
-      <div className="p-2 bg-surface-card rounded border border-border-subtle">
-        <span className="text-text-muted block text-[10px] uppercase">Device Class</span>
-        <span className="font-bold text-text-primary">{proposal.target.deviceClass}</span>
-      </div>
-      <div className="p-2 bg-surface-card rounded border border-border-subtle">
-        <span className="text-text-muted block text-[10px] uppercase">Codec &bull; Daypart</span>
-        <span className="font-bold text-text-primary">
-          {proposal.target.codec} &bull; {proposal.target.daypart}
-        </span>
-      </div>
+  <div className="grid grid-cols-4 gap-2.5 my-3 max-md:grid-cols-2 max-sm:grid-cols-1 font-sans text-section">
+    <div className="rounded-md border border-border-subtle bg-surface-panel p-2.5">
+      <span className="block font-sans text-forensic-meta font-bold uppercase tracking-micro text-text-muted">
+        Action
+      </span>
+      <strong className="mt-1 block truncate font-mono text-section font-semibold text-text-primary">
+        {proposal.action}
+      </strong>
     </div>
-
-    {/* Authoritative Telemetry Evidence Grid (Raw Numeric Values) */}
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-      <div className="p-2 bg-surface-card rounded border border-border-subtle">
-        <span className="text-text-muted block text-[10px] uppercase">Unmonetized Pct</span>
-        <span className="font-bold text-status-critical">{proposal.evidence.unmonetizedPct}%</span>
-      </div>
-      <div className="p-2 bg-surface-card rounded border border-border-subtle">
-        <span className="text-text-muted block text-[10px] uppercase">Unmonetized Imp</span>
-        <span className="font-bold text-text-primary">
-          {proposal.evidence.unmonetizedImpressions}
-        </span>
-      </div>
-      <div className="p-2 bg-surface-card rounded border border-border-subtle">
-        <span className="text-text-muted block text-[10px] uppercase">p95 / Deadline</span>
-        <span className="font-bold text-text-primary">
-          {proposal.evidence.p95AuctionMs}ms / {proposal.evidence.stitcherDeadlineMs}ms
-        </span>
-      </div>
-      <div className="p-2 bg-surface-card rounded border border-border-subtle">
-        <span className="text-text-muted block text-[10px] uppercase">Cues Analyzed</span>
-        <span className="font-bold text-text-primary">{proposal.evidence.cues}</span>
-      </div>
+    <div className="rounded-md border border-border-subtle bg-surface-panel p-2.5">
+      <span className="block font-sans text-forensic-meta font-bold uppercase tracking-micro text-text-muted">
+        Target SSP
+      </span>
+      <strong className="mt-1 block truncate font-mono text-section font-semibold text-status-critical">
+        {proposal.target.channelId} · {proposal.target.sspId}
+      </strong>
     </div>
-
-    {/* Investigation Window (UTC) */}
-    <div className="p-2 bg-surface-card rounded border border-border-subtle text-text-muted flex flex-wrap items-center justify-between gap-2">
-      <div>
-        <span className="uppercase text-[10px]">Window (UTC): </span>
-        <span className="text-text-secondary">
-          {proposal.window.from} &rarr; {proposal.window.to}
-        </span>
-      </div>
+    <div className="rounded-md border border-border-subtle bg-surface-panel p-2.5">
+      <span className="block font-sans text-forensic-meta font-bold uppercase tracking-micro text-text-muted">
+        Cohort
+      </span>
+      <strong className="mt-1 block truncate font-mono text-section font-semibold text-text-primary">
+        {proposal.target.deviceClass} · {proposal.target.codec} · {proposal.target.daypart}
+      </strong>
+    </div>
+    <div className="rounded-md border border-border-subtle bg-surface-panel p-2.5">
+      <span className="block font-sans text-forensic-meta font-bold uppercase tracking-micro text-text-muted">
+        Evidence
+      </span>
+      <strong className="mt-1 block font-mono text-section font-semibold text-status-critical">
+        {proposal.evidence.cues} cues · {proposal.evidence.unmonetizedImpressions.toLocaleString()}{' '}
+        unmonetized impressions · {proposal.evidence.unmonetizedPct}%
+      </strong>
+    </div>
+    <div className="rounded-md border border-border-subtle bg-surface-panel p-2.5">
+      <span className="block font-sans text-forensic-meta font-bold uppercase tracking-micro text-text-muted">
+        Latency / Deadline
+      </span>
+      <strong className="mt-1 block truncate font-mono text-section font-semibold text-text-primary">
+        {Math.round(proposal.evidence.p95AuctionMs)} ms / {proposal.evidence.stitcherDeadlineMs} ms
+      </strong>
+    </div>
+    <div className="col-span-3 rounded-md border border-border-subtle bg-surface-panel p-2.5 max-md:col-span-1">
+      <span className="block font-sans text-forensic-meta font-bold uppercase tracking-micro text-text-muted">
+        Window (UTC)
+      </span>
+      <strong className="mt-1 block truncate font-mono text-section font-semibold text-text-secondary">
+        {proposal.window.from} → {proposal.window.to}
+      </strong>
     </div>
   </div>
 );

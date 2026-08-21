@@ -128,5 +128,6 @@ CLAUDE.md
 .agent/docs
 .agent/plans
 .agent/backlog
+.agent/logo-archive/
 # Local design explorations are reference material, not shipped application code.
 web/design/
