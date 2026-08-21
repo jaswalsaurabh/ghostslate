@@ -100,7 +100,7 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen bg-surface-base font-sans text-text-primary selection:bg-interactive selection:text-interactive-fg">
+    <div className="min-h-screen font-sans text-text-primary selection:bg-interactive selection:text-interactive-fg">
       <a
         href="#war-room"
         className="skip-link fixed left-3 top-3 z-toast rounded-md bg-interactive px-3 py-2 text-interactive-fg transition-transform"

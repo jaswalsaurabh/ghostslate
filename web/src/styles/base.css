@@ -1,4 +1,9 @@
 @layer base {
+  html {
+    background-color: var(--color-surface-base);
+    scroll-behavior: smooth;
+  }
+
   body {
     font-family: var(--font-sans);
     min-width: 320px;
@@ -8,6 +13,9 @@
       linear-gradient(var(--color-surface-grid) 1px, transparent 1px),
       linear-gradient(90deg, var(--color-surface-grid) 1px, transparent 1px);
     background-size: 32px 32px;
+    transition:
+      background-color var(--duration-base) var(--ease-out-expo),
+      color var(--duration-base) var(--ease-out-expo);
   }
 
   :focus-visible {
@@ -183,6 +191,10 @@
   :root {
     --duration-fast: 0ms;
     --duration-base: 0ms;
+  }
+
+  html {
+    scroll-behavior: auto;
   }
 }
 
