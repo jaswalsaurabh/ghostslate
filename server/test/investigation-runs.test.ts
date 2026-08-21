@@ -23,6 +23,10 @@ describe('InvestigationRunsService — Run Lifecycle, Generator Driving & Error 
       diagnosis: 'Offending SSP isolated: ssp-beta on CTV HEVC at 97.73% slate bleed.',
       steps: [],
       toolCallsCount: 3,
+      remediation: {
+        status: 'unavailable',
+        reason: 'NO_INCIDENT',
+      },
     };
 
     const fakeGeneratorRunner: InvestigationRunner = async function* () {
@@ -143,7 +147,12 @@ describe('InvestigationRunsService — Run Lifecycle, Generator Driving & Error 
         timestamp: '2026-08-18T00:00:02.000Z',
         data: { message: 'Step 2' },
       };
-      return { diagnosis: 'Done', steps: [], toolCallsCount: 0 };
+      return {
+        diagnosis: 'Done',
+        steps: [],
+        toolCallsCount: 0,
+        remediation: { status: 'unavailable', reason: 'NO_INCIDENT' },
+      };
     };
 
     const service = new InvestigationRunsService(controlledRunner);
@@ -181,7 +190,12 @@ describe('InvestigationRunsService — Run Lifecycle, Generator Driving & Error 
         timestamp: '2026-08-18T00:00:01.000Z',
         data: { message: 'Started' },
       };
-      return { diagnosis: 'Done', steps: [], toolCallsCount: 1 };
+      return {
+        diagnosis: 'Done',
+        steps: [],
+        toolCallsCount: 1,
+        remediation: { status: 'unavailable', reason: 'NO_INCIDENT' },
+      };
     };
 
     const service = new InvestigationRunsService(runner);
@@ -202,7 +216,12 @@ describe('InvestigationRunsService — Run Lifecycle, Generator Driving & Error 
 
   it('6. Normalisation: whitespace, internal runs, and casing collapse to the same key; channel/window differ', () => {
     const dummyRunner: InvestigationRunner = async function* () {
-      return { diagnosis: '', steps: [], toolCallsCount: 0 };
+      return {
+        diagnosis: '',
+        steps: [],
+        toolCallsCount: 0,
+        remediation: { status: 'unavailable', reason: 'NO_INCIDENT' },
+      };
     };
     const service = new InvestigationRunsService(dummyRunner);
 
@@ -262,7 +281,12 @@ describe('InvestigationRunsService — Run Lifecycle, Generator Driving & Error 
       for (const ev of recordedEvents) {
         yield ev;
       }
-      return { diagnosis: 'Root cause confirmed', steps: recordedEvents, toolCallsCount: 1 };
+      return {
+        diagnosis: 'Root cause confirmed',
+        steps: recordedEvents,
+        toolCallsCount: 1,
+        remediation: { status: 'unavailable', reason: 'NO_INCIDENT' },
+      };
     };
 
     const service = new InvestigationRunsService(runner);
@@ -295,7 +319,12 @@ describe('InvestigationRunsService — Run Lifecycle, Generator Driving & Error 
         timestamp: '2026-08-18T00:00:01.000Z',
         data: { message: 'Recovered run' },
       };
-      return { diagnosis: 'Success', steps: [], toolCallsCount: 0 };
+      return {
+        diagnosis: 'Success',
+        steps: [],
+        toolCallsCount: 0,
+        remediation: { status: 'unavailable', reason: 'NO_INCIDENT' },
+      };
     };
 
     const service = new InvestigationRunsService(runner);
@@ -343,6 +372,7 @@ describe('InvestigationRunsService — Run Lifecycle, Generator Driving & Error 
         diagnosis: 'SSP-BETA on CTV HEVC experienced 97.73% slate bleed ($1,933.17 loss).',
         steps: [],
         toolCallsCount: 1,
+        remediation: { status: 'unavailable', reason: 'NO_INCIDENT' },
       };
     };
 

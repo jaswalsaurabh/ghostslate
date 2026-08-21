@@ -1,6 +1,7 @@
 import { type DiagnosisRow } from './evidence.helper.js';
 import {
   COHORT_DISPERSION_THRESHOLD_PP,
+  HARD_AUCTION_TIMEOUT_MS,
   INCIDENT_FAILURE_THRESHOLD_PCT,
   MINIMUM_COHORT_CUES,
   STITCHER_DEADLINE_MS,
@@ -8,7 +9,50 @@ import {
 
 export type { DiagnosisRow } from './evidence.helper.js';
 
+export interface EvidenceCandidate {
+  basis: 'selected_incident' | 'maximum_observed';
+  channelId: string;
+  sspId: string;
+  deviceClass: string;
+  codec: string;
+  daypart: string;
+  cues: number;
+  totalAttempts: number;
+  unmonetizedImpressions: number;
+  unmonetizedPct: number;
+  p95AuctionMs: number;
+  cpmUsd: number | null;
+}
+
+export type EvidenceGateReason =
+  | 'ISOLATED_ANOMALY'
+  | 'INSUFFICIENT_SAMPLE_SIZE'
+  | 'BELOW_FAILURE_THRESHOLD'
+  | 'LONE_COHORT'
+  | 'DIFFUSE_VARIATION'
+  | 'NO_DATA';
+
+export interface EvidenceSummary {
+  outcome: 'incident' | 'no_incident';
+  reason: EvidenceGateReason;
+  candidate: EvidenceCandidate;
+  revenueLossUsd: number | null;
+  thresholds: {
+    minimumCues: number;
+    incidentFailurePct: number;
+    cohortDispersionPp: number;
+    stitcherDeadlineMs: number;
+    hardAuctionTimeoutMs: number;
+  };
+  query: {
+    rowsReturned: number;
+    rowsScanned: number | null;
+    durationMs: number | null;
+  };
+}
+
 export interface GroundedKpiPayload {
+  evidenceSummary: EvidenceSummary | null;
   revenueLoss: string | null;
   revenueLossSubtext: string | null;
   revenueLossVariant: 'critical' | 'warning' | 'success' | 'interactive' | 'neutral';
@@ -32,27 +76,43 @@ export interface GroundedKpiPayload {
   rateCardFromQuery: boolean;
 }
 
+export interface EvidenceGateEvaluation {
+  outcome: 'incident' | 'no_incident';
+  reason: EvidenceGateReason;
+  incident: DiagnosisRow | null;
+  candidate: DiagnosisRow | null;
+}
+
 /**
- * Pure incident selector with single ownership of the incident decision.
- *
- * Rules:
- * 1. Small sample guard: cues >= 20.
- * 2. Absolute failure threshold: unmonetized_pct > 20%.
- * 3. Worst-cohort candidate: ordered by unmonetized_pct DESC, then unmonetized_impressions DESC,
- *    then lexicographically by ssp_id, device_class, and codec.
- * 4. Peers: other cues >= 20 rows from the same evidence snapshot and daypart.
- * 5. Restraint check: if no peer rows exist, returns null (a lone cohort is insufficient evidence of isolation).
- * 6. Dispersion check: worst candidate must exceed peer median by at least COHORT_DISPERSION_THRESHOLD_PP.
+ * Pure evidence-gate evaluator with single ownership of the incident gating decision.
+ * Evaluates cohorts against statistical, failure threshold, isolation, and dispersion rules,
+ * preserving the exact rationale for why an incident was confirmed or rejected.
  */
-export function selectIncidentCohort(rows: DiagnosisRow[]): DiagnosisRow | null {
+export function evaluateEvidenceGate(
+  rows: DiagnosisRow[] | null | undefined,
+): EvidenceGateEvaluation {
   if (!rows || rows.length === 0) {
-    return null;
+    return {
+      outcome: 'no_incident',
+      reason: 'NO_DATA',
+      incident: null,
+      candidate: null,
+    };
   }
 
   // 1. Guard cues >= 20
   const eligibleRows = rows.filter((r) => r.cues >= MINIMUM_COHORT_CUES);
   if (eligibleRows.length === 0) {
-    return null;
+    const firstCandidate = rows[0];
+    const maxRow = firstCandidate
+      ? rows.reduce((max, r) => (r.unmonetizedPct > max.unmonetizedPct ? r : max), firstCandidate)
+      : null;
+    return {
+      outcome: 'no_incident',
+      reason: 'INSUFFICIENT_SAMPLE_SIZE',
+      incident: null,
+      candidate: maxRow,
+    };
   }
 
   // 2. Sort candidate worst cohorts deterministically
@@ -72,12 +132,22 @@ export function selectIncidentCohort(rows: DiagnosisRow[]): DiagnosisRow | null 
 
   const worst = sorted[0];
   if (!worst) {
-    return null;
+    return {
+      outcome: 'no_incident',
+      reason: 'NO_DATA',
+      incident: null,
+      candidate: null,
+    };
   }
 
   // 3. Absolute failure threshold (> 20%)
   if (worst.unmonetizedPct <= INCIDENT_FAILURE_THRESHOLD_PCT) {
-    return null;
+    return {
+      outcome: 'no_incident',
+      reason: 'BELOW_FAILURE_THRESHOLD',
+      incident: null,
+      candidate: worst,
+    };
   }
 
   // 4. Peer cohorts from the same daypart (excluding the selected worst row)
@@ -87,7 +157,12 @@ export function selectIncidentCohort(rows: DiagnosisRow[]): DiagnosisRow | null 
 
   // 5. Restraint rule: A lone cohort is insufficient evidence of isolation
   if (peers.length === 0) {
-    return null;
+    return {
+      outcome: 'no_incident',
+      reason: 'LONE_COHORT',
+      incident: null,
+      candidate: worst,
+    };
   }
 
   // 6. Compute peer median
@@ -100,10 +175,27 @@ export function selectIncidentCohort(rows: DiagnosisRow[]): DiagnosisRow | null 
 
   // 7. Cohort dispersion threshold check
   if (worst.unmonetizedPct - peerMedian < COHORT_DISPERSION_THRESHOLD_PP) {
-    return null;
+    return {
+      outcome: 'no_incident',
+      reason: 'DIFFUSE_VARIATION',
+      incident: null,
+      candidate: worst,
+    };
   }
 
-  return worst;
+  return {
+    outcome: 'incident',
+    reason: 'ISOLATED_ANOMALY',
+    incident: worst,
+    candidate: worst,
+  };
+}
+
+/**
+ * Pure incident selector with single ownership of the incident decision.
+ */
+export function selectIncidentCohort(rows: DiagnosisRow[]): DiagnosisRow | null {
+  return evaluateEvidenceGate(rows).incident;
 }
 
 export class MetricsService {
@@ -127,6 +219,7 @@ export class MetricsService {
     rows: DiagnosisRow[] | null | undefined,
     options?: {
       rowsReturned?: number;
+      rowsScanned?: number;
       queryDurationMs?: number;
     },
   ): GroundedKpiPayload {
@@ -134,13 +227,18 @@ export class MetricsService {
       return this.getEmptyPayload();
     }
 
-    const incident = selectIncidentCohort(rows);
+    const gate = evaluateEvidenceGate(rows);
+    const incident = gate.incident;
 
     const rowsReturned =
       typeof options?.rowsReturned === 'number' && options.rowsReturned >= 0
         ? options.rowsReturned
         : rows.length;
     const queryDurationMs = options?.queryDurationMs;
+    const rowsScanned =
+      typeof options?.rowsScanned === 'number' && options.rowsScanned >= 0
+        ? options.rowsScanned
+        : null;
 
     const scannedLogs = rowsReturned.toLocaleString('en-US');
     const scannedLogsSubtext =
@@ -169,10 +267,11 @@ export class MetricsService {
       let revenueLossVariant: GroundedKpiPayload['revenueLossVariant'] = 'neutral';
       let revenueLossTag: string | null = null;
       let rateCardFromQuery = false;
+      let revenueLossUsd: number | null = null;
 
       if (incident.cpmUsd !== null && incident.cpmUsd > 0) {
-        const loss = this.computeLoss(incident.unmonetizedImpressions, incident.cpmUsd);
-        formattedLoss = `$${loss.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        revenueLossUsd = this.computeLoss(incident.unmonetizedImpressions, incident.cpmUsd);
+        formattedLoss = `$${revenueLossUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         revenueLossSubtext = `${incident.unmonetizedImpressions.toLocaleString('en-US')} unmonetized impressions`;
         revenueLossVariant = 'critical';
         revenueLossTag = 'Loss in Window';
@@ -185,6 +284,15 @@ export class MetricsService {
       }
 
       return {
+        evidenceSummary: this.buildEvidenceSummary(
+          'incident',
+          gate.reason,
+          incident,
+          revenueLossUsd,
+          rowsReturned,
+          rowsScanned,
+          queryDurationMs,
+        ),
         revenueLoss: formattedLoss,
         revenueLossSubtext,
         revenueLossVariant,
@@ -209,17 +317,8 @@ export class MetricsService {
       };
     }
 
-    // No incident selected (negative control / diffuse variation)
-    const eligibleRows = rows.filter((r) => r.cues >= MINIMUM_COHORT_CUES);
-    const candidateRows = eligibleRows.length > 0 ? eligibleRows : rows;
-    const firstCandidate = candidateRows[0];
-    const maxRow = firstCandidate
-      ? candidateRows.reduce(
-          (max, r) => (r.unmonetizedPct > max.unmonetizedPct ? r : max),
-          firstCandidate,
-        )
-      : undefined;
-
+    // No incident selected (negative control / diffuse variation / insufficient samples)
+    const maxRow = gate.candidate;
     const bleedVal = maxRow ? maxRow.unmonetizedPct : null;
     const slateBleedRate = bleedVal !== null ? `${bleedVal.toFixed(1)}%` : null;
     const slateBleedVariant = bleedVal !== null && bleedVal > 5 ? 'warning' : 'success';
@@ -227,6 +326,17 @@ export class MetricsService {
     const slateBleedSubtext = 'Target: 0.0% unmonetized pod time';
 
     return {
+      evidenceSummary: maxRow
+        ? this.buildEvidenceSummary(
+            'no_incident',
+            gate.reason,
+            maxRow,
+            null,
+            rowsReturned,
+            rowsScanned,
+            queryDurationMs,
+          )
+        : null,
       revenueLoss: null,
       revenueLossSubtext: 'No incident detected in window',
       revenueLossVariant: 'neutral',
@@ -253,6 +363,7 @@ export class MetricsService {
 
   private getEmptyPayload(): GroundedKpiPayload {
     return {
+      evidenceSummary: null,
       revenueLoss: null,
       revenueLossSubtext: null,
       revenueLossVariant: 'neutral',
@@ -274,6 +385,49 @@ export class MetricsService {
 
       isGroundedFromMcp: false,
       rateCardFromQuery: false,
+    };
+  }
+
+  private buildEvidenceSummary(
+    outcome: EvidenceSummary['outcome'],
+    reason: EvidenceGateReason,
+    row: DiagnosisRow,
+    revenueLossUsd: number | null,
+    rowsReturned: number,
+    rowsScanned: number | null,
+    queryDurationMs: number | undefined,
+  ): EvidenceSummary {
+    return {
+      outcome,
+      reason,
+      candidate: {
+        basis: outcome === 'incident' ? 'selected_incident' : 'maximum_observed',
+        channelId: row.channelId,
+        sspId: row.sspId,
+        deviceClass: row.deviceClass,
+        codec: row.codec,
+        daypart: row.daypart,
+        cues: row.cues,
+        totalAttempts: row.totalAttempts,
+        unmonetizedImpressions: row.unmonetizedImpressions,
+        unmonetizedPct: row.unmonetizedPct,
+        p95AuctionMs: row.p95AuctionMs,
+        cpmUsd: row.cpmUsd,
+      },
+      revenueLossUsd,
+      thresholds: {
+        minimumCues: MINIMUM_COHORT_CUES,
+        incidentFailurePct: INCIDENT_FAILURE_THRESHOLD_PCT,
+        cohortDispersionPp: COHORT_DISPERSION_THRESHOLD_PP,
+        stitcherDeadlineMs: STITCHER_DEADLINE_MS,
+        hardAuctionTimeoutMs: HARD_AUCTION_TIMEOUT_MS,
+      },
+      query: {
+        rowsReturned,
+        rowsScanned,
+        durationMs:
+          typeof queryDurationMs === 'number' && queryDurationMs >= 0 ? queryDurationMs : null,
+      },
     };
   }
 }

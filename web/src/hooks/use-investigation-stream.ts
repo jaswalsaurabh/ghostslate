@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import type {
-  InvestigationTraceEvent,
-  InvestigationRunResponse,
-  GroundingReport,
-} from '../types.js';
+import {
+  decodeInvestigationEvent,
+  decodeInvestigationStartResponse,
+  getApiErrorMessage,
+} from '../api/index.js';
+import type { InvestigationTraceEvent, GroundingReport } from '../types.js';
 
 export interface UseInvestigationStreamResult {
+  runKey: string | null;
   investigating: boolean;
   reconnecting: boolean;
   investigationTrace: InvestigationTraceEvent[];
@@ -21,6 +23,7 @@ export interface UseInvestigationStreamResult {
 }
 
 export function useInvestigationStream(): UseInvestigationStreamResult {
+  const [runKey, setRunKey] = useState<string | null>(null);
   const [investigating, setInvestigating] = useState<boolean>(false);
   const [reconnecting, setReconnecting] = useState<boolean>(false);
   const [investigationTrace, setInvestigationTrace] = useState<InvestigationTraceEvent[]>([]);
@@ -28,8 +31,13 @@ export function useInvestigationStream(): UseInvestigationStreamResult {
   const [groundingReport, setGroundingReport] = useState<GroundingReport | undefined>(undefined);
 
   const eventSourceRef = useRef<EventSource | null>(null);
+  const startAbortControllerRef = useRef<AbortController | null>(null);
 
   const closeStream = useCallback(() => {
+    if (startAbortControllerRef.current) {
+      startAbortControllerRef.current.abort();
+      startAbortControllerRef.current = null;
+    }
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
       eventSourceRef.current = null;
@@ -44,6 +52,7 @@ export function useInvestigationStream(): UseInvestigationStreamResult {
 
   const resetInvestigation = useCallback(() => {
     closeStream();
+    setRunKey(null);
     setInvestigating(false);
     setReconnecting(false);
     setInvestigationTrace([]);
@@ -54,6 +63,10 @@ export function useInvestigationStream(): UseInvestigationStreamResult {
   const startInvestigation = useCallback(
     async (input: { prompt: string; channel: string; from: string; to: string }) => {
       closeStream();
+      const controller = new AbortController();
+      startAbortControllerRef.current = controller;
+
+      setRunKey(null);
       setInvestigating(true);
       setReconnecting(false);
       setInvestigationTrace([]);
@@ -73,25 +86,24 @@ export function useInvestigationStream(): UseInvestigationStreamResult {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(input),
+          signal: controller.signal,
         });
 
         if (!response.ok) {
-          let errMessage = `HTTP ${response.status}`;
-          try {
-            const errData = (await response.json()) as {
-              error?: { code?: string; message?: string };
-            };
-            if (errData?.error?.message) errMessage = errData.error.message;
-          } catch {
-            // ignore JSON parse error
-          }
-          throw new Error(errMessage);
+          throw new Error(await getApiErrorMessage(response));
         }
 
-        const runResponse = (await response.json()) as InvestigationRunResponse;
-        const { runKey } = runResponse;
+        const runResponse = decodeInvestigationStartResponse(await response.json());
+        if (startAbortControllerRef.current !== controller || controller.signal.aborted) {
+          return;
+        }
 
-        const es = new EventSource(`/api/investigate/runs/${encodeURIComponent(runKey)}/stream`);
+        const { runKey: currentRunKey } = runResponse;
+        setRunKey(currentRunKey);
+
+        const es = new EventSource(
+          `/api/investigate/runs/${encodeURIComponent(currentRunKey)}/stream`,
+        );
         eventSourceRef.current = es;
 
         es.onopen = () => {
@@ -104,7 +116,8 @@ export function useInvestigationStream(): UseInvestigationStreamResult {
 
         es.onmessage = (event) => {
           try {
-            const parsed = JSON.parse(event.data) as InvestigationTraceEvent;
+            const raw: unknown = JSON.parse(String(event.data));
+            const parsed = decodeInvestigationEvent(raw);
             if (parsed.type === 'done') {
               closeStream();
               setReconnecting(false);
@@ -117,7 +130,7 @@ export function useInvestigationStream(): UseInvestigationStreamResult {
             if (parsed.type === 'diagnosis' && parsed.data?.diagnosis) {
               setFinalDiagnosis(String(parsed.data.diagnosis));
               if (parsed.data?.grounding) {
-                setGroundingReport(parsed.data.grounding as GroundingReport);
+                setGroundingReport(parsed.data.grounding);
               }
             }
 
@@ -146,6 +159,9 @@ export function useInvestigationStream(): UseInvestigationStreamResult {
           }
         };
       } catch (err: unknown) {
+        if (controller.signal.aborted || (err instanceof Error && err.name === 'AbortError')) {
+          return;
+        }
         const msg = err instanceof Error ? err.message : String(err);
         closeStream();
         setReconnecting(false);
@@ -161,6 +177,7 @@ export function useInvestigationStream(): UseInvestigationStreamResult {
   );
 
   return {
+    runKey,
     investigating,
     reconnecting,
     investigationTrace,

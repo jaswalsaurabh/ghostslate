@@ -5,6 +5,7 @@ import { MetricsService } from './metrics.service.js';
 import { GroundingService, renderDiagnosis, type DiagnosisEvidence } from './grounding.service.js';
 import { type InvestigationContext } from './evidence.helper.js';
 import { selectIncidentCohort } from './metrics.service.js';
+import { buildRemediationDecision, type RemediationDecision } from './remediation.service.js';
 import { ServiceUnavailableError } from '../errors/domain-error.js';
 import {
   createInvestigationToolDeclarations,
@@ -36,6 +37,7 @@ export interface InvestigationResult {
   diagnosis: string;
   steps: InvestigationEvent[];
   toolCallsCount: number;
+  remediation: RemediationDecision;
 }
 
 // Maximum reasoning turns before budget exhaustion
@@ -161,6 +163,7 @@ Strict Grounding Rules:
 
     let toolCallsCount = 0;
     let finalDiagnosis = '';
+    let finalRemediation: RemediationDecision | null = null;
     let evidenceSnapshot: DiagnosisEvidence | null = null;
     let latestSlateFrame: FrameClassification | null = null;
 
@@ -301,6 +304,8 @@ Strict Grounding Rules:
           evidenceSnapshot.frame = latestSlateFrame;
           finalDiagnosis = renderDiagnosis(evidenceSnapshot);
           const report = this.groundingService.buildReport(evidenceSnapshot);
+          const remediation = buildRemediationDecision(evidenceSnapshot, report);
+          finalRemediation = remediation;
 
           yield emit('tool_result', {
             name: 'finalize_investigation',
@@ -311,6 +316,7 @@ Strict Grounding Rules:
           yield emit('diagnosis', {
             diagnosis: finalDiagnosis,
             grounding: report,
+            remediation,
           });
 
           break;
@@ -357,6 +363,8 @@ Strict Grounding Rules:
             yield emit('frame_classified', {
               name: call.name,
               args: call.args,
+              durationMs: queryDurationMs,
+              latencyMs: queryDurationMs,
               ...outcome.frame,
             });
           } else if (call.name === 'collect_diagnosis_evidence') {
@@ -382,6 +390,9 @@ Strict Grounding Rules:
               // Emit KPI metrics exclusively from a valid canonical evidence response.
               const derived = this.metricsService.deriveMetrics(rows, {
                 rowsReturned: rows.length,
+                ...(typeof outcome.rowsScanned === 'number'
+                  ? { rowsScanned: outcome.rowsScanned }
+                  : {}),
                 queryDurationMs,
               });
               if (derived.isGroundedFromMcp) {
@@ -439,7 +450,7 @@ Strict Grounding Rules:
       }
     }
 
-    if (!finalDiagnosis || !finalDiagnosis.trim()) {
+    if (!finalDiagnosis || !finalDiagnosis.trim() || !finalRemediation) {
       const errorMsg = `Investigation turn budget exhausted (${MAX_INVESTIGATION_TURNS} turns) without reaching a grounded conclusion.`;
       yield emit('error', { error: errorMsg });
       throw new ServiceUnavailableError(errorMsg);
@@ -449,6 +460,7 @@ Strict Grounding Rules:
       diagnosis: finalDiagnosis,
       steps: events,
       toolCallsCount,
+      remediation: finalRemediation,
     };
   }
 }

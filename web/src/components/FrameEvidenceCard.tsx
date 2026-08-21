@@ -1,16 +1,7 @@
 import React from 'react';
-import {
-  Eye,
-  CheckCheck,
-  AlertTriangle,
-  CheckCircle2,
-  FileText,
-  Sparkles,
-  Film,
-} from 'lucide-react';
+import { Eye, FileText } from 'lucide-react';
 import type { ClassificationType, SlateType } from '../types.js';
-import { CONFIDENCE_THRESHOLDS } from '../types.js';
-import { Badge, Card, OcrTextDisplay, VisualSummaryDisplay } from './ui/index.js';
+import { classificationStyles } from './vision/classification-styles.js';
 
 interface FrameEvidenceCardProps {
   classification: ClassificationType;
@@ -35,111 +26,67 @@ export const FrameEvidenceCard: React.FC<FrameEvidenceCardProps> = ({
   frameBase64,
   cached,
 }) => {
-  const hasSource = Boolean(videoFile) && timestampSeconds !== undefined;
+  const styles = classificationStyles[classification];
 
   return (
-    <Card variant="card" className="p-4 border-border-strong flex flex-col gap-3 shadow-md">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-border-subtle pb-2 text-xs">
-        <div className="flex items-center gap-2 text-interactive font-bold">
-          <Eye className="w-3.5 h-3.5" />
-          <span className="uppercase tracking-wider text-[11px]">Vision Evidence</span>
+    <article className="evidence-event-grid py-2.5 border-t border-border-subtle">
+      <span className="grid size-6 place-items-center rounded-md bg-interactive-surface text-interactive shrink-0 mt-0.5">
+        <Eye className="size-3.5" aria-hidden="true" />
+      </span>
+      <div className="min-w-0">
+        <div className="mb-1.5 flex items-center justify-between gap-2 font-sans text-forensic-heading font-bold text-text-primary">
+          <span>Vision frame classified · {classification.toUpperCase()}</span>
+          <span className="font-mono text-forensic-meta font-normal text-text-muted">
+            {timestampSeconds !== undefined ? (
+              <>
+                <time dateTime={`PT${timestampSeconds.toFixed(1)}S`}>
+                  {timestampSeconds.toFixed(1)}s
+                </time>
+                {' · '}
+              </>
+            ) : null}
+            {videoFile ? `${videoFile} · ` : ''}
+            {Math.round(confidence * 100)}% conf{cached ? ' (cached)' : ''}
+          </span>
         </div>
 
-        <div className="flex items-center gap-2">
-          {hasSource && (
-            <span className="font-mono text-text-secondary text-[11px] flex items-center gap-1 bg-surface-scrim px-2 py-0.5 rounded border border-border-subtle">
-              <Film className="w-3 h-3 text-interactive" />
-              {videoFile} @ {timestampSeconds}s
-            </span>
-          )}
-          {cached && (
-            <Badge variant="primary" size="sm">
-              <CheckCheck className="w-3 h-3" />
-              cached
-            </Badge>
-          )}
-        </div>
-      </div>
-
-      {/* Frame image + Classification badges */}
-      <div className="flex flex-col sm:flex-row gap-3.5 items-start">
-        {frameBase64 && (
-          <div className="shrink-0 max-w-full sm:max-w-48">
-            <img
-              src={frameBase64}
-              alt="Classified frame evidence"
-              className="w-full h-auto rounded-md border border-border-strong object-cover shadow-xs max-w-full"
-            />
-          </div>
-        )}
-
-        <div className="flex-1 flex flex-col gap-2 min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Classification badge */}
-            <Badge
-              variant={
-                classification === 'slate'
-                  ? 'critical'
-                  : classification === 'ad'
-                    ? 'primary'
-                    : 'success'
-              }
-              size="md"
-            >
-              {classification === 'slate' ? (
-                <AlertTriangle className="w-3 h-3" />
-              ) : (
-                <CheckCircle2 className="w-3 h-3" />
-              )}
-              {classification.toUpperCase()}
-            </Badge>
-
-            {/* Confidence indicator */}
-            <Badge
-              variant={
-                confidence >= CONFIDENCE_THRESHOLDS.HIGH
-                  ? 'success'
-                  : confidence >= CONFIDENCE_THRESHOLDS.MEDIUM
-                    ? 'warning'
-                    : 'critical'
-              }
-              size="md"
-            >
-              {Math.round(confidence * 100)}% Confidence
-            </Badge>
-
-            {/* Slate type if present */}
-            {slateType && (
-              <Badge variant="critical" size="sm">
-                Type: {slateType.replace('_', ' ')}
-              </Badge>
+        <div className={`rounded-md border p-3 ${styles.surface}`}>
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start">
+            {frameBase64 && (
+              <div className="shrink-0">
+                <img
+                  src={frameBase64}
+                  alt="Classified frame"
+                  className="h-16 w-28 rounded border border-border-strong object-cover shadow-xs"
+                />
+              </div>
             )}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 font-sans text-forensic-meta font-bold uppercase">
+                <span className={`rounded border px-1.5 py-0.5 ${styles.label}`}>
+                  {classification}
+                </span>
+                {slateType && (
+                  <span className="text-text-muted font-normal">
+                    · {slateType.replace('_', ' ')}
+                  </span>
+                )}
+              </div>
+              {visualSummary && (
+                <p className="mt-1 mb-0 font-sans text-forensic-meta leading-normal text-text-secondary">
+                  {visualSummary}
+                </p>
+              )}
+              {textDetected && (
+                <div className="mt-2 flex items-center gap-1.5 rounded bg-surface-base/80 px-2.5 py-1.5 font-mono text-forensic-code text-text-primary border border-border-subtle">
+                  <FileText className="size-3.5 text-interactive shrink-0" />
+                  <span className="truncate">OCR: “{textDetected}”</span>
+                </div>
+              )}
+            </div>
           </div>
-
-          {/* OCR text detected if present */}
-          {textDetected && (
-            <div className="bg-surface-panel p-2 rounded-md border border-border-subtle flex flex-col gap-1.5">
-              <div className="flex items-center gap-1.5 text-[10px] font-bold font-mono text-text-muted uppercase tracking-wider">
-                <FileText className="w-3 h-3 text-interactive" />
-                Text Detected:
-              </div>
-              <OcrTextDisplay text={textDetected} />
-            </div>
-          )}
-
-          {/* Visual summary body */}
-          {visualSummary && (
-            <div className="bg-surface-panel p-2.5 rounded-md border border-border-subtle flex flex-col gap-1.5">
-              <div className="flex items-center gap-1.5 text-[10px] font-bold font-mono text-text-muted uppercase tracking-wider">
-                <Sparkles className="w-3 h-3 text-interactive" />
-                Visual Summary:
-              </div>
-              <VisualSummaryDisplay summary={visualSummary} />
-            </div>
-          )}
         </div>
       </div>
-    </Card>
+    </article>
   );
 };

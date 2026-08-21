@@ -1,6 +1,26 @@
 @layer base {
+  html {
+    background-color: var(--color-surface-base);
+    scroll-behavior: smooth;
+  }
+
   body {
     font-family: var(--font-sans);
+    min-width: 320px;
+    color: var(--color-text-primary);
+    background-color: var(--color-surface-base);
+    background-image:
+      linear-gradient(var(--color-surface-grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--color-surface-grid) 1px, transparent 1px);
+    background-size: 32px 32px;
+    transition:
+      background-color var(--duration-base) var(--ease-out-expo),
+      color var(--duration-base) var(--ease-out-expo);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-interactive);
+    outline-offset: 3px;
   }
 
   code,
@@ -27,6 +47,144 @@
   ::-webkit-scrollbar-thumb:hover {
     background: color-mix(in oklab, var(--color-text-secondary) 45%, transparent);
   }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer components {
+  .war-room-shell {
+    width: 100%;
+    max-width: var(--layout-war-room-max);
+    margin-inline: auto;
+    padding-inline: var(--layout-gutter);
+  }
+
+  @media (min-width: 64rem) {
+    .war-room-shell {
+      padding-inline: var(--layout-gutter-desktop);
+    }
+  }
+
+  @media (max-width: 39.999rem) {
+    .war-room-shell {
+      padding-inline: var(--layout-gutter-mobile);
+    }
+  }
+
+  .skip-link {
+    transform: translateY(-160%);
+  }
+
+  .skip-link:focus {
+    transform: none;
+  }
+
+  .war-room-workspace {
+    display: grid;
+    grid-template-columns:
+      minmax(var(--layout-vision-min), 0.75fr)
+      minmax(var(--layout-investigation-min), 1.4fr);
+    align-items: start;
+    gap: 1rem;
+  }
+
+  .war-room-sticky-rail {
+    position: static;
+  }
+
+  @media (min-width: 65.626rem) {
+    .war-room-sticky-rail {
+      position: sticky;
+      top: var(--layout-sticky-top);
+      max-height: calc(100dvh - var(--layout-sticky-clearance));
+      overflow-y: auto;
+    }
+  }
+
+  @media (min-width: 65.626rem) and (max-height: 60rem) {
+    .war-room-sticky-rail {
+      position: static;
+      max-height: none;
+      overflow-y: visible;
+    }
+  }
+
+  .evidence-event-grid {
+    display: grid;
+    grid-template-columns: 1.5rem minmax(0, 1fr);
+    gap: 0.75rem;
+  }
+
+  .investigation-prompt-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .pipeline-stage-connector::after {
+    position: absolute;
+    top: 0.3125rem;
+    right: 0.5rem;
+    left: 1.125rem;
+    height: 1px;
+    content: '';
+    background: var(--color-border-strong);
+  }
+
+  .broadcast-player-media {
+    filter: saturate(0.82) contrast(1.04);
+  }
+
+  .broadcast-transport-grid {
+    grid-template-columns: 1.75rem auto minmax(0, 1fr) auto;
+  }
+
+  .broadcast-cue-zone {
+    left: 28.5%;
+    width: 43%;
+  }
+
+  .broadcast-playhead::before {
+    left: -0.09375rem;
+  }
+
+  .broadcast-thumbnail {
+    aspect-ratio: 1.65;
+  }
+
+  .broadcast-thumbnail-image {
+    filter: saturate(0.72);
+  }
+
+  .broadcast-thumbnail:hover .broadcast-thumbnail-image {
+    transform: scale(1.03);
+    filter: saturate(1);
+  }
+
+  @media (max-width: 65.625rem) {
+    .war-room-workspace {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  @media (max-width: 47.999rem) {
+    .investigation-prompt-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  @media (max-width: 39.999rem) {
+    .evidence-event-grid {
+      grid-template-columns: 1.25rem minmax(0, 1fr);
+      gap: 0.5rem;
+    }
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -34,16 +192,22 @@
     --duration-fast: 0ms;
     --duration-base: 0ms;
   }
+
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+[data-theme='dark'] .brand-lockup {
+  filter: invert(1) hue-rotate(180deg);
 }
 
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(4px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 

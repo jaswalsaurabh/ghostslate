@@ -23,7 +23,7 @@ export const renderFormattedInline = (text: string): React.ReactNode => {
       return (
         <code
           key={idx}
-          className={`px-1.5 py-0.5 mx-0.5 rounded font-mono text-[11px] font-semibold tracking-tight ${
+          className={`px-1.5 py-0.5 mx-0.5 rounded font-mono text-forensic-code font-semibold tracking-tight ${
             isCritical
               ? 'bg-status-critical-surface text-status-critical border border-status-critical-border/50'
               : 'bg-surface-card text-text-primary border border-border-subtle'
@@ -46,7 +46,7 @@ export const renderFormattedInline = (text: string): React.ReactNode => {
       return (
         <span
           key={idx}
-          className="inline-flex items-center px-2 py-0.5 mx-0.5 rounded-full bg-status-critical-surface text-status-critical border border-status-critical-border font-mono text-[10px] font-bold tracking-wide"
+          className="inline-flex items-center px-2 py-0.5 mx-0.5 rounded-full bg-status-critical-surface text-status-critical border border-status-critical-border font-sans text-forensic-meta font-bold tracking-wide"
         >
           {part}
         </span>
@@ -77,24 +77,30 @@ export const MarkdownText: React.FC<MarkdownTextProps> = ({ content, className =
     if (currentList) {
       if (currentList.type === 'ordered') {
         renderedBlocks.push(
-          <div key={`list-${blockKey++}`} className="flex flex-col gap-2 my-1.5 pl-1">
+          <div key={`list-${blockKey++}`} className="flex flex-col gap-1.5 my-1 pl-1">
             {currentList.items.map((item, i) => (
-              <div key={i} className="flex items-start gap-2.5 text-xs text-text-primary">
-                <span className="w-4 h-4 rounded-full bg-interactive-surface text-interactive border border-interactive-border flex items-center justify-center font-mono text-[10px] font-bold shrink-0 mt-0.5 shadow-xs">
-                  {i + 1}
+              <div
+                key={i}
+                className="flex items-start gap-2 font-sans text-diagnosis leading-diagnosis text-text-primary"
+              >
+                <span className="font-mono text-forensic-meta font-bold text-interactive shrink-0 mt-px min-w-4.5">
+                  {i + 1}.
                 </span>
-                <div className="flex-1 leading-relaxed">{item}</div>
+                <div className="flex-1">{item}</div>
               </div>
             ))}
           </div>,
         );
       } else {
         renderedBlocks.push(
-          <div key={`list-${blockKey++}`} className="flex flex-col gap-1.5 my-1.5 pl-1">
+          <div key={`list-${blockKey++}`} className="flex flex-col gap-1.5 my-1 pl-1">
             {currentList.items.map((item, i) => (
-              <div key={i} className="flex items-start gap-2 text-xs text-text-primary">
-                <span className="w-1.5 h-1.5 rounded-full bg-interactive shrink-0 mt-1.5" />
-                <div className="flex-1 leading-relaxed">{item}</div>
+              <div
+                key={i}
+                className="flex items-start gap-2 font-sans text-diagnosis leading-diagnosis text-text-primary"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-interactive shrink-0 mt-1.75" />
+                <div className="flex-1">{item}</div>
               </div>
             ))}
           </div>,
@@ -121,9 +127,9 @@ export const MarkdownText: React.FC<MarkdownTextProps> = ({ content, className =
       renderedBlocks.push(
         <div
           key={`header-${blockKey++}`}
-          className="flex items-center gap-2 pt-2.5 pb-1 border-b border-border-subtle/60 text-xs font-bold text-interactive uppercase tracking-wider font-mono"
+          className="flex items-center gap-1.5 pt-2 pb-0.5 border-b border-border-subtle/60 font-sans text-forensic-heading font-bold text-interactive uppercase tracking-wider"
         >
-          <span className="w-1.5 h-3 bg-interactive rounded-xs" />
+          <span className="w-1 h-3 bg-interactive rounded-xs" />
           <span>{title}</span>
         </div>,
       );
@@ -155,7 +161,10 @@ export const MarkdownText: React.FC<MarkdownTextProps> = ({ content, className =
     // Standard paragraph
     flushList();
     renderedBlocks.push(
-      <p key={`p-${blockKey++}`} className="text-xs text-text-primary leading-relaxed">
+      <p
+        key={`p-${blockKey++}`}
+        className="m-0 font-sans text-diagnosis leading-diagnosis text-text-primary"
+      >
         {renderFormattedInline(line)}
       </p>,
     );
@@ -181,13 +190,13 @@ export const OcrTextDisplay: React.FC<{ text: string; className?: string }> = ({
   return (
     <div className={`flex flex-col gap-2 ${className}`}>
       {alertText && (
-        <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-status-critical-surface text-status-critical border border-status-critical-border text-xs font-mono font-bold shadow-xs">
+        <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-status-critical-surface text-status-critical border border-status-critical-border font-sans text-forensic-meta font-bold shadow-xs">
           <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-status-critical" />
           <span className="tracking-wide">[{alertText.trim()}]</span>
         </div>
       )}
       {cleanText && (
-        <div className="text-xs font-mono text-status-warning bg-surface-scrim p-2.5 rounded-md border border-status-warning-border/50 whitespace-pre-wrap wrap-break-word leading-relaxed font-medium">
+        <div className="font-mono text-forensic-code text-status-warning bg-surface-scrim p-2.5 rounded-md border border-status-warning-border/50 whitespace-pre-wrap wrap-break-word leading-relaxed font-medium">
           {renderFormattedInline(cleanText)}
         </div>
       )}
@@ -206,7 +215,7 @@ export const VisualSummaryDisplay: React.FC<{ summary: string; className?: strin
     <div
       className={`border-l-2 border-interactive bg-surface-panel/40 pl-3.5 pr-3 py-2.5 rounded-r-md flex flex-col gap-1.5 ${className}`}
     >
-      <p className="text-xs text-text-primary leading-relaxed font-sans wrap-break-word">
+      <p className="m-0 font-sans text-forensic-body text-text-primary leading-relaxed wrap-break-word">
         {renderFormattedInline(summary)}
       </p>
     </div>
