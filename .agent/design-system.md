@@ -100,11 +100,11 @@ Colour is the loudest dimension, not the only one. Each of these is a scale, def
 | Layering   | `--z-*`                               | Named layers. Never a bare `z-50` in a component. |
 
 The compact war-room scale extends the typography vocabulary with `frame`, `micro`, `caption`,
-`compact`, `detail`, `section`, `diagnosis`, `mobile-title`, `incident-title`, and `metric` roles.
+`compact`, `detail`, `section`, `mobile-title`, `incident-title`, `metric`, and scoped `forensic-*` / `diagnosis` roles.
 Repeated inner cards use `radius-inset`; repeated status halos and panel elevation use named shadow
 tokens. These are scale decisions, not invitations to add arbitrary pixel values in components.
 
-The shared `war-room-shell`, `war-room-workspace`, and `evidence-event-grid` classes own the layout
+The shared `war-room-shell`, `war-room-workspace`, `war-room-sticky-rail`, and `evidence-event-grid` classes own the layout
 measurements repeated across the header, composition root, and trace renderers. Feature components
 must reuse them instead of restating custom grid templates or container calculations.
 

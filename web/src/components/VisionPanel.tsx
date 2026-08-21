@@ -111,22 +111,22 @@ export function VisionPanel(props: VisionPanelProps) {
 
   return (
     <section
-      className="self-start overflow-hidden rounded-2xl border border-border-subtle bg-surface-panel shadow-panel-subtle war-room:sticky war-room:top-21 war-room:short-viewport:static"
+      className="war-room-sticky-rail self-start rounded-2xl border border-border-subtle bg-surface-panel shadow-panel-subtle"
       aria-labelledby="vision-title"
     >
-      <div className="flex items-start justify-between gap-4 border-b border-border-subtle p-4 sm:px-5">
+      <div className="war-room:sticky war-room:top-0 z-sticky flex items-start justify-between gap-4 border-b border-border-subtle bg-surface-panel/95 backdrop-blur-md p-4 sm:px-5 war-room:short-viewport:static">
         <div className="flex items-start gap-2.5">
-          <span className="mt-0.5 font-mono text-caption font-bold tracking-module text-interactive">
+          <span className="mt-0.5 font-sans text-forensic-meta font-bold tracking-module text-interactive">
             01
           </span>
           <div>
             <h2
               id="vision-title"
-              className="m-0 mb-1 text-section font-bold tracking-tight text-text-primary"
+              className="m-0 mb-1 text-forensic-title font-bold tracking-tight text-text-primary"
             >
               Vision signal
             </h2>
-            <p className="m-0 text-compact leading-section text-text-muted">
+            <p className="m-0 font-sans text-forensic-meta leading-section text-text-muted">
               Gemini multimodal · synthetic evidence stream
             </p>
           </div>
@@ -142,10 +142,10 @@ export function VisionPanel(props: VisionPanelProps) {
               value={selectedSource}
               onValueChange={handleSelectSource}
               size="sm"
-              className="font-mono"
+              className="font-mono text-xs"
             />
           ) : (
-            <span className="font-mono text-caption text-text-muted whitespace-nowrap">
+            <span className="font-mono text-section text-text-muted whitespace-nowrap">
               {props.agentResult
                 ? 'Agent evidence'
                 : props.manualResult
@@ -174,28 +174,28 @@ export function VisionPanel(props: VisionPanelProps) {
 
       <div className="mx-5 mt-3 grid grid-cols-3 gap-2" aria-label="Selected frame evidence">
         <div className="min-w-0 rounded-inset border border-border-subtle bg-surface-card p-2.5">
-          <span className="block font-mono text-micro uppercase tracking-widest text-text-muted">
+          <span className="block font-mono text-forensic-meta font-bold uppercase tracking-wider text-text-muted">
             Classification
           </span>
           <strong
-            className={`mt-1 block truncate font-mono text-detail font-bold ${displayedStyles?.text ?? 'text-text-muted'}`}
+            className={`mt-1 block truncate font-mono text-section font-bold ${displayedStyles?.text ?? 'text-text-muted'}`}
           >
             {displayed?.classification.toUpperCase() ?? 'AWAITING'}
           </strong>
         </div>
         <div className="min-w-0 rounded-inset border border-border-subtle bg-surface-card p-2.5">
-          <span className="block font-mono text-micro uppercase tracking-widest text-text-muted">
+          <span className="block font-mono text-forensic-meta font-bold uppercase tracking-wider text-text-muted">
             Vision latency
           </span>
-          <strong className="mt-1 block truncate font-mono text-detail font-bold text-text-primary">
+          <strong className="mt-1 block truncate font-mono text-section font-bold text-text-primary">
             {displayedLatency === null ? '—' : `${(displayedLatency / 1000).toFixed(2)} s`}
           </strong>
         </div>
         <div className="min-w-0 rounded-inset border border-border-subtle bg-surface-card p-2.5">
-          <span className="block font-mono text-micro uppercase tracking-widest text-text-muted">
+          <span className="block font-mono text-forensic-meta font-bold uppercase tracking-wider text-text-muted">
             Frame hash
           </span>
-          <strong className="mt-1 block truncate font-mono text-detail font-bold text-text-primary">
+          <strong className="mt-1 block truncate font-mono text-section font-bold text-text-primary">
             {displayed
               ? `${displayed.contentHash.slice(0, 4)}…${displayed.contentHash.slice(-4)}`
               : '—'}
@@ -219,7 +219,7 @@ export function VisionPanel(props: VisionPanelProps) {
       />
 
       {props.classificationError && (
-        <p role="alert" className="mx-5 mb-3 text-xs text-status-critical">
+        <p role="alert" className="mx-5 mb-3 text-caption text-status-critical">
           {props.classificationError}
         </p>
       )}

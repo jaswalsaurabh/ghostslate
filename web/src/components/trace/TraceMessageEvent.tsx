@@ -11,15 +11,20 @@ export function TraceMessageEvent({
   if (event.type === 'error') {
     return (
       <article className="evidence-event-grid py-2.5 border-t border-border-subtle" role="alert">
-        <time className="pt-0.5 font-mono text-caption text-text-muted">{time}</time>
-        <span className="grid size-6 place-items-center rounded-md bg-status-critical-surface text-status-critical shrink-0">
-          <AlertOctagon className="size-3" aria-hidden="true" />
+        <span className="grid size-6 place-items-center rounded-md bg-status-critical-surface text-status-critical shrink-0 mt-0.5">
+          <AlertOctagon className="size-3.5" aria-hidden="true" />
         </span>
         <div className="min-w-0">
-          <div className="mt-0.5 mb-1 text-detail font-bold text-status-critical">
-            Investigation error
+          <div className="mb-1 flex items-center justify-between gap-2 font-sans text-forensic-heading font-bold text-status-critical">
+            <span>Investigation error</span>
+            <time
+              dateTime={event.timestamp}
+              className="font-mono text-forensic-meta font-normal text-status-critical"
+            >
+              {time}
+            </time>
           </div>
-          <p className="m-0 font-mono text-compact text-status-critical">
+          <p className="m-0 font-mono text-forensic-code text-status-critical">
             {String(event.data?.error ?? 'Unknown error')}
           </p>
         </div>
@@ -34,18 +39,20 @@ export function TraceMessageEvent({
     const turn = event.data?.turn;
     return (
       <article className="evidence-event-grid py-2.5 border-t border-border-subtle">
-        <time className="pt-0.5 font-mono text-caption text-text-muted">{time}</time>
-        <span className="grid size-6 place-items-center rounded-md bg-reasoning-surface text-reasoning-fg shrink-0">
-          <Sparkles className="size-3" aria-hidden="true" />
+        <span className="grid size-6 place-items-center rounded-md bg-reasoning-surface text-reasoning-fg shrink-0 mt-0.5">
+          <Sparkles className="size-3.5" aria-hidden="true" />
         </span>
         <div className="min-w-0">
-          <div className="mt-0.5 mb-1.5 flex items-center justify-between gap-2.5 text-detail font-bold text-text-primary">
+          <div className="mb-1.5 flex items-center justify-between gap-2.5 font-sans text-forensic-heading font-bold text-text-primary">
             <span>{turn === 1 ? 'Working hypothesis stated' : 'Hypothesis narrowed'}</span>
-            <span className="font-mono text-caption font-normal text-text-muted">
+            <span className="font-mono text-forensic-meta font-normal text-text-muted">
+              <time dateTime={event.timestamp}>{time}</time> ·{' '}
               {turn ? `Gemini turn ${turn}` : 'Gemini reasoning'}
             </span>
           </div>
-          <p className="m-0 text-compact leading-evidence text-text-secondary">{text}</p>
+          <p className="m-0 font-sans text-forensic-body leading-evidence text-text-secondary">
+            {text}
+          </p>
         </div>
       </article>
     );
@@ -57,16 +64,23 @@ export function TraceMessageEvent({
 
   return (
     <article className="evidence-event-grid py-2.5 border-t border-border-subtle">
-      <time className="pt-0.5 font-mono text-caption text-text-muted">{time}</time>
-      <span className="grid size-6 place-items-center rounded-md bg-surface-card text-text-secondary shrink-0">
+      <span className="grid size-6 place-items-center rounded-md bg-surface-card text-text-secondary shrink-0 mt-0.5">
         {isConnecting ? (
-          <Database className="size-3 text-data-fg" aria-hidden="true" />
+          <Database className="size-3.5 text-data-fg" aria-hidden="true" />
         ) : (
-          <Terminal className="size-3 text-interactive" aria-hidden="true" />
+          <Terminal className="size-3.5 text-interactive" aria-hidden="true" />
         )}
       </span>
-      <div className="min-w-0">
-        <p className="m-0 mt-0.5 text-compact leading-evidence text-text-secondary">{message}</p>
+      <div className="min-w-0 flex items-center justify-between gap-2">
+        <p className="m-0 font-sans text-forensic-body leading-evidence text-text-secondary">
+          {message}
+        </p>
+        <time
+          dateTime={event.timestamp}
+          className="shrink-0 font-mono text-forensic-meta text-text-muted"
+        >
+          {time}
+        </time>
       </div>
     </article>
   );

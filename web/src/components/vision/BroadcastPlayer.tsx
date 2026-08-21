@@ -59,23 +59,25 @@ export function BroadcastPlayer({
 
       <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-media-overlay/40 via-transparent to-media-overlay" />
 
-      <span className="absolute top-3 left-3 z-media-overlay flex items-center gap-1.5 rounded-md border border-media-border bg-media-overlay px-2 py-1.5 font-mono text-caption uppercase text-media-text-primary backdrop-blur-md">
-        <span className={`size-1.25 rounded-full ${styles?.dot ?? 'bg-text-muted'}`} />
-        Live · {formatTimecode(currentTime)}
-      </span>
+      <div className="pointer-events-none absolute inset-x-2.5 top-2.5 z-media-overlay flex items-center justify-between gap-1.5 sm:inset-x-3 sm:top-3">
+        <span className="flex shrink-0 items-center gap-1.5 rounded-md border border-media-border bg-media-overlay px-2 py-1 font-mono text-forensic-meta font-bold uppercase text-media-text-primary backdrop-blur-md sm:px-2.5 sm:py-1.5">
+          <span className={`size-1.5 shrink-0 rounded-full ${styles?.dot ?? 'bg-text-muted'}`} />
+          <span className="truncate">Live · {formatTimecode(currentTime)}</span>
+        </span>
 
-      <span className="absolute top-3 right-3 z-media-overlay rounded-md border border-media-border bg-media-overlay px-2 py-1.5 font-mono text-caption uppercase text-media-text-primary backdrop-blur-md">
-        {activeCase.channel} · {activeCase.shortLabel}
-      </span>
+        <span className="min-w-0 truncate rounded-md border border-media-border bg-media-overlay px-2 py-1 font-mono text-forensic-meta font-bold uppercase text-media-text-primary backdrop-blur-md sm:px-2.5 sm:py-1.5">
+          {activeCase.channel} · {activeCase.shortLabel}
+        </span>
+      </div>
 
       {displayed && (
         <div
-          className={`absolute top-1/2 left-1/2 z-media-controls min-w-44.5 -translate-x-1/2 -translate-y-1/2 rounded-inset border bg-media-overlay px-3 py-2.5 text-center text-media-text-primary shadow-lg backdrop-blur-md ${styles?.border ?? 'border-media-border'}`}
+          className={`absolute top-1/2 left-1/2 z-media-controls min-w-48 -translate-x-1/2 -translate-y-1/2 rounded-inset border bg-media-overlay px-3.5 py-2.5 text-center text-media-text-primary shadow-lg backdrop-blur-md ${styles?.border ?? 'border-media-border'}`}
         >
-          <strong className="block text-detail font-bold uppercase text-media-text-primary">
+          <strong className="block font-sans text-forensic-heading font-bold uppercase tracking-wider text-media-text-primary">
             {isSlate ? 'Slate detected' : `${displayed.classification} verified`}
           </strong>
-          <span className="mt-1 block font-mono text-caption text-media-text-primary">
+          <span className="mt-1 block font-mono text-forensic-meta text-media-text-primary">
             {confidence} confidence
             {isSlate && displayed.slate_type ? ` · ${displayed.slate_type}` : ''}
           </span>
@@ -83,30 +85,30 @@ export function BroadcastPlayer({
       )}
 
       <div className="absolute right-3 bottom-11 left-3 z-media-overlay text-media-text-primary">
-        <b className="block text-detail font-bold text-media-text-primary">
+        <b className="block font-sans text-forensic-heading font-bold text-media-text-primary">
           {activeCase.channel} · {activeCase.label}
         </b>
         {displayed && (
-          <span className="font-mono text-caption text-media-text-primary">
+          <span className="mt-0.5 block font-mono text-section text-media-text-primary">
             Frame classification: {displayed.classification.toUpperCase()}
             {isSlate && displayed.slate_type ? ` (${displayed.slate_type})` : ''}
           </span>
         )}
       </div>
 
-      <div className="broadcast-transport-grid absolute bottom-2.5 left-3 right-3 z-media-controls grid items-center gap-2.5 font-mono text-caption text-media-text-primary">
+      <div className="broadcast-transport-grid absolute bottom-2.5 left-3 right-3 z-media-controls grid items-center gap-2.5 font-mono text-forensic-meta text-media-text-primary">
         <IconButton
           onClick={onTogglePlay}
           label={isPlaying ? 'Pause synthetic stream' : 'Play synthetic stream'}
           icon={
             isPlaying ? (
-              <Pause aria-hidden="true" className="h-3 w-3 fill-current" />
+              <Pause aria-hidden="true" className="size-3.5 fill-current" />
             ) : (
-              <Play aria-hidden="true" className="ml-0.5 h-3 w-3 fill-current" />
+              <Play aria-hidden="true" className="ml-0.5 size-3.5 fill-current" />
             )
           }
           variant="outline"
-          className="size-7! rounded-full! border-media-border! bg-media-overlay! p-1.5! text-media-text-primary! hover:bg-media-overlay/80!"
+          className="size-7.5! rounded-full! border-media-border! bg-media-overlay! p-1.5! text-media-text-primary! hover:bg-media-overlay/80!"
         />
         <span>{formatTime(currentTime)}</span>
         <div className="relative h-5 min-w-0">

@@ -43,10 +43,12 @@ export function VisionClassificationCard({
 }: VisionClassificationCardProps) {
   if (!displayed) {
     return (
-      <div className="mx-5 mb-3 flex items-center justify-between gap-3 rounded-inset border border-border-subtle bg-surface-card p-3">
+      <div className="mx-5 mb-3 flex items-center justify-between gap-3 rounded-inset border border-border-subtle bg-surface-card p-3.5">
         <div>
-          <p className="m-0 text-detail font-bold text-text-primary">No frame classified yet</p>
-          <p className="m-0 mt-0.5 text-compact text-text-muted">
+          <p className="m-0 font-sans text-forensic-heading font-bold text-text-primary">
+            No frame classified yet
+          </p>
+          <p className="m-0 mt-0.5 font-sans text-section text-text-muted">
             Run investigation or sample the stream.
           </p>
         </div>
@@ -55,8 +57,8 @@ export function VisionClassificationCard({
           size="sm"
           loading={classifying}
           onClick={onClassify}
-          icon={<Camera className="h-3 w-3" />}
-          className="font-mono text-caption"
+          icon={<Camera className="size-3.5" />}
+          className="font-sans"
         >
           Classify {formatTime(currentTime)}
         </Button>
@@ -71,35 +73,35 @@ export function VisionClassificationCard({
     <article className={`mx-5 mb-3 rounded-inset border p-4 ${styles.surface}`}>
       <div className="flex items-center justify-between gap-2.5">
         <span
-          className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 font-mono text-caption font-bold uppercase tracking-micro ${styles.label}`}
+          className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 font-mono text-forensic-meta font-bold uppercase tracking-micro ${styles.label}`}
         >
-          <span aria-hidden="true" className={`size-1.5 rounded-full ${styles.dot}`} />
+          <span aria-hidden="true" className={`size-2 rounded-full ${styles.dot}`} />
           {isSlate
             ? displayed.slate_type
               ? `Slate · ${displayed.slate_type}`
               : 'Slate'
             : displayed.classification}
         </span>
-        <span className="font-mono text-xs font-semibold text-text-secondary">
+        <span className="font-mono text-forensic-meta font-semibold text-text-secondary">
           {confidence} confidence
         </span>
       </div>
-      <h3 className="mt-3 mb-1 text-section font-bold text-text-primary">
+      <h3 className="mt-3 mb-1.5 font-sans text-forensic-heading font-bold text-text-primary">
         {classificationHeading(displayed.classification)}
       </h3>
-      <p className="m-0 text-detail leading-evidence text-text-secondary">
+      <p className="m-0 font-sans text-section leading-relaxed text-text-secondary">
         {displayed.visual_summary || classificationFallback(displayed.classification)}
       </p>
       {displayed.text_detected && (
-        <div className="mt-3 border-t border-border-subtle pt-2.5 font-mono text-caption uppercase text-text-muted">
+        <div className="mt-3 border-t border-border-subtle pt-2.5 font-mono text-forensic-meta uppercase tracking-wider text-text-muted">
           OCR text detected
-          <b className="mt-1 block font-sans text-detail font-bold normal-case text-text-primary">
+          <strong className="mt-1 block font-mono text-section font-semibold normal-case text-text-primary">
             “{displayed.text_detected}”
-          </b>
+          </strong>
         </div>
       )}
       {activeSource === 'manual' && (
-        <div className="mt-2 font-mono text-caption text-text-muted">
+        <div className="mt-2 font-mono text-forensic-meta text-text-muted">
           Operator sample (manual probe · not admitted diagnosis evidence)
         </div>
       )}

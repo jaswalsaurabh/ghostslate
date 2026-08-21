@@ -47,12 +47,12 @@ export function Metric({
         aria-busy={loading || undefined}
         className={`min-w-0 p-5 border-l border-border-subtle max-lg:border-t max-lg:border-l-0 ${className}`}
       >
-        <div className="flex items-center justify-between text-compact font-mono uppercase tracking-label text-text-muted">
+        <div className="flex items-center justify-between font-mono text-forensic-meta font-bold uppercase tracking-label text-text-muted">
           <span>{label}</span>
           {icon ? (
             <span
               aria-hidden="true"
-              className="grid size-6.25 place-items-center rounded-md bg-surface-card text-text-muted"
+              className="grid size-6 place-items-center rounded-md bg-surface-card text-text-muted"
             >
               {icon}
             </span>
@@ -65,14 +65,18 @@ export function Metric({
           />
         ) : (
           <div
-            className={`mt-3 font-mono text-metric font-semibold leading-none tracking-metric ${toneValueClasses[tone]}`}
+            className={`mt-3 font-mono text-metric font-bold leading-none tracking-metric ${toneValueClasses[tone]}`}
           >
             {value ?? '—'}
           </div>
         )}
-        <div className="mt-2.5 flex min-w-0 items-center justify-between gap-2 text-compact">
+        <div className="mt-2.5 flex min-w-0 items-center justify-between gap-2 font-sans text-section">
           <span className="truncate text-text-muted">{detail}</span>
-          {tag ? <span className="shrink-0 font-semibold text-text-secondary">{tag}</span> : null}
+          {tag ? (
+            <span className="shrink-0 font-mono text-forensic-meta font-bold uppercase text-text-secondary">
+              {tag}
+            </span>
+          ) : null}
         </div>
       </section>
     );
@@ -84,11 +88,13 @@ export function Metric({
       className={`min-w-0 rounded-lg border bg-surface-panel p-3 shadow-sm ${toneBorderClasses[tone]} ${className}`}
     >
       <div className="flex items-center justify-between text-text-muted">
-        <p className="font-mono text-compact uppercase tracking-label text-text-muted">{label}</p>
+        <p className="font-mono text-forensic-meta font-bold uppercase tracking-label text-text-muted">
+          {label}
+        </p>
         {icon ? (
           <span
             aria-hidden="true"
-            className="grid size-6.25 place-items-center rounded-md bg-surface-card text-text-muted"
+            className="grid size-6 place-items-center rounded-md bg-surface-card text-text-muted"
           >
             {icon}
           </span>
@@ -97,16 +103,18 @@ export function Metric({
       {loading ? (
         <div className="mt-2 h-5 w-24 animate-pulse rounded bg-surface-hover" aria-hidden="true" />
       ) : (
-        <p
-          className={`mt-2 font-mono text-lg font-semibold tracking-tight ${toneValueClasses[tone]}`}
-        >
+        <p className={`mt-2 font-mono text-lg font-bold tracking-tight ${toneValueClasses[tone]}`}>
           {value ?? '—'}
         </p>
       )}
       {!loading && (detail || tag) ? (
-        <div className="mt-1.5 flex min-w-0 items-center justify-between gap-2 text-compact">
+        <div className="mt-1.5 flex min-w-0 items-center justify-between gap-2 font-sans text-section">
           {detail ? <span className="truncate text-text-muted">{detail}</span> : null}
-          {tag ? <span className="shrink-0 font-semibold text-text-secondary">{tag}</span> : null}
+          {tag ? (
+            <span className="shrink-0 font-mono text-forensic-meta font-bold uppercase text-text-secondary">
+              {tag}
+            </span>
+          ) : null}
         </div>
       ) : null}
     </section>

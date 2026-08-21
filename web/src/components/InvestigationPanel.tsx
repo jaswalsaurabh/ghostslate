@@ -80,17 +80,17 @@ export function InvestigationPanel(props: InvestigationPanelProps) {
     >
       <div className="flex items-start justify-between gap-4 border-b border-border-subtle p-4 sm:px-5">
         <div className="flex items-start gap-2.5">
-          <span className="mt-0.5 font-mono text-caption font-bold tracking-module text-interactive">
+          <span className="mt-0.5 font-sans text-forensic-meta font-bold tracking-module text-interactive">
             02
           </span>
           <div>
             <h2
               id="investigation-title"
-              className="m-0 mb-1 text-section font-bold tracking-tight text-text-primary"
+              className="m-0 mb-1 text-forensic-title font-bold tracking-tight text-text-primary"
             >
               Grounded forensic investigation
             </h2>
-            <p className="m-0 text-compact leading-section text-text-muted">
+            <p className="m-0 font-sans text-forensic-meta leading-section text-text-muted">
               Gemini reasoning · official mcp-clickhouse · observable SQL
             </p>
           </div>
@@ -103,9 +103,9 @@ export function InvestigationPanel(props: InvestigationPanelProps) {
           className="h-8.5 shrink-0 font-sans tracking-wide"
           icon={
             props.trace.length > 0 ? (
-              <RotateCw aria-hidden="true" className="size-3" />
+              <RotateCw aria-hidden="true" className="size-3.5" />
             ) : (
-              <Play aria-hidden="true" className="size-3 fill-current" />
+              <Play aria-hidden="true" className="size-3.5 fill-current" />
             )
           }
         >
@@ -119,22 +119,24 @@ export function InvestigationPanel(props: InvestigationPanelProps) {
 
       <div className="investigation-prompt-grid mx-5 mt-4 gap-4 rounded-inset border border-reasoning-border/40 bg-reasoning-surface p-3 sm:px-4">
         <div className="min-w-0">
-          <span className="mb-1 block font-mono text-micro font-bold uppercase tracking-widest text-reasoning-fg">
-            <Sparkles className="inline size-2.5 mr-1" />
+          <span className="mb-1 block font-sans text-forensic-meta font-bold uppercase tracking-widest text-reasoning-fg">
+            <Sparkles className="inline size-3.5 mr-1" />
             Operator prompt
           </span>
-          <p className="m-0 text-detail leading-normal text-text-primary">
+          <p className="m-0 font-sans text-forensic-body leading-normal text-text-primary">
             {props.activeCase.prompt}
           </p>
         </div>
-        <div className="self-center border-l border-border-subtle pl-4 font-mono text-caption leading-evidence text-text-secondary whitespace-nowrap max-md:border-t max-md:border-l-0 max-md:pl-0 max-md:pt-3 max-md:whitespace-normal">
-          <span className="block text-micro uppercase text-text-muted">
+        <div className="self-center border-l border-border-subtle pl-4 font-sans text-forensic-meta leading-evidence text-text-secondary whitespace-nowrap max-md:border-t max-md:border-l-0 max-md:pl-0 max-md:pt-3 max-md:whitespace-normal">
+          <span className="block font-sans text-forensic-meta uppercase text-text-muted">
             Investigation window · UTC
           </span>
-          <strong className="block text-compact text-text-primary">
+          <strong className="block font-mono text-forensic-code text-text-primary">
             {formatWindow(props.activeCase.from)} → {formatWindow(props.activeCase.to)}
           </strong>
-          <span className="block text-text-muted">{props.activeCase.channel} · FAST-01</span>
+          <span className="block font-sans text-text-muted">
+            {props.activeCase.channel} · FAST-01
+          </span>
         </div>
       </div>
 
@@ -148,7 +150,7 @@ export function InvestigationPanel(props: InvestigationPanelProps) {
           return (
             <li
               key={stage}
-              className={`relative font-mono text-caption uppercase tracking-micro ${
+              className={`relative font-sans text-forensic-meta uppercase tracking-micro ${
                 index < stages.length - 1 ? 'pipeline-stage-connector' : ''
               } ${
                 isDone
@@ -174,7 +176,7 @@ export function InvestigationPanel(props: InvestigationPanelProps) {
       </ol>
 
       <div className="px-5 pb-5 max-md:px-3.5">
-        <div className="flex h-9.5 items-center justify-between font-mono text-caption uppercase tracking-widest text-text-muted">
+        <div className="flex h-9.5 items-center justify-between font-sans text-forensic-meta uppercase tracking-widest text-text-muted">
           <div className="flex items-center gap-2">
             <span>Live evidence trace · {props.trace.length} events</span>
             {props.reconnecting && <span className="text-status-warning">(Reconnecting...)</span>}
@@ -185,7 +187,7 @@ export function InvestigationPanel(props: InvestigationPanelProps) {
             value={props.filter}
             onValueChange={props.onFilter}
             size="sm"
-            className="font-mono uppercase"
+            className="font-sans uppercase"
           />
         </div>
 
@@ -194,8 +196,10 @@ export function InvestigationPanel(props: InvestigationPanelProps) {
             <div className="mb-2.5 grid size-9 place-items-center rounded-full border border-border-subtle bg-surface-card text-data-fg">
               <Database className="size-4" />
             </div>
-            <p className="m-0 text-xs font-bold text-text-primary">Forensic pipeline ready</p>
-            <p className="m-0 mt-1 max-w-sm text-compact leading-normal text-text-muted">
+            <p className="m-0 font-sans text-forensic-heading font-bold text-text-primary">
+              Forensic pipeline ready
+            </p>
+            <p className="m-0 mt-1 max-w-sm font-sans text-forensic-meta leading-normal text-text-muted">
               Run this case to stream real MCP calls, SQL, query results, reasoning, Vision
               evidence, and the grounded conclusion.
             </p>

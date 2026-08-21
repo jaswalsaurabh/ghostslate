@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check } from 'lucide-react';
+import { AlertOctagon, CheckCircle2 } from 'lucide-react';
 import type { RemediationUnavailableReason } from '../../types.js';
 
 interface RemediationUnavailableStateProps {
@@ -13,25 +13,26 @@ export const RemediationUnavailableState: React.FC<RemediationUnavailableStatePr
   const isUngrounded = reason === 'UNGROUNDED';
 
   return (
-    <div
-      className={`-mt-5 mx-5 mb-5 flex items-start gap-3 rounded-b-inset border p-4 text-compact shadow-sm ${
+    <section
+      className={`mx-5 mb-5 mt-4 overflow-hidden rounded-inset border shadow-sm ${
         isUngrounded
           ? 'border-status-critical-border bg-status-critical-surface'
           : 'border-status-success-border bg-status-success-surface'
       }`}
+      aria-label="Remediation status"
     >
-      <span
-        className={`grid size-5 place-items-center rounded-full shrink-0 mt-0.5 ${
-          isUngrounded
-            ? 'bg-status-critical text-status-critical-fg'
-            : 'bg-status-success text-status-success-fg'
+      <div
+        className={`flex items-center gap-2 border-b px-4 py-2.5 ${
+          isUngrounded ? 'border-status-critical-border/40' : 'border-status-success-border/40'
         }`}
       >
-        <Check className="size-3" />
-      </span>
-      <div className="min-w-0 flex-1">
+        {isUngrounded ? (
+          <AlertOctagon className="size-4.5 text-status-critical shrink-0" aria-hidden="true" />
+        ) : (
+          <CheckCircle2 className="size-4.5 text-status-success shrink-0" aria-hidden="true" />
+        )}
         <strong
-          className={`text-xs font-bold ${
+          className={`font-sans text-forensic-heading font-bold ${
             isUngrounded ? 'text-status-critical' : 'text-status-success'
           }`}
         >
@@ -41,7 +42,10 @@ export const RemediationUnavailableState: React.FC<RemediationUnavailableStatePr
               ? 'Grounding validation blocked remediation'
               : 'No remediation available'}
         </strong>
-        <p className="m-0 mt-1 text-detail leading-normal text-text-secondary">
+      </div>
+
+      <div className="p-4">
+        <p className="m-0 font-sans text-section leading-relaxed text-text-secondary">
           {isNominal
             ? 'No incident was established from the available evidence. The agent declined to stage remediation.'
             : isUngrounded
@@ -49,6 +53,6 @@ export const RemediationUnavailableState: React.FC<RemediationUnavailableStatePr
               : 'Telemetry did not cross the minimum evidence threshold to justify an automated reroute.'}
         </p>
       </div>
-    </div>
+    </section>
   );
 };

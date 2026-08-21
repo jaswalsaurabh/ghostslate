@@ -18,7 +18,7 @@ function SqlDisclosure({ sql }: { sql: string }) {
 
   return (
     <details className="group mt-2 overflow-hidden rounded-md border border-status-success-border/40 bg-status-success-surface/40">
-      <summary className="flex cursor-pointer select-none items-center justify-between px-2.5 py-1.5 font-mono text-caption font-bold text-status-success">
+      <summary className="flex cursor-pointer select-none items-center justify-between px-2.5 py-1.5 font-sans text-forensic-meta font-bold text-status-success">
         <span>Executed SQL</span>
         <span className="font-normal text-text-muted group-open:hidden">Show</span>
         <span className="hidden font-normal text-text-muted group-open:inline">Hide</span>
@@ -30,19 +30,19 @@ function SqlDisclosure({ sql }: { sql: string }) {
             variant="secondary"
             size="sm"
             aria-live="polite"
-            className="font-mono text-micro"
+            className="font-sans text-xs"
             icon={
               copied ? (
-                <Check aria-hidden="true" className="size-2.5 text-status-success" />
+                <Check aria-hidden="true" className="size-3.5 text-status-success" />
               ) : (
-                <Copy aria-hidden="true" className="size-2.5" />
+                <Copy aria-hidden="true" className="size-3.5" />
               )
             }
           >
             {copied ? 'Copied' : 'Copy SQL'}
           </Button>
         </div>
-        <pre className="m-0 max-h-48 overflow-auto font-mono text-caption leading-relaxed text-text-primary whitespace-pre-wrap">
+        <pre className="m-0 max-h-48 overflow-auto font-mono text-forensic-code leading-relaxed text-text-primary whitespace-pre-wrap">
           {sql}
         </pre>
       </div>
@@ -61,18 +61,18 @@ export function TraceToolEvent({
     const { name, args } = event.data;
     return (
       <article className="evidence-event-grid py-2.5 border-t border-border-subtle">
-        <time className="pt-0.5 font-mono text-caption text-text-muted">{time}</time>
-        <span className="grid size-6 place-items-center rounded-md bg-interactive-surface text-interactive shrink-0">
-          <Eye className="size-3" aria-hidden="true" />
+        <span className="grid size-6 place-items-center rounded-md bg-interactive-surface text-interactive shrink-0 mt-0.5">
+          <Eye className="size-3.5" aria-hidden="true" />
         </span>
         <div className="min-w-0">
-          <div className="mt-0.5 mb-1 flex items-center justify-between gap-2 text-detail font-bold text-text-primary">
+          <div className="mb-1 flex items-center justify-between gap-2 font-sans text-forensic-heading font-bold text-text-primary">
             <span>Vision tool · {name}</span>
-            <span className="font-mono text-caption font-normal text-text-muted">
-              {String(args.video_file ?? '')} @ {String(args.timestamp_seconds ?? '')}s
+            <span className="font-mono text-forensic-meta font-normal text-text-muted">
+              <time dateTime={event.timestamp}>{time}</time> · {String(args.video_file ?? '')} @{' '}
+              {String(args.timestamp_seconds ?? '')}s
             </span>
           </div>
-          <p className="m-0 text-compact leading-evidence text-text-secondary">
+          <p className="m-0 font-sans text-forensic-meta leading-evidence text-text-secondary">
             Gemini Vision sampled multimodal frame for visual anomaly detection.
           </p>
         </div>
@@ -85,21 +85,20 @@ export function TraceToolEvent({
     const sql = typeof args.query === 'string' ? args.query : null;
     return (
       <article className="evidence-event-grid py-2.5 border-t border-border-subtle">
-        <time className="pt-0.5 font-mono text-caption text-text-muted">{time}</time>
-        <span className="grid size-6 place-items-center rounded-md bg-status-success-surface text-status-success shrink-0">
-          <Database className="size-3" aria-hidden="true" />
+        <span className="grid size-6 place-items-center rounded-md bg-status-success-surface text-status-success shrink-0 mt-0.5">
+          <Database className="size-3.5" aria-hidden="true" />
         </span>
         <div className="min-w-0">
-          <div className="mt-0.5 mb-1 flex items-center justify-between gap-2 text-detail font-bold text-text-primary">
+          <div className="mb-1 flex items-center justify-between gap-2 font-sans text-forensic-heading font-bold text-text-primary">
             <span>MCP tool · {name}</span>
-            <span className="font-mono text-caption font-normal text-text-muted">
-              mcp-clickhouse
+            <span className="font-mono text-forensic-meta font-normal text-text-muted">
+              <time dateTime={event.timestamp}>{time}</time> · mcp-clickhouse
             </span>
           </div>
           {sql ? (
             <SqlDisclosure sql={sql} />
           ) : (
-            <p className="m-0 font-mono text-caption text-text-muted">
+            <p className="m-0 font-mono text-forensic-code text-text-muted">
               Arguments · {JSON.stringify(args)}
             </p>
           )}
@@ -113,15 +112,20 @@ export function TraceToolEvent({
   if (isError) {
     return (
       <article className="evidence-event-grid py-2.5 border-t border-border-subtle" role="alert">
-        <time className="pt-0.5 font-mono text-caption text-text-muted">{time}</time>
-        <span className="grid size-6 place-items-center rounded-md bg-status-critical-surface text-status-critical shrink-0">
-          <AlertOctagon className="size-3" aria-hidden="true" />
+        <span className="grid size-6 place-items-center rounded-md bg-status-critical-surface text-status-critical shrink-0 mt-0.5">
+          <AlertOctagon className="size-3.5" aria-hidden="true" />
         </span>
         <div className="min-w-0">
-          <div className="mt-0.5 mb-1 text-detail font-bold text-status-critical">
-            {name} failed
+          <div className="mb-1 flex items-center justify-between gap-2 font-sans text-forensic-heading font-bold text-status-critical">
+            <span>{name} failed</span>
+            <time
+              dateTime={event.timestamp}
+              className="font-mono text-forensic-meta font-normal text-status-critical"
+            >
+              {time}
+            </time>
           </div>
-          <pre className="m-0 overflow-auto font-mono text-caption text-status-critical whitespace-pre-wrap">
+          <pre className="m-0 overflow-auto font-mono text-forensic-code text-status-critical whitespace-pre-wrap">
             {String(result ?? 'Unknown error')}
           </pre>
         </div>
@@ -132,18 +136,18 @@ export function TraceToolEvent({
   if (name === 'finalize_investigation') {
     return (
       <article className="evidence-event-grid py-2.5 border-t border-border-subtle">
-        <time className="pt-0.5 font-mono text-caption text-text-muted">{time}</time>
-        <span className="grid size-6 place-items-center rounded-md bg-status-success-surface text-status-success shrink-0">
-          <Check className="size-3" aria-hidden="true" />
+        <span className="grid size-6 place-items-center rounded-md bg-status-success-surface text-status-success shrink-0 mt-0.5">
+          <Check className="size-3.5" aria-hidden="true" />
         </span>
         <div className="min-w-0">
-          <div className="mt-0.5 mb-1 flex items-center justify-between gap-2 text-detail font-bold text-status-success">
+          <div className="mb-1 flex items-center justify-between gap-2 font-sans text-forensic-heading font-bold text-status-success">
             <span>MCP tool · finalize_investigation</span>
-            <span className="font-mono text-caption font-normal text-text-muted">
+            <span className="font-mono text-forensic-meta font-normal text-text-muted">
+              <time dateTime={event.timestamp}>{time}</time> ·{' '}
               {durationMs ? `${durationMs} ms` : 'completed'}
             </span>
           </div>
-          <p className="m-0 text-compact leading-evidence text-text-secondary">
+          <p className="m-0 font-sans text-forensic-meta leading-evidence text-text-secondary">
             Grounding completed. Every numeric claim maps to returned ClickHouse evidence.
           </p>
         </div>
@@ -153,15 +157,15 @@ export function TraceToolEvent({
 
   return (
     <article className="evidence-event-grid py-2.5 border-t border-border-subtle">
-      <time className="pt-0.5 font-mono text-caption text-text-muted">{time}</time>
-      <span className="grid size-6 place-items-center rounded-md bg-status-success-surface text-status-success shrink-0">
-        <Database className="size-3" aria-hidden="true" />
+      <span className="grid size-6 place-items-center rounded-md bg-status-success-surface text-status-success shrink-0 mt-0.5">
+        <Database className="size-3.5" aria-hidden="true" />
       </span>
       <div className="min-w-0">
-        <div className="mt-0.5 mb-1 flex items-center justify-between gap-2 text-detail font-bold text-text-primary">
+        <div className="mb-1 flex items-center justify-between gap-2 font-sans text-forensic-heading font-bold text-text-primary">
           <span>MCP query completed · {name}</span>
-          <span className="font-mono text-caption font-normal text-text-muted">
-            {durationMs ? `${durationMs} ms` : ''}
+          <span className="font-mono text-forensic-meta font-normal text-text-muted">
+            <time dateTime={event.timestamp}>{time}</time>
+            {durationMs ? ` · ${durationMs} ms` : ''}
           </span>
         </div>
         {sql && name !== 'run_query' && <SqlDisclosure sql={sql} />}

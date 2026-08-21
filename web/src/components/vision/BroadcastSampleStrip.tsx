@@ -59,7 +59,7 @@ export function BroadcastSampleStrip({
               alt=""
               className="broadcast-thumbnail-image h-full w-full object-cover transition-transform duration-fast"
             />
-            <span className="absolute bottom-1 left-1 rounded-sm bg-media-overlay px-1 py-0.5 font-mono text-frame font-bold text-media-text-primary backdrop-blur-xs">
+            <span className="absolute bottom-1 left-1 rounded-sm bg-media-overlay px-1.5 py-0.5 font-mono text-forensic-meta font-bold text-media-text-primary backdrop-blur-xs">
               {formatTimecode(sample.time)}
             </span>
           </button>

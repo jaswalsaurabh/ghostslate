@@ -138,8 +138,8 @@
   --color-media-track: color-mix(in oklab, var(--gs-neutral-0) 24%, transparent);
 
   /* Non-colour scales */
-  --font-sans: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+  --font-sans: 'Inter', ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
 
   --text-frame: var(--gs-text-frame);
   --text-micro: var(--gs-text-micro);
@@ -147,16 +147,22 @@
   --text-compact: var(--gs-text-compact);
   --text-detail: var(--gs-text-detail);
   --text-section: var(--gs-text-section);
-  --text-diagnosis: var(--gs-text-diagnosis);
   --text-mobile-title: var(--gs-text-mobile-title);
   --text-incident-title: var(--gs-text-incident-title);
   --text-metric: var(--gs-text-metric);
+
+  --text-forensic-meta: var(--gs-text-forensic-meta);
+  --text-forensic-code: var(--gs-text-forensic-code);
+  --text-forensic-heading: var(--gs-text-forensic-heading);
+  --text-forensic-body: var(--gs-text-forensic-body);
+  --text-forensic-title: var(--gs-text-forensic-title);
+  --text-diagnosis: var(--gs-text-diagnosis);
 
   --leading-dense: 1.35;
   --leading-title: 1.2;
   --leading-section: 1.4;
   --leading-evidence: 1.55;
-  --leading-diagnosis: 1.65;
+  --leading-diagnosis: 1.5;
 
   --tracking-micro: 0.06em;
   --tracking-label: 0.08em;
@@ -204,4 +210,6 @@
   --layout-gutter-mobile: var(--gs-layout-gutter-mobile);
   --layout-vision-min: var(--gs-layout-vision-min);
   --layout-investigation-min: var(--gs-layout-investigation-min);
+  --layout-sticky-top: var(--gs-layout-sticky-top);
+  --layout-sticky-clearance: var(--gs-layout-sticky-clearance);
 }

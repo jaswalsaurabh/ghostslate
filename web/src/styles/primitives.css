@@ -60,17 +60,26 @@
     --gs-text-compact: 0.625rem;
     --gs-text-detail: 0.6875rem;
     --gs-text-section: 0.8125rem;
-    --gs-text-diagnosis: 1.0625rem;
     --gs-text-mobile-title: 1.1875rem;
     --gs-text-incident-title: 1.375rem;
     --gs-text-metric: 1.5rem;
 
+    /* Scoped forensic investigation typography scale. */
+    --gs-text-forensic-meta: 0.75rem;
+    --gs-text-forensic-code: 0.8125rem;
+    --gs-text-forensic-heading: 0.875rem;
+    --gs-text-forensic-body: 1rem;
+    --gs-text-forensic-title: 1.1875rem;
+    --gs-text-diagnosis: 0.8125rem;
+
     /* Repeated redesign geometry. */
     --gs-radius-inset: 0.625rem;
-    --gs-layout-war-room-max: 97.5rem;
+    --gs-layout-war-room-max: 108rem;
     --gs-layout-gutter: 1.25rem;
     --gs-layout-gutter-mobile: 0.75rem;
     --gs-layout-vision-min: 22.5rem;
     --gs-layout-investigation-min: 32.5rem;
+    --gs-layout-sticky-top: 5.25rem;
+    --gs-layout-sticky-clearance: 6rem;
   }
 }

@@ -36,9 +36,9 @@ export const RemediationPanel: React.FC<RemediationPanelProps> = ({
       {loading && (
         <div
           role="status"
-          className="-mt-5 mx-5 mb-5 flex items-center gap-2 rounded-b-inset border border-border-subtle bg-surface-raised p-3 text-compact text-text-secondary"
+          className="mx-5 mb-5 mt-4 flex items-center gap-2 rounded-inset border border-border-subtle bg-surface-card p-3.5 font-sans text-section text-text-secondary"
         >
-          <Loader2 aria-hidden="true" className="size-3.5 shrink-0 animate-spin text-interactive" />
+          <Loader2 aria-hidden="true" className="size-4 shrink-0 animate-spin text-interactive" />
           Loading remediation proposal…
         </div>
       )}
@@ -46,10 +46,10 @@ export const RemediationPanel: React.FC<RemediationPanelProps> = ({
       {error && (
         <div
           role="alert"
-          className="-mt-5 mx-5 mb-5 flex flex-wrap items-center justify-between gap-3 rounded-b-inset border border-status-critical-border bg-status-critical-surface p-3 text-compact text-status-critical"
+          className="mx-5 mb-5 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-inset border border-status-critical-border bg-status-critical-surface p-3.5 font-sans text-section text-status-critical"
         >
           <span>
-            <strong>Remediation error:</strong> {error}
+            <strong className="font-bold">Remediation error:</strong> {error}
           </span>
           {onRefresh && (
             <Button
@@ -58,7 +58,7 @@ export const RemediationPanel: React.FC<RemediationPanelProps> = ({
               onClick={() => void onRefresh()}
               disabled={loading}
               icon={<RotateCw aria-hidden="true" className="size-3" />}
-              className="shrink-0 font-mono text-caption"
+              className="shrink-0 font-sans"
             >
               Retry
             </Button>

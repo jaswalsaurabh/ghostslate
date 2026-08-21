@@ -181,7 +181,7 @@ export function CaseOverview({
         className={`relative p-5 sm:px-6 max-md:col-span-2 before:absolute before:inset-y-0 before:left-0 before:w-0.75 ${outcomeAccent}`}
       >
         <div className="flex flex-wrap items-center justify-between gap-3 max-sm:flex-col max-sm:items-start">
-          <div className="font-mono text-compact uppercase tracking-eyebrow text-text-muted">
+          <div className="font-mono text-forensic-meta font-bold uppercase tracking-eyebrow text-text-muted">
             {activeCase.eyebrow}
           </div>
           <SegmentedControl
@@ -199,7 +199,7 @@ export function CaseOverview({
         >
           {title}
         </h1>
-        <p className="m-0 text-xs leading-evidence text-text-secondary">
+        <p className="m-0 font-sans text-section leading-relaxed text-text-secondary">
           {summary.highlight ? (
             <b
               className={`font-bold ${
@@ -221,7 +221,7 @@ export function CaseOverview({
         detail={metrics.revenueLossSubtext}
         tag={metrics.revenueLossTag}
         tone={metrics.revenueLossVariant}
-        icon={<DollarSign className="h-3.5 w-3.5" />}
+        icon={<DollarSign className="size-3.5" />}
         variant="column"
       />
       <Metric
@@ -230,7 +230,7 @@ export function CaseOverview({
         detail={metrics.slateBleedSubtext}
         tag={metrics.slateBleedTag}
         tone={metrics.slateBleedVariant}
-        icon={<Percent className="h-3.5 w-3.5" />}
+        icon={<Percent className="size-3.5" />}
         variant="column"
       />
       <Metric
@@ -241,9 +241,9 @@ export function CaseOverview({
         tone={metrics.sspVariant}
         icon={
           outcome === 'no_incident' ? (
-            <Activity className="h-3.5 w-3.5" />
+            <Activity className="size-3.5" />
           ) : (
-            <Zap className="h-3.5 w-3.5" />
+            <Zap className="size-3.5" />
           )
         }
         variant="column"

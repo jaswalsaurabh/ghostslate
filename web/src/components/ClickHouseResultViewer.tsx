@@ -73,13 +73,13 @@ export const ClickHouseResultViewer: React.FC<ClickHouseResultViewerProps> = ({
       aria-label="ClickHouse query result"
     >
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border-subtle bg-status-success-surface px-2.5 py-2">
-        <div className="flex items-center gap-1.5 font-mono text-caption font-bold uppercase tracking-wider text-status-success">
-          <Database className="size-3" aria-hidden="true" />
+        <div className="flex items-center gap-1.5 font-sans text-forensic-meta font-bold uppercase tracking-wider text-status-success">
+          <Database className="size-4" aria-hidden="true" />
           <span>ClickHouse result</span>
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5">
-          <div className="flex flex-wrap items-center gap-1 font-mono text-micro text-text-muted">
+          <div className="flex flex-wrap items-center gap-1 font-mono text-forensic-meta text-text-muted">
             {typeof rowsCount === 'number' && (
               <span className="rounded-sm border border-border-subtle bg-surface-panel px-1.5 py-0.5">
                 {rowsCount} row{rowsCount === 1 ? '' : 's'}
@@ -108,7 +108,7 @@ export const ClickHouseResultViewer: React.FC<ClickHouseResultViewerProps> = ({
               value={viewMode}
               onValueChange={setViewMode}
               size="sm"
-              className="font-mono text-micro"
+              className="font-sans text-xs"
             />
           )}
 
@@ -119,9 +119,9 @@ export const ClickHouseResultViewer: React.FC<ClickHouseResultViewerProps> = ({
             className="size-6 text-text-muted"
             icon={
               copied ? (
-                <Check className="size-3 text-status-success" aria-hidden="true" />
+                <Check className="size-3.5 text-status-success" aria-hidden="true" />
               ) : (
-                <Copy className="size-3" aria-hidden="true" />
+                <Copy className="size-3.5" aria-hidden="true" />
               )
             }
           />
@@ -130,13 +130,13 @@ export const ClickHouseResultViewer: React.FC<ClickHouseResultViewerProps> = ({
 
       {parsedData.queryData && viewMode === 'table' ? (
         <div className="max-h-51.25 overflow-auto">
-          <table className="w-full min-w-190 border-collapse text-left font-mono text-caption">
+          <table className="w-full min-w-190 border-collapse text-left font-mono text-forensic-code">
             <thead>
               <tr className="bg-surface-card text-status-success">
                 {parsedData.queryData.columns.map((col, idx) => (
                   <th
                     key={idx}
-                    className="sticky top-0 z-content whitespace-nowrap border-b border-border-strong bg-surface-card px-2.5 py-2 text-micro font-bold uppercase tracking-micro"
+                    className="sticky top-0 z-content whitespace-nowrap border-b border-border-strong bg-surface-card px-2.5 py-2 font-mono text-forensic-meta font-bold uppercase tracking-micro"
                   >
                     {col}
                   </th>
@@ -148,7 +148,7 @@ export const ClickHouseResultViewer: React.FC<ClickHouseResultViewerProps> = ({
                 <tr>
                   <td
                     colSpan={parsedData.queryData.columns.length}
-                    className="p-4 text-center text-text-muted italic"
+                    className="p-4 text-center font-sans text-text-muted italic"
                   >
                     0 rows returned
                   </td>
@@ -175,7 +175,7 @@ export const ClickHouseResultViewer: React.FC<ClickHouseResultViewerProps> = ({
           </table>
         </div>
       ) : (
-        <pre className="m-0 max-h-51.25 overflow-auto whitespace-pre p-3 font-mono text-caption leading-diagnosis text-status-success bg-surface-card/60">
+        <pre className="m-0 max-h-51.25 overflow-auto whitespace-pre p-3 font-mono text-forensic-code leading-relaxed text-status-success bg-surface-card/60">
           {parsedData.prettyJson}
         </pre>
       )}

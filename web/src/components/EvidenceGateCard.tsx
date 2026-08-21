@@ -41,14 +41,17 @@ export function EvidenceGateCard({
       >
         <div className="flex items-start justify-between gap-3 font-mono">
           <div>
-            <span className="block text-micro uppercase tracking-widest text-text-muted">
+            <span className="block font-mono text-forensic-meta uppercase tracking-widest text-text-muted">
               Causal evidence
             </span>
-            <h3 id="causal-title" className="mt-1 font-sans text-xs font-bold text-text-primary">
+            <h3
+              id="causal-title"
+              className="mt-1 font-sans text-forensic-heading font-bold text-text-primary"
+            >
               Why the slate appeared
             </h3>
           </div>
-          <strong className="text-detail font-bold text-status-critical whitespace-nowrap">
+          <strong className="font-mono text-forensic-meta font-bold text-status-critical whitespace-nowrap">
             {latencyBreached
               ? deadlineMultiplier > 1
                 ? `${deadlineMultiplier}× deadline`
@@ -57,7 +60,7 @@ export function EvidenceGateCard({
           </strong>
         </div>
 
-        <p className="my-2 mb-4 text-compact leading-normal text-text-secondary">
+        <p className="my-2 mb-4 font-sans text-section leading-relaxed text-text-secondary">
           {hardTimeoutBreached
             ? 'The affected SSP completed after both SSAI auction thresholds, forcing the stream to use replacement inventory.'
             : latencyBreached
@@ -97,7 +100,7 @@ export function EvidenceGateCard({
         </div>
 
         <div
-          className={`mt-2.5 grid gap-2 font-mono text-micro leading-dense text-text-muted ${latencyBreached ? 'grid-cols-4' : 'grid-cols-3'}`}
+          className={`mt-2.5 grid gap-2 font-mono text-forensic-meta leading-dense text-text-muted ${latencyBreached ? 'grid-cols-4' : 'grid-cols-3'}`}
           aria-label={latencyBreached ? 'Auction latency comparison' : 'Incident rate comparison'}
         >
           <div>
@@ -130,7 +133,7 @@ export function EvidenceGateCard({
           </div>
         </div>
 
-        <div className="mt-3 border-t border-border-subtle pt-3 font-mono text-caption text-text-secondary">
+        <div className="mt-3 border-t border-border-subtle pt-3 font-mono text-forensic-meta text-text-secondary">
           <strong className={visionConfirmed ? 'text-status-critical' : 'text-text-secondary'}>
             {visionConfirmed ? 'Slate confirmed by Gemini Vision' : 'Awaiting Vision confirmation'}
           </strong>
@@ -167,22 +170,22 @@ export function EvidenceGateCard({
     >
       <div className="flex items-start justify-between gap-3 font-mono">
         <div>
-          <span className="block text-micro uppercase tracking-widest text-text-muted">
+          <span className="block font-mono text-forensic-meta uppercase tracking-widest text-text-muted">
             Evidence gate
           </span>
           <h3
             id="control-gate-title"
-            className="mt-1 font-sans text-xs font-bold text-text-primary"
+            className="mt-1 font-sans text-forensic-heading font-bold text-text-primary"
           >
             Why the agent stopped
           </h3>
         </div>
-        <strong className="text-detail font-bold text-status-success whitespace-nowrap">
+        <strong className="font-mono text-forensic-meta font-bold text-status-success whitespace-nowrap">
           {gateLabel}
         </strong>
       </div>
 
-      <p className="my-2 mb-4 text-compact leading-normal text-text-secondary">
+      <p className="my-2 mb-4 font-sans text-section leading-relaxed text-text-secondary">
         {summary.reason === 'INSUFFICIENT_SAMPLE_SIZE'
           ? `All observed cohorts had fewer than ${thresholds.minimumCues} cues; small-sample guard prevented ungrounded causal attribution.`
           : summary.reason === 'DIFFUSE_VARIATION'
@@ -214,7 +217,7 @@ export function EvidenceGateCard({
           </div>
 
           <div
-            className="mt-2.5 grid grid-cols-3 gap-2 font-mono text-micro leading-dense text-text-muted"
+            className="mt-2.5 grid grid-cols-3 gap-2 font-mono text-forensic-meta leading-dense text-text-muted"
             aria-label="Incident threshold comparison"
           >
             <div>
@@ -236,7 +239,7 @@ export function EvidenceGateCard({
         </>
       )}
 
-      <div className="mt-3 border-t border-border-subtle pt-3 font-mono text-caption text-text-secondary">
+      <div className="mt-3 border-t border-border-subtle pt-3 font-mono text-forensic-meta text-text-secondary">
         <strong className="text-status-success">Evidence gate held</strong> · no agent Vision
         evidence admitted · no remediation
       </div>
