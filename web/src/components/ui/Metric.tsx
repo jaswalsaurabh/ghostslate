@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Tooltip } from './Tooltip.js';
 
 export type MetricTone = 'neutral' | 'critical' | 'warning' | 'success' | 'interactive';
 
@@ -6,7 +7,9 @@ export interface MetricProps {
   label: string;
   value?: ReactNode;
   detail?: ReactNode;
+  detailTooltip?: ReactNode;
   tag?: ReactNode;
+  tagTooltip?: ReactNode;
   icon?: ReactNode;
   tone?: MetricTone;
   variant?: 'card' | 'panel' | 'column';
@@ -34,7 +37,9 @@ export function Metric({
   label,
   value,
   detail,
+  detailTooltip,
   tag,
+  tagTooltip,
   icon,
   tone = 'neutral',
   variant = 'column',
@@ -45,7 +50,7 @@ export function Metric({
     return (
       <section
         aria-busy={loading || undefined}
-        className={`min-w-0 p-5 border-l border-border-subtle max-lg:border-t max-lg:border-l-0 ${className}`}
+        className={`min-w-0 p-4 sm:px-6 sm:py-4.5 ${className}`}
       >
         <div className="flex items-center justify-between font-mono text-forensic-meta font-bold uppercase tracking-label text-text-muted">
           <span>{label}</span>
@@ -60,22 +65,38 @@ export function Metric({
         </div>
         {loading ? (
           <div
-            className="my-1.5 h-6 w-28 animate-pulse rounded bg-surface-hover"
+            className="my-2 h-7 w-28 animate-pulse rounded bg-surface-hover"
             aria-hidden="true"
           />
         ) : (
           <div
-            className={`mt-3 font-mono text-metric font-bold leading-none tracking-metric ${toneValueClasses[tone]}`}
+            className={`mt-2 font-mono text-xl sm:text-metric font-bold leading-none tracking-metric ${toneValueClasses[tone]}`}
           >
             {value ?? '—'}
           </div>
         )}
-        <div className="mt-2.5 flex min-w-0 items-center justify-between gap-2 font-sans text-section">
-          <span className="truncate text-text-muted">{detail}</span>
+        <div className="mt-2.5 flex min-w-0 flex-wrap items-baseline justify-between gap-x-2 gap-y-1 font-sans text-section">
+          {detail ? (
+            <Tooltip content={detailTooltip ?? detail} placement="top">
+              <span className="truncate text-text-muted cursor-help underline decoration-dotted decoration-border-strong/60 underline-offset-2 hover:decoration-border-strong hover:text-text-primary transition-colors duration-fast">
+                {detail}
+              </span>
+            </Tooltip>
+          ) : (
+            <span className="truncate text-text-muted" />
+          )}
           {tag ? (
-            <span className="shrink-0 font-mono text-forensic-meta font-bold uppercase text-text-secondary">
-              {tag}
-            </span>
+            tagTooltip ? (
+              <Tooltip content={tagTooltip} placement="top">
+                <span className="shrink-0 font-mono text-forensic-meta font-bold uppercase text-text-secondary cursor-help">
+                  {tag}
+                </span>
+              </Tooltip>
+            ) : (
+              <span className="shrink-0 font-mono text-forensic-meta font-bold uppercase text-text-secondary">
+                {tag}
+              </span>
+            )
           ) : null}
         </div>
       </section>
@@ -109,11 +130,25 @@ export function Metric({
       )}
       {!loading && (detail || tag) ? (
         <div className="mt-1.5 flex min-w-0 items-center justify-between gap-2 font-sans text-section">
-          {detail ? <span className="truncate text-text-muted">{detail}</span> : null}
+          {detail ? (
+            <Tooltip content={detailTooltip ?? detail} placement="top">
+              <span className="truncate text-text-muted cursor-help underline decoration-dotted decoration-border-strong/60 underline-offset-2 hover:decoration-border-strong hover:text-text-primary transition-colors duration-fast">
+                {detail}
+              </span>
+            </Tooltip>
+          ) : null}
           {tag ? (
-            <span className="shrink-0 font-mono text-forensic-meta font-bold uppercase text-text-secondary">
-              {tag}
-            </span>
+            tagTooltip ? (
+              <Tooltip content={tagTooltip} placement="top">
+                <span className="shrink-0 font-mono text-forensic-meta font-bold uppercase text-text-secondary cursor-help">
+                  {tag}
+                </span>
+              </Tooltip>
+            ) : (
+              <span className="shrink-0 font-mono text-forensic-meta font-bold uppercase text-text-secondary">
+                {tag}
+              </span>
+            )
           ) : null}
         </div>
       ) : null}

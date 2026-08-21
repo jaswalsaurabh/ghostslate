@@ -1,8 +1,8 @@
 import type { RefObject } from 'react';
-import { Pause, Play } from 'lucide-react';
+import { Pause, Play, Sparkles } from 'lucide-react';
 import type { InvestigationCaseConfig } from '../../config/investigation-cases.js';
 import type { FrameClassificationData } from '../../types.js';
-import { IconButton } from '../ui/index.js';
+import { Button, IconButton } from '../ui/index.js';
 import { formatTime, formatTimecode } from './BroadcastSampleStrip.js';
 import { classificationStyles } from './classification-styles.js';
 
@@ -20,6 +20,8 @@ interface BroadcastPlayerProps {
   onPause: () => void;
   displayed: FrameClassificationData | null;
   confidence: string;
+  classifying?: boolean | undefined;
+  onClassify?: (() => void) | undefined;
 }
 
 export function BroadcastPlayer({
@@ -36,6 +38,8 @@ export function BroadcastPlayer({
   onPause,
   displayed,
   confidence,
+  classifying = false,
+  onClassify,
 }: BroadcastPlayerProps) {
   const isSlate = displayed?.classification === 'slate';
   const styles = displayed ? classificationStyles[displayed.classification] : null;
@@ -84,59 +88,78 @@ export function BroadcastPlayer({
         </div>
       )}
 
-      <div className="absolute right-3 bottom-11 left-3 z-media-overlay text-media-text-primary">
-        <b className="block font-sans text-forensic-heading font-bold text-media-text-primary">
-          {activeCase.channel} · {activeCase.label}
-        </b>
-        {displayed && (
-          <span className="mt-0.5 block font-mono text-section text-media-text-primary">
-            Frame classification: {displayed.classification.toUpperCase()}
-            {isSlate && displayed.slate_type ? ` (${displayed.slate_type})` : ''}
-          </span>
-        )}
-      </div>
-
-      <div className="broadcast-transport-grid absolute bottom-2.5 left-3 right-3 z-media-controls grid items-center gap-2.5 font-mono text-forensic-meta text-media-text-primary">
-        <IconButton
-          onClick={onTogglePlay}
-          label={isPlaying ? 'Pause synthetic stream' : 'Play synthetic stream'}
-          icon={
-            isPlaying ? (
-              <Pause aria-hidden="true" className="size-3.5 fill-current" />
-            ) : (
-              <Play aria-hidden="true" className="ml-0.5 size-3.5 fill-current" />
-            )
-          }
-          variant="outline"
-          className="size-7.5! rounded-full! border-media-border! bg-media-overlay! p-1.5! text-media-text-primary! hover:bg-media-overlay/80!"
-        />
-        <span>{formatTime(currentTime)}</span>
-        <div className="relative h-5 min-w-0">
-          <input
-            type="range"
-            min={0}
-            max={maximum}
-            step={0.1}
-            value={timelineValue}
-            onChange={(event) => onSeek(event.currentTarget.valueAsNumber)}
-            aria-label="Synthetic stream timeline"
-            aria-valuetext={formatTime(currentTime)}
-            className="peer absolute inset-0 z-media-controls h-full w-full cursor-pointer appearance-none opacity-0 forced-colors:appearance-auto forced-colors:opacity-100"
-          />
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute top-1/2 left-0 z-content h-1 w-full -translate-y-1/2 rounded-full bg-media-track peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-interactive forced-colors:hidden"
-          >
-            {activeCase.id === 'primary' && (
-              <span className="broadcast-cue-zone absolute h-full bg-status-critical/80" />
-            )}
-            <span
-              style={{ left: `${(timelineValue / maximum) * 100}%` }}
-              className="broadcast-playhead absolute -top-0.75 h-2.5 w-0.5 -translate-x-1/2 bg-media-text-primary shadow-xs before:absolute before:top-0.5 before:size-1 before:rounded-full before:bg-media-text-primary"
-            />
-          </span>
+      <div className="absolute inset-x-2.5 bottom-2 z-media-controls flex flex-col gap-1 text-media-text-primary sm:inset-x-3 sm:bottom-2.5 sm:gap-1.5">
+        <div className="min-w-0">
+          <b className="block truncate font-sans text-micro font-bold text-media-text-primary sm:text-forensic-heading">
+            {activeCase.channel} · {activeCase.label}
+          </b>
+          {displayed && (
+            <span className="block truncate font-mono text-micro text-media-text-primary sm:text-section">
+              Frame classification: {displayed.classification.toUpperCase()}
+              {isSlate && displayed.slate_type ? ` (${displayed.slate_type})` : ''}
+            </span>
+          )}
         </div>
-        <span>{formatTime(maximum)}</span>
+
+        <div className="flex items-center justify-between gap-1.5 font-mono text-forensic-meta text-media-text-primary sm:gap-2.5">
+          <div className="flex flex-1 min-w-0 items-center gap-1.5 sm:gap-2">
+            <IconButton
+              onClick={onTogglePlay}
+              label={isPlaying ? 'Pause synthetic stream' : 'Play synthetic stream'}
+              icon={
+                isPlaying ? (
+                  <Pause aria-hidden="true" className="size-3.5 fill-current" />
+                ) : (
+                  <Play aria-hidden="true" className="ml-0.5 size-3.5 fill-current" />
+                )
+              }
+              variant="outline"
+              className="size-7! shrink-0 rounded-full! border-media-border! bg-media-overlay! p-1! text-media-text-primary! hover:bg-media-overlay/80! sm:size-7.5! sm:p-1.5!"
+            />
+            <span className="shrink-0 text-micro sm:text-forensic-meta">
+              {formatTime(currentTime)}
+            </span>
+            <div className="relative h-5 flex-1 min-w-10">
+              <input
+                type="range"
+                min={0}
+                max={maximum}
+                step={0.1}
+                value={timelineValue}
+                onChange={(event) => onSeek(event.currentTarget.valueAsNumber)}
+                aria-label="Synthetic stream timeline"
+                aria-valuetext={formatTime(currentTime)}
+                className="peer absolute inset-0 z-media-controls h-full w-full cursor-pointer appearance-none opacity-0 forced-colors:appearance-auto forced-colors:opacity-100"
+              />
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute top-1/2 left-0 z-content h-1 w-full -translate-y-1/2 rounded-full bg-media-track peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-interactive forced-colors:hidden"
+              >
+                {activeCase.id === 'primary' && (
+                  <span className="broadcast-cue-zone absolute h-full bg-status-critical/80" />
+                )}
+                <span
+                  style={{ left: `${(timelineValue / maximum) * 100}%` }}
+                  className="broadcast-playhead absolute -top-0.75 h-2.5 w-0.5 -translate-x-1/2 bg-media-text-primary shadow-xs before:absolute before:top-0.5 before:size-1 before:rounded-full before:bg-media-text-primary"
+                />
+              </span>
+            </div>
+            <span className="shrink-0 text-micro sm:text-forensic-meta">{formatTime(maximum)}</span>
+          </div>
+
+          {onClassify ? (
+            <Button
+              variant="primary"
+              size="sm"
+              loading={classifying}
+              onClick={onClassify}
+              icon={<Sparkles className="size-3 sm:size-3.5" />}
+              className="h-7 shrink-0 px-2 font-sans font-semibold tracking-wide shadow-glow-interactive text-micro sm:h-7.5 sm:px-3 sm:text-xs"
+            >
+              {classifying ? 'Analyzing…' : `Classify ${formatTime(currentTime)}`}
+            </Button>
+          ) : null}
+        </div>
       </div>
     </div>
   );

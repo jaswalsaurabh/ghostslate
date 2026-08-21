@@ -176,7 +176,7 @@ export function InvestigationPanel(props: InvestigationPanelProps) {
       </ol>
 
       <div className="px-5 pb-5 max-md:px-3.5">
-        <div className="flex h-9.5 items-center justify-between font-sans text-forensic-meta uppercase tracking-widest text-text-muted">
+        <div className="flex min-h-9.5 flex-wrap items-center justify-between gap-2.5 py-1 font-sans text-forensic-meta uppercase tracking-widest text-text-muted">
           <div className="flex items-center gap-2">
             <span>Live evidence trace · {props.trace.length} events</span>
             {props.reconnecting && <span className="text-status-warning">(Reconnecting...)</span>}

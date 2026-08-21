@@ -2,6 +2,7 @@
 
 @custom-variant short-viewport (@media (height <= 60rem));
 
+@import './styles/fonts.css';
 @import './styles/primitives.css';
 @import './styles/semantic.css';
 @import './styles/themes.css';

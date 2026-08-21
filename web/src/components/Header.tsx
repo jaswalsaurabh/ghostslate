@@ -31,15 +31,15 @@ export function Header({ health, healthLoading, healthError, vertexState }: Head
           : 'idle';
   const mobileHealth = (() => {
     if (healthLoading || (!health && !healthError)) {
-      return { label: 'API + MCP checking', tone: 'warning', loading: true } as const;
+      return { label: 'Checking...', tone: 'warning', loading: true } as const;
     }
     if (healthError) {
-      return { label: 'API + MCP issue', tone: 'error', loading: false } as const;
+      return { label: 'API Issue', tone: 'error', loading: false } as const;
     }
     if (!mcpConnected) {
-      return { label: 'MCP unavailable', tone: 'error', loading: false } as const;
+      return { label: 'MCP Error', tone: 'error', loading: false } as const;
     }
-    return { label: 'API + MCP online', tone: 'ready', loading: false } as const;
+    return { label: 'API + MCP', tone: 'ready', loading: false } as const;
   })() satisfies { label: string; tone: StatusTone; loading: boolean };
 
   return (
@@ -58,7 +58,7 @@ export function Header({ health, healthLoading, healthError, vertexState }: Head
             label={mobileHealth.label}
             tone={mobileHealth.tone}
             loading={mobileHealth.loading}
-            className="px-2 sm:hidden"
+            className="px-2 whitespace-nowrap sm:hidden"
           />
 
           <span className="hidden sm:block">

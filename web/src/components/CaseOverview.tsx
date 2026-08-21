@@ -149,12 +149,19 @@ export function CaseOverview({
     candidate && thresholds && candidate.p95AuctionMs > thresholds.stitcherDeadlineMs,
   );
 
-  const outcomeAccent =
+  const outcomeCardAccent =
     outcome === 'incident'
-      ? 'bg-linear-to-r from-status-critical-surface/70 to-transparent before:bg-status-critical'
+      ? 'before:bg-status-critical'
       : outcome === 'no_incident'
-        ? 'bg-linear-to-r from-status-success-surface/70 to-transparent before:bg-status-success'
+        ? 'before:bg-status-success'
         : 'before:bg-border-strong';
+
+  const outcomeBannerBg =
+    outcome === 'incident'
+      ? 'bg-linear-to-r from-status-critical-surface/70 to-transparent'
+      : outcome === 'no_incident'
+        ? 'bg-linear-to-r from-status-success-surface/70 to-transparent'
+        : '';
 
   const title = getOverviewTitle({
     activeCase,
@@ -175,13 +182,12 @@ export function CaseOverview({
   return (
     <section
       aria-labelledby="incident-title"
-      className="incident-overview-grid overflow-hidden rounded-2xl border border-border-subtle bg-surface-panel shadow-panel"
+      className={`relative overflow-hidden rounded-2xl border border-border-subtle bg-surface-panel shadow-panel before:absolute before:inset-y-0 before:left-0 before:w-0.75 before:z-content ${outcomeCardAccent}`}
     >
-      <div
-        className={`relative p-5 sm:px-6 max-md:col-span-2 before:absolute before:inset-y-0 before:left-0 before:w-0.75 ${outcomeAccent}`}
-      >
+      {/* Tier 1: Incident Hero Banner */}
+      <div className={`p-5 sm:p-6 ${outcomeBannerBg}`}>
         <div className="flex flex-wrap items-center justify-between gap-3 max-sm:flex-col max-sm:items-start">
-          <div className="font-mono text-forensic-meta font-bold uppercase tracking-eyebrow text-text-muted">
+          <div className="font-mono text-forensic-meta font-bold uppercase tracking-eyebrow text-text-muted break-keep whitespace-nowrap max-w-full truncate">
             {activeCase.eyebrow}
           </div>
           <SegmentedControl
@@ -195,11 +201,11 @@ export function CaseOverview({
         </div>
         <h1
           id="incident-title"
-          className="mb-1.75 mt-1.5 text-incident-title font-bold leading-title tracking-incident text-text-primary max-sm:text-mobile-title"
+          className="mb-1.5 mt-2.5 text-incident-title font-bold leading-title tracking-incident text-text-primary max-sm:text-mobile-title"
         >
           {title}
         </h1>
-        <p className="m-0 font-sans text-section leading-relaxed text-text-secondary">
+        <p className="m-0 max-w-4xl font-sans text-section leading-relaxed text-text-secondary">
           {summary.highlight ? (
             <b
               className={`font-bold ${
@@ -215,40 +221,44 @@ export function CaseOverview({
         </p>
       </div>
 
-      <Metric
-        label="Revenue at risk"
-        value={metrics.revenueLoss}
-        detail={metrics.revenueLossSubtext}
-        tag={metrics.revenueLossTag}
-        tone={metrics.revenueLossVariant}
-        icon={<DollarSign className="size-3.5" />}
-        variant="column"
-      />
-      <Metric
-        label="Slate bleed"
-        value={metrics.slateBleedRate}
-        detail={metrics.slateBleedSubtext}
-        tag={metrics.slateBleedTag}
-        tone={metrics.slateBleedVariant}
-        icon={<Percent className="size-3.5" />}
-        variant="column"
-      />
-      <Metric
-        label="Offending SSP"
-        value={metrics.offendingSsp}
-        detail={metrics.sspSubtext}
-        tag={metrics.sspLatency}
-        tone={metrics.sspVariant}
-        icon={
-          outcome === 'no_incident' ? (
-            <Activity className="size-3.5" />
-          ) : (
-            <Zap className="size-3.5" />
-          )
-        }
-        variant="column"
-        className="max-md:col-span-2"
-      />
+      {/* Tier 2: Cockpit KPI Stat Row */}
+      <div className="grid grid-cols-1 border-t border-border-subtle bg-surface-card/30 sm:grid-cols-3 sm:divide-x sm:divide-border-subtle">
+        <Metric
+          label="Revenue at risk"
+          value={metrics.revenueLoss}
+          detail={metrics.revenueLossSubtext}
+          tag={metrics.revenueLossTag}
+          tone={metrics.revenueLossVariant}
+          icon={<DollarSign className="size-3.5" />}
+          variant="column"
+          className="max-sm:border-b max-sm:border-border-subtle"
+        />
+        <Metric
+          label="Slate bleed"
+          value={metrics.slateBleedRate}
+          detail={metrics.slateBleedSubtext}
+          tag={metrics.slateBleedTag}
+          tone={metrics.slateBleedVariant}
+          icon={<Percent className="size-3.5" />}
+          variant="column"
+          className="max-sm:border-b max-sm:border-border-subtle"
+        />
+        <Metric
+          label="Offending SSP"
+          value={metrics.offendingSsp}
+          detail={metrics.sspSubtext}
+          tag={metrics.sspLatency}
+          tone={metrics.sspVariant}
+          icon={
+            outcome === 'no_incident' ? (
+              <Activity className="size-3.5" />
+            ) : (
+              <Zap className="size-3.5" />
+            )
+          }
+          variant="column"
+        />
+      </div>
     </section>
   );
 }

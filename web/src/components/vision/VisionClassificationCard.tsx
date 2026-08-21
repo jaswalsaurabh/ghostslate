@@ -1,4 +1,4 @@
-import { Camera } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import type { FrameClassificationData } from '../../types.js';
 import { Button } from '../ui/index.js';
 import { formatTime } from './BroadcastSampleStrip.js';
@@ -10,7 +10,7 @@ interface VisionClassificationCardProps {
   activeSource: 'agent' | 'manual' | null;
   currentTime: number;
   classifying: boolean;
-  onClassify: () => void;
+  onClassify: (timestamp?: number) => void;
 }
 
 function classificationHeading(classification: FrameClassificationData['classification']) {
@@ -43,24 +43,24 @@ export function VisionClassificationCard({
 }: VisionClassificationCardProps) {
   if (!displayed) {
     return (
-      <div className="mx-5 mb-3 flex items-center justify-between gap-3 rounded-inset border border-border-subtle bg-surface-card p-3.5">
+      <div className="mx-5 mb-3 flex items-center justify-between gap-3 rounded-inset border border-interactive-border/50 bg-interactive-surface/20 p-3.5">
         <div>
           <p className="m-0 font-sans text-forensic-heading font-bold text-text-primary">
             No frame classified yet
           </p>
           <p className="m-0 mt-0.5 font-sans text-section text-text-muted">
-            Run investigation or sample the stream.
+            Click Classify in the player or sample any frame.
           </p>
         </div>
         <Button
-          variant="secondary"
+          variant="primary"
           size="sm"
           loading={classifying}
-          onClick={onClassify}
-          icon={<Camera className="size-3.5" />}
-          className="font-sans"
+          onClick={() => onClassify(currentTime)}
+          icon={<Sparkles className="size-3.5" />}
+          className="font-sans shrink-0 shadow-sm"
         >
-          Classify {formatTime(currentTime)}
+          {classifying ? 'Analyzing…' : `Classify ${formatTime(currentTime)}`}
         </Button>
       </div>
     );
@@ -68,23 +68,41 @@ export function VisionClassificationCard({
 
   const styles = classificationStyles[displayed.classification];
   const isSlate = displayed.classification === 'slate';
+  const targetTimestamp =
+    typeof displayed.timestampSeconds === 'number' && Number.isFinite(displayed.timestampSeconds)
+      ? displayed.timestampSeconds
+      : currentTime;
 
   return (
     <article className={`mx-5 mb-3 rounded-inset border p-4 ${styles.surface}`}>
-      <div className="flex items-center justify-between gap-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <span
-          className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 font-mono text-forensic-meta font-bold uppercase tracking-micro ${styles.label}`}
+          className={`inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-md border px-2 py-1 font-mono text-forensic-meta font-bold uppercase tracking-micro ${styles.label}`}
         >
-          <span aria-hidden="true" className={`size-2 rounded-full ${styles.dot}`} />
-          {isSlate
-            ? displayed.slate_type
-              ? `Slate · ${displayed.slate_type}`
-              : 'Slate'
-            : displayed.classification}
+          <span aria-hidden="true" className={`size-2 shrink-0 rounded-full ${styles.dot}`} />
+          <span className="truncate">
+            {isSlate
+              ? displayed.slate_type
+                ? `Slate · ${displayed.slate_type}`
+                : 'Slate'
+              : displayed.classification}
+          </span>
         </span>
-        <span className="font-mono text-forensic-meta font-semibold text-text-secondary">
-          {confidence} confidence
-        </span>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="font-mono text-forensic-meta font-semibold text-text-secondary whitespace-nowrap">
+            {confidence} confidence
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            loading={classifying}
+            onClick={() => onClassify(targetTimestamp)}
+            icon={<Sparkles className="size-3" />}
+            className="h-6.5 shrink-0 px-2 font-sans text-forensic-meta uppercase"
+          >
+            Re-classify
+          </Button>
+        </div>
       </div>
       <h3 className="mt-3 mb-1.5 font-sans text-forensic-heading font-bold text-text-primary">
         {classificationHeading(displayed.classification)}

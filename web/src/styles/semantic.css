@@ -204,6 +204,7 @@
   --z-index-media-controls: 3;
   --z-index-sticky: 20;
   --z-index-toast: 60;
+  --z-index-tooltip: 70;
 
   --layout-war-room-max: var(--gs-layout-war-room-max);
   --layout-gutter: var(--gs-layout-gutter);

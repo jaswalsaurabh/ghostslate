@@ -56,7 +56,7 @@ export const GroundedDiagnosisCard: React.FC<GroundedDiagnosisCardProps> = ({
         className={`mx-5 mb-5 overflow-hidden rounded-inset border shadow-sm ${outcomeStyle}`}
         aria-labelledby="diagnosis-card-title"
       >
-        <div className="flex items-center justify-between gap-3 border-b border-border-subtle px-4 py-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-border-subtle px-4 py-2.5">
           <div className="flex items-center gap-2">
             {isGrounded ? (
               <ShieldCheck className="size-4.5 text-status-success shrink-0" aria-hidden="true" />
@@ -73,7 +73,7 @@ export const GroundedDiagnosisCard: React.FC<GroundedDiagnosisCardProps> = ({
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 max-sm:w-full max-sm:justify-between">
             {grounding ? (
               grounding.grounded ? (
                 <span className="flex items-center gap-1 rounded-md border border-status-success-border bg-status-success-surface px-2 py-1 font-mono text-forensic-meta font-bold text-status-success">

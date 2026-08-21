@@ -24,7 +24,7 @@ interface VisionPanelProps {
   manualResult: FrameClassificationData | null;
   manualLatency: number | null;
   classificationError: string | null;
-  onClassify: () => void;
+  onClassify: (timestamp?: number) => void;
   agentResult: FrameClassificationData | null;
   evidenceSummary?: InvestigationEvidenceSummary | undefined;
 }
@@ -114,7 +114,7 @@ export function VisionPanel(props: VisionPanelProps) {
       className="war-room-sticky-rail self-start rounded-2xl border border-border-subtle bg-surface-panel shadow-panel-subtle"
       aria-labelledby="vision-title"
     >
-      <div className="war-room:sticky war-room:top-0 z-sticky flex items-start justify-between gap-4 border-b border-border-subtle bg-surface-panel/95 backdrop-blur-md p-4 sm:px-5 war-room:short-viewport:static">
+      <div className="war-room:sticky war-room:top-0 z-sticky flex flex-wrap items-start justify-between gap-3 border-b border-border-subtle bg-surface-panel/95 backdrop-blur-md p-4 sm:px-5 war-room:short-viewport:static">
         <div className="flex items-start gap-2.5">
           <span className="mt-0.5 font-sans text-forensic-meta font-bold tracking-module text-interactive">
             01
@@ -170,6 +170,8 @@ export function VisionPanel(props: VisionPanelProps) {
         onPause={props.onPause}
         displayed={evidenceAtPlayhead}
         confidence={playerConfidence}
+        classifying={props.classifying}
+        onClassify={props.onClassify}
       />
 
       <div className="mx-5 mt-3 grid grid-cols-3 gap-2" aria-label="Selected frame evidence">

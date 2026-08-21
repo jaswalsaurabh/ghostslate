@@ -87,10 +87,12 @@ export function App() {
     toast.showToast(`Running ${activeCase.label.toLowerCase()} through the live forensic pipeline`);
   };
 
-  const classifyFrame = async () => {
+  const classifyFrame = async (timestamp?: number) => {
+    const targetTimestamp =
+      typeof timestamp === 'number' && Number.isFinite(timestamp) ? timestamp : player.currentTime;
     const result = await manualVision.classify({
       video: activeCase.videoFile,
-      timestamp: player.currentTime,
+      timestamp: targetTimestamp,
     });
     if (result) {
       toast.showToast(`Operator sample classified as ${result.classification.toUpperCase()}`);
@@ -138,7 +140,7 @@ export function App() {
             manualResult={manualVision.classification}
             manualLatency={manualVision.latencyMs}
             classificationError={manualVision.error}
-            onClassify={() => void classifyFrame()}
+            onClassify={(timestamp) => void classifyFrame(timestamp)}
             agentResult={agentFrame}
             evidenceSummary={metrics.evidenceSummary}
           />
