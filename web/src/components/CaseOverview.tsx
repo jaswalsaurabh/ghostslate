@@ -1,4 +1,4 @@
-import { Activity, DollarSign, Percent, Zap } from 'lucide-react';
+import { Activity, Database, DollarSign, Percent, Zap } from 'lucide-react';
 import type { InvestigationCaseConfig } from '../config/investigation-cases.js';
 import type { GroundedKpiMetrics } from '../hooks/use-clickhouse-metrics.js';
 import type { EvidenceGateReason } from '../types.js';
@@ -222,7 +222,7 @@ export function CaseOverview({
       </div>
 
       {/* Tier 2: Cockpit KPI Stat Row */}
-      <div className="grid grid-cols-1 border-t border-border-subtle bg-surface-card/30 sm:grid-cols-3 sm:divide-x sm:divide-border-subtle">
+      <div className="grid grid-cols-1 gap-px border-t border-border-subtle bg-border-subtle sm:grid-cols-2 lg:grid-cols-4">
         <Metric
           label="Revenue at risk"
           value={metrics.revenueLoss}
@@ -231,7 +231,7 @@ export function CaseOverview({
           tone={metrics.revenueLossVariant}
           icon={<DollarSign className="size-3.5" />}
           variant="column"
-          className="max-sm:border-b max-sm:border-border-subtle"
+          className="bg-surface-panel"
         />
         <Metric
           label="Slate bleed"
@@ -241,7 +241,7 @@ export function CaseOverview({
           tone={metrics.slateBleedVariant}
           icon={<Percent className="size-3.5" />}
           variant="column"
-          className="max-sm:border-b max-sm:border-border-subtle"
+          className="bg-surface-panel"
         />
         <Metric
           label="Offending SSP"
@@ -257,6 +257,17 @@ export function CaseOverview({
             )
           }
           variant="column"
+          className="bg-surface-panel"
+        />
+        <Metric
+          label="Telemetry scanned"
+          value={metrics.scannedLogs}
+          detail={metrics.scannedLogsSubtext}
+          tag={metrics.scannedLogsTag}
+          tone={metrics.isGroundedFromMcp ? 'interactive' : 'neutral'}
+          icon={<Database className="size-3.5" />}
+          variant="column"
+          className="bg-surface-panel"
         />
       </div>
     </section>

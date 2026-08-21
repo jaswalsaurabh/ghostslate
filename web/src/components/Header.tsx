@@ -44,7 +44,7 @@ export function Header({ health, healthLoading, healthError, vertexState }: Head
 
   return (
     <header className="sticky top-0 z-sticky h-17 border-b border-border-subtle bg-surface-base/88 backdrop-blur-header">
-      <div className="war-room-shell flex h-full min-w-0 items-center justify-between gap-5">
+      <div className="war-room-shell flex h-full min-w-0 items-center justify-between gap-4 sm:gap-6">
         <div className="min-w-0 shrink-0">
           <img
             src="/brand/ghostslate-lockup.png"
@@ -53,7 +53,7 @@ export function Header({ health, healthLoading, healthError, vertexState }: Head
           />
         </div>
 
-        <div className="flex min-w-0 items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-2.5">
           <StatusIndicator
             label={mobileHealth.label}
             tone={mobileHealth.tone}

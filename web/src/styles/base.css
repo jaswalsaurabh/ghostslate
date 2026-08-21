@@ -52,8 +52,22 @@
 
 @layer components {
   .war-room-shell {
-    width: min(var(--layout-war-room-max), calc(100% - (var(--layout-gutter) * 2)));
+    width: 100%;
+    max-width: var(--layout-war-room-max);
     margin-inline: auto;
+    padding-inline: var(--layout-gutter);
+  }
+
+  @media (min-width: 64rem) {
+    .war-room-shell {
+      padding-inline: var(--layout-gutter-desktop);
+    }
+  }
+
+  @media (max-width: 39.999rem) {
+    .war-room-shell {
+      padding-inline: var(--layout-gutter-mobile);
+    }
   }
 
   .skip-link {
@@ -152,10 +166,6 @@
   }
 
   @media (max-width: 47.999rem) {
-    .war-room-shell {
-      width: min(var(--layout-war-room-max), calc(100% - (var(--layout-gutter-mobile) * 2)));
-    }
-
     .investigation-prompt-grid {
       grid-template-columns: minmax(0, 1fr);
     }

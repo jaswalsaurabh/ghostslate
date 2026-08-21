@@ -74,9 +74,10 @@
 
     /* Repeated redesign geometry. */
     --gs-radius-inset: 0.625rem;
-    --gs-layout-war-room-max: 108rem;
-    --gs-layout-gutter: 1.25rem;
-    --gs-layout-gutter-mobile: 0.75rem;
+    --gs-layout-war-room-max: 100rem;
+    --gs-layout-gutter: 1.5rem;
+    --gs-layout-gutter-mobile: 1rem;
+    --gs-layout-gutter-desktop: 2rem;
     --gs-layout-vision-min: 22.5rem;
     --gs-layout-investigation-min: 32.5rem;
     --gs-layout-sticky-top: 5.25rem;

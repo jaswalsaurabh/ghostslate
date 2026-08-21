@@ -209,6 +209,7 @@
   --layout-war-room-max: var(--gs-layout-war-room-max);
   --layout-gutter: var(--gs-layout-gutter);
   --layout-gutter-mobile: var(--gs-layout-gutter-mobile);
+  --layout-gutter-desktop: var(--gs-layout-gutter-desktop);
   --layout-vision-min: var(--gs-layout-vision-min);
   --layout-investigation-min: var(--gs-layout-investigation-min);
   --layout-sticky-top: var(--gs-layout-sticky-top);
