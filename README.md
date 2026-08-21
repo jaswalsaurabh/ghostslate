@@ -1,6 +1,9 @@
 <div align="center">
 
-# GhostSlate AI
+<img src="web/public/brand/ghostslate-lockup.png" alt="GhostSlate" width="400" />
+
+<br />
+<br />
 
 **Autonomous forensics for SSAI "silent bleed" — the ad failure every dashboard reports as healthy.**
 
