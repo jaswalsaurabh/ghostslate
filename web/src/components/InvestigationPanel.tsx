@@ -120,7 +120,7 @@ export function InvestigationPanel(props: InvestigationPanelProps) {
         </Button>
       </div>
 
-      <div className="investigation-prompt-grid mx-5 mt-4 gap-4 rounded-inset border border-border-strong bg-reasoning-surface p-3 sm:px-4">
+      <div className="mx-5 mt-4 rounded-inset border border-border-strong bg-reasoning-surface p-3 sm:px-4">
         <div className="min-w-0">
           <span className="mb-1 block font-sans text-forensic-meta font-bold uppercase tracking-widest text-reasoning-fg">
             <Sparkles className="inline size-3.5 mr-1" />
@@ -129,17 +129,15 @@ export function InvestigationPanel(props: InvestigationPanelProps) {
           <p className="m-0 font-sans text-forensic-body leading-normal text-text-primary">
             {props.activeCase.prompt}
           </p>
-        </div>
-        <div className="self-center border-l border-border-subtle pl-4 font-sans text-forensic-meta leading-evidence text-text-secondary whitespace-nowrap max-md:border-t max-md:border-l-0 max-md:pl-0 max-md:pt-3 max-md:whitespace-normal">
-          <span className="block font-sans text-forensic-meta uppercase text-text-muted">
-            Investigation window · UTC
-          </span>
-          <strong className="block font-mono text-forensic-code text-text-primary">
-            {formatWindow(props.activeCase.from)} → {formatWindow(props.activeCase.to)}
-          </strong>
-          <span className="block font-sans text-text-muted">
-            {props.activeCase.channel} · FAST-01
-          </span>
+          <div className="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1 border-t border-border-subtle/70 pt-2.5 font-sans text-forensic-meta">
+            <span className="text-text-muted">
+              Investigation window · UTC{' '}
+              <strong className="font-mono font-semibold text-text-primary">
+                {formatWindow(props.activeCase.from)} → {formatWindow(props.activeCase.to)}
+              </strong>
+            </span>
+            <span className="font-mono text-text-muted">{props.activeCase.channel} · FAST-01</span>
+          </div>
         </div>
       </div>
 
@@ -189,7 +187,7 @@ export function InvestigationPanel(props: InvestigationPanelProps) {
                   props.executionMode === 'live' ? 'Live investigation' : 'Cached evidence replay'
                 }
                 tone={props.executionMode === 'live' ? 'running' : 'success'}
-                className="h-7.5 px-2 text-[10px]"
+                appearance="inline"
               />
             )}
           </div>

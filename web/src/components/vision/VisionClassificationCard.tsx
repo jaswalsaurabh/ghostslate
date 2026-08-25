@@ -1,6 +1,6 @@
-import { Sparkles } from 'lucide-react';
+import { BadgeCheck, RefreshCw } from 'lucide-react';
 import type { FrameClassificationData } from '../../types.js';
-import { Button } from '../ui/index.js';
+import { Button, Tooltip } from '../ui/index.js';
 import { classificationStyles } from './classification-styles.js';
 
 interface VisionClassificationCardProps {
@@ -62,36 +62,52 @@ export function VisionClassificationCard({
     typeof displayed.timestampSeconds === 'number' && Number.isFinite(displayed.timestampSeconds)
       ? displayed.timestampSeconds
       : currentTime;
+  const classificationLabel = isSlate
+    ? displayed.slate_type
+      ? `Slate · ${displayed.slate_type.replaceAll('_', ' ')}`
+      : 'Slate'
+    : displayed.classification;
 
   return (
     <article className={`mx-5 mb-3 rounded-inset border p-4 ${styles.surface}`}>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span
-          className={`inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-md border px-2 py-1 font-mono text-forensic-meta font-bold uppercase tracking-micro ${styles.label}`}
-        >
-          <span aria-hidden="true" className={`size-2 shrink-0 rounded-full ${styles.dot}`} />
-          <span className="truncate">
-            {isSlate
-              ? displayed.slate_type
-                ? `Slate · ${displayed.slate_type}`
-                : 'Slate'
-              : displayed.classification}
-          </span>
-        </span>
-        <div className="flex shrink-0 items-center gap-2">
-          <span className="font-mono text-forensic-meta font-semibold text-text-secondary whitespace-nowrap">
-            {confidence} confidence
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            loading={classifying}
-            onClick={() => onClassify(targetTimestamp)}
-            icon={<Sparkles className="size-3" />}
-            className="h-6.5 shrink-0 px-2 font-sans text-forensic-meta uppercase"
+      <div className="flex items-center justify-between gap-2">
+        <Tooltip content={classificationLabel} placement="top">
+          <span
+            aria-label={classificationLabel}
+            className={`inline-flex min-w-0 shrink items-center gap-1.5 rounded-md border px-2 py-1 font-mono text-forensic-meta font-bold uppercase tracking-micro ${styles.label}`}
           >
-            Re-classify
-          </Button>
+            <span aria-hidden="true" className={`size-2 shrink-0 rounded-full ${styles.dot}`} />
+            <span className="shrink-0">{isSlate ? 'Slate' : classificationLabel}</span>
+            {isSlate && displayed.slate_type && (
+              <span className="min-w-0 truncate text-text-muted">
+                · {displayed.slate_type.replaceAll('_', ' ')}
+              </span>
+            )}
+          </span>
+        </Tooltip>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <Tooltip content={`${confidence} confidence`} placement="top">
+            <span
+              aria-label={`${confidence} confidence`}
+              className="inline-flex shrink-0 items-center gap-1 rounded-md border border-status-success-border bg-status-success-surface px-2 py-1 font-mono text-forensic-meta font-bold uppercase tracking-micro text-status-success"
+            >
+              <BadgeCheck aria-hidden="true" className="size-3 shrink-0" />
+              <span>{confidence}</span>
+            </span>
+          </Tooltip>
+          <Tooltip content="Re-classify this frame" placement="top">
+            <Button
+              aria-label="Re-classify this frame"
+              variant="warning"
+              size="sm"
+              loading={classifying}
+              onClick={() => onClassify(targetTimestamp)}
+              icon={<RefreshCw className="size-3" />}
+              className="shrink-0 px-2 py-1 font-sans text-forensic-meta uppercase"
+            >
+              Reclassify
+            </Button>
+          </Tooltip>
         </div>
       </div>
       <h3 className="mt-3 mb-1.5 font-sans text-forensic-heading font-bold text-text-primary">

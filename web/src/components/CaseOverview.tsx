@@ -181,7 +181,6 @@ export function CaseOverview({
     thresholds,
     visionConfirmed,
   });
-
   return (
     <section
       aria-labelledby="incident-title"

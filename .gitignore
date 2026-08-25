@@ -132,3 +132,5 @@ CLAUDE.md
 .agent/logo-archive/
 # Local design explorations are reference material, not shipped application code.
 web/design/
+
+mock-*.html

@@ -1,7 +1,11 @@
-import { readdir, readFile } from 'node:fs/promises';
-import { extname, join, relative, sep } from 'node:path';
+import { readFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { extname, relative, resolve, sep } from 'node:path';
+import { promisify } from 'node:util';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
+
+const execFileAsync = promisify(execFile);
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 const sourceExtensions = new Set([
@@ -17,31 +21,16 @@ const sourceExtensions = new Set([
   '.ts',
   '.tsx',
 ]);
-const excludedDirectories = new Set([
-  '.git',
-  '.venv',
-  '.vite',
-  'coverage',
-  'dist',
-  'graphify-out',
-  'node_modules',
-]);
+async function gitSourceFiles(stagedOnly: boolean): Promise<string[]> {
+  const args = stagedOnly
+    ? ['diff', '--cached', '--name-only', '--diff-filter=ACMR', '-z']
+    : ['ls-files', '-z'];
+  const { stdout } = await execFileAsync('git', args, { cwd: repositoryRoot });
 
-async function collectSourceFiles(directory: string): Promise<string[]> {
-  const entries = await readdir(directory, { withFileTypes: true });
-  const files: string[] = [];
-
-  for (const entry of entries) {
-    if (entry.isSymbolicLink()) continue;
-    const path = join(directory, entry.name);
-    if (entry.isDirectory()) {
-      if (!excludedDirectories.has(entry.name)) files.push(...(await collectSourceFiles(path)));
-    } else if (sourceExtensions.has(extname(entry.name))) {
-      files.push(path);
-    }
-  }
-
-  return files;
+  return stdout
+    .split('\0')
+    .filter((path) => path.length > 0 && sourceExtensions.has(extname(path)))
+    .map((path) => resolve(repositoryRoot, path));
 }
 
 function countLines(source: string): number {
@@ -55,7 +44,8 @@ interface LineLimitViolation {
   path: string;
 }
 
-const files = await collectSourceFiles(repositoryRoot);
+const stagedOnly = process.argv.includes('--staged');
+const files = await gitSourceFiles(stagedOnly);
 const violations: LineLimitViolation[] = [];
 
 for (const file of files) {
@@ -72,5 +62,6 @@ if (violations.length > 0) {
   }
   process.exitCode = 1;
 } else {
-  console.log(`Line limits passed for ${files.length} source files.`);
+  const scope = stagedOnly ? 'staged' : 'tracked';
+  console.log(`Line limits passed for ${files.length} ${scope} source files.`);
 }
