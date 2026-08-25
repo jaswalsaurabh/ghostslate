@@ -22,6 +22,7 @@ interface BroadcastPlayerProps {
   confidence: string;
   classifying?: boolean | undefined;
   onClassify?: (() => void) | undefined;
+  classifyDisabled?: boolean | undefined;
 }
 
 export function BroadcastPlayer({
@@ -40,6 +41,7 @@ export function BroadcastPlayer({
   confidence,
   classifying = false,
   onClassify,
+  classifyDisabled = false,
 }: BroadcastPlayerProps) {
   const isSlate = displayed?.classification === 'slate';
   const styles = displayed ? classificationStyles[displayed.classification] : null;
@@ -52,7 +54,7 @@ export function BroadcastPlayer({
         ref={videoRef}
         key={activeCase.mediaSource}
         src={activeCase.mediaSource}
-        poster={activeCase.id === 'primary' ? '/media/content_frame.png' : '/media/ad_frame.png'}
+        poster={activeCase.poster}
         className="broadcast-player-media h-full w-full object-cover"
         preload="metadata"
         onLoadedMetadata={onLoadedMetadata}
@@ -135,7 +137,7 @@ export function BroadcastPlayer({
                 aria-hidden="true"
                 className="pointer-events-none absolute top-1/2 left-0 z-content h-1 w-full -translate-y-1/2 rounded-full bg-media-track peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-interactive forced-colors:hidden"
               >
-                {activeCase.id === 'primary' && (
+                {activeCase.sampleSet === 'incident' && (
                   <span className="broadcast-cue-zone absolute h-full bg-status-critical/80" />
                 )}
                 <span
@@ -147,16 +149,26 @@ export function BroadcastPlayer({
             <span className="shrink-0 text-micro sm:text-forensic-meta">{formatTime(maximum)}</span>
           </div>
 
-          {onClassify ? (
+          {onClassify || classifyDisabled ? (
             <Button
               variant="primary"
               size="sm"
               loading={classifying}
+              disabled={classifyDisabled}
               onClick={onClassify}
               icon={<Sparkles className="size-3 sm:size-3.5" />}
+              title={
+                classifyDisabled
+                  ? 'This guardrail scenario intentionally skips Vision classification'
+                  : undefined
+              }
               className="h-10 shrink-0 px-3 font-sans font-semibold tracking-wide shadow-glow-interactive text-micro sm:h-8 sm:px-3 sm:text-xs"
             >
-              {classifying ? 'Analyzing…' : `Classify ${formatTime(currentTime)}`}
+              {classifyDisabled
+                ? 'Vision disabled'
+                : classifying
+                  ? 'Analyzing…'
+                  : `Classify ${formatTime(currentTime)}`}
             </Button>
           ) : null}
         </div>

@@ -1,5 +1,14 @@
 import React, { useState } from 'react';
-import { AlertOctagon, Check, Copy, Shield, ShieldAlert, ShieldCheck } from 'lucide-react';
+import {
+  AlertOctagon,
+  Check,
+  Copy,
+  Download,
+  FileText,
+  Shield,
+  ShieldAlert,
+  ShieldCheck,
+} from 'lucide-react';
 import { Button, MarkdownText } from './ui/index.js';
 import { RemediationPanel } from './RemediationPanel.js';
 import type { EvidenceOutcome, GroundingReport, RemediationState } from '../types.js';
@@ -14,6 +23,8 @@ interface GroundedDiagnosisCardProps {
   remediationError?: string | null | undefined;
   onApproveRemediation?: (() => Promise<void>) | undefined;
   onRefreshRemediation?: (() => Promise<void>) | undefined;
+  onExportEvidenceJson?: (() => void) | undefined;
+  onExportEvidenceMarkdown?: (() => void) | undefined;
   hasClickHouseEvidence: boolean;
   hasVisionEvidence: boolean;
   hasRateCardEvidence: boolean;
@@ -29,6 +40,8 @@ export const GroundedDiagnosisCard: React.FC<GroundedDiagnosisCardProps> = ({
   remediationError = null,
   onApproveRemediation,
   onRefreshRemediation,
+  onExportEvidenceJson,
+  onExportEvidenceMarkdown,
   hasClickHouseEvidence,
   hasVisionEvidence,
   hasRateCardEvidence,
@@ -104,6 +117,22 @@ export const GroundedDiagnosisCard: React.FC<GroundedDiagnosisCardProps> = ({
               }
             >
               {copied ? 'Copied' : 'Copy report'}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={onExportEvidenceJson}
+              icon={<Download aria-hidden="true" className="size-3.5" />}
+            >
+              JSON
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={onExportEvidenceMarkdown}
+              icon={<FileText aria-hidden="true" className="size-3.5" />}
+            >
+              Markdown
             </Button>
           </div>
         </div>

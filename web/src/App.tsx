@@ -15,6 +15,7 @@ import { useInvestigationStream } from './hooks/use-investigation-stream.js';
 import { useRemediation } from './hooks/use-remediation.js';
 import { useTheme } from './hooks/use-theme.js';
 import { useVideoPlayer } from './hooks/use-video-player.js';
+import { downloadEvidenceJson, downloadEvidenceMarkdown } from './utils/evidence-export.js';
 
 export function App() {
   const { activeCaseId, activeCase, selectCase: setActiveCaseId } = useInvestigationCase();
@@ -92,6 +93,25 @@ export function App() {
     });
   };
 
+  const evidenceExport = {
+    scenario: {
+      id: activeCase.id,
+      label: activeCase.label,
+      prompt: activeCase.prompt,
+      channel: activeCase.channel,
+      from: activeCase.from,
+      to: activeCase.to,
+    },
+    runKey: investigation.runKey ?? 'unassigned-run',
+    executionMode: investigation.executionMode ?? undefined,
+    trace: investigation.investigationTrace,
+    finalDiagnosis: investigation.finalDiagnosis ?? '',
+    grounding: investigation.groundingReport,
+    evidenceSummary: metrics.evidenceSummary,
+    remediation: remediation.remediation,
+    metrics,
+  };
+
   const classifyFrame = async (timestamp?: number) => {
     const targetTimestamp =
       typeof timestamp === 'number' && Number.isFinite(timestamp) ? timestamp : player.currentTime;
@@ -156,6 +176,7 @@ export function App() {
 
           <InvestigationPanel
             activeCase={activeCase}
+            executionMode={investigation.executionMode}
             investigating={investigation.investigating}
             reconnecting={investigation.reconnecting}
             trace={investigation.investigationTrace}
@@ -173,6 +194,8 @@ export function App() {
             remediationError={remediation.error}
             onApproveRemediation={remediation.approve}
             onRefreshRemediation={remediation.refresh}
+            onExportEvidenceJson={() => downloadEvidenceJson(evidenceExport)}
+            onExportEvidenceMarkdown={() => downloadEvidenceMarkdown(evidenceExport)}
           />
         </div>
       </main>

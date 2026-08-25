@@ -36,7 +36,7 @@ export function BroadcastSampleStrip({
   selectedTime,
   onSeek,
 }: BroadcastSampleStripProps) {
-  const samples = activeCase.id === 'primary' ? incidentSamples : controlSamples;
+  const samples = activeCase.sampleSet === 'incident' ? incidentSamples : controlSamples;
 
   return (
     <div

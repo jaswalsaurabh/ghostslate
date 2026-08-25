@@ -12,3 +12,62 @@ This directory holds infrastructure configuration for local development and prod
 1. **ClickHouse Cloud** (or local instance) reachable by `mcp-clickhouse`.
 2. **Gemini on Vertex AI via `@google/genai`** for multimodal reasoning and vision.
 3. **Cloud Run** for hosting.
+
+## Cloud Run deployment
+
+Build and deploy the single-container service from the repository root. The commands below keep
+credentials in Secret Manager; do not pass ClickHouse or MCP passwords on the command line.
+
+```bash
+: "${CLICKHOUSE_HOST_SECRET_NAME:?Set the Secret Manager name before deploying}"
+: "${CLICKHOUSE_USER_SECRET_NAME:?Set the Secret Manager name before deploying}"
+: "${CLICKHOUSE_AGENT_PASSWORD_SECRET_NAME:?Set the Secret Manager name before deploying}"
+: "${CLICKHOUSE_MCP_AUTH_TOKEN_SECRET_NAME:?Set the Secret Manager name before deploying}"
+: "${MCP_SERVER_URL_SECRET_NAME:?Set the Secret Manager name before deploying}"
+
+gcloud auth configure-docker REGION-docker.pkg.dev
+gcloud builds submit \
+  --tag REGION-docker.pkg.dev/PROJECT_ID/ghostslate/ghostslate:TAG \
+  -f infra/Dockerfile .
+
+gcloud run deploy ghostslate \
+  --image REGION-docker.pkg.dev/PROJECT_ID/ghostslate/ghostslate:TAG \
+  --region REGION \
+  --port 8080 \
+  --timeout 300 \
+  --concurrency 20 \
+  --set-env-vars NODE_ENV=production,GCP_PROJECT_ID=PROJECT_ID,GCP_REGION=REGION,GEMINI_MODEL=gemini-2.5-flash,CLICKHOUSE_DATABASE=ghostslate,CLICKHOUSE_PORT=8443,CLICKHOUSE_SECURE=true,CLICKHOUSE_MCP_SERVER_TRANSPORT=sse,PORT=8080 \
+  --set-secrets CLICKHOUSE_HOST=${CLICKHOUSE_HOST_SECRET_NAME}:latest,CLICKHOUSE_USER=${CLICKHOUSE_USER_SECRET_NAME}:latest,CLICKHOUSE_AGENT_PASSWORD=${CLICKHOUSE_AGENT_PASSWORD_SECRET_NAME}:latest,CLICKHOUSE_MCP_AUTH_TOKEN=${CLICKHOUSE_MCP_AUTH_TOKEN_SECRET_NAME}:latest,MCP_SERVER_URL=${MCP_SERVER_URL_SECRET_NAME}:latest
+```
+
+Replace `PROJECT_ID`, `REGION`, `TAG`, the Artifact Registry repository, and Secret Manager names
+with deployment-specific values. Grant the Cloud Run service account Vertex AI invocation access,
+Secret Manager access for only these secrets, and no ClickHouse write permission. Keep the MCP
+server reachable from the Cloud Run network; the agent must continue to use MCP rather than a
+direct ClickHouse client.
+
+## Deployment smoke test
+
+After deployment, capture the service URL and verify the health endpoint before running a full
+investigation:
+
+```bash
+SERVICE_URL="$(gcloud run services describe ghostslate --region REGION --format='value(status.url)')"
+curl --fail "$SERVICE_URL/api/health"
+```
+
+The health response must report the service as healthy and show a connected MCP dependency. Then
+run the primary, clean-control, and small-sample scenarios from the UI. Confirm that the primary
+case produces grounded evidence and that the two guardrail cases produce no root cause, loss, or
+remediation.
+
+## Required production settings
+
+- `CLICKHOUSE_HOST`, `CLICKHOUSE_USER`, and `CLICKHOUSE_AGENT_PASSWORD` are runtime secrets.
+- `MCP_SERVER_URL` points to the official SSE `mcp-clickhouse` service.
+- `CLICKHOUSE_MCP_AUTH_TOKEN` is supplied when the deployed MCP server requires authentication.
+- `GCP_PROJECT_ID`, `GCP_REGION`, and `GEMINI_MODEL` select Vertex AI at runtime.
+- `PORT` remains `8080`; Cloud Run provides the externally visible HTTPS endpoint.
+- Set an explicit production CORS/origin policy at the hosting boundary if the SPA and API are
+  served from different domains.
+- Use a dedicated read-only ClickHouse role for the agent and rotate secrets after the demo.

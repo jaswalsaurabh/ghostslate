@@ -22,7 +22,7 @@ export function CaseOverviewMetrics({ metrics, investigating, outcome }: CaseOve
           <p className="m-0 font-sans text-forensic-meta font-bold uppercase tracking-label text-text-primary">
             {investigating ? 'Collecting grounded telemetry' : 'Telemetry pending'}
           </p>
-          <p className="m-0 mt-0.5 font-sans text-compact text-text-muted">
+          <p className="m-0 mt-0.5 font-sans text-detail text-text-muted">
             {investigating
               ? 'Live MCP queries will populate the cockpit as evidence arrives.'
               : 'Run the investigation to populate revenue, slate bleed, SSP, and scan metrics.'}

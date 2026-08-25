@@ -372,9 +372,11 @@ Engineering conventions for contributors and coding agents live in [`AGENTS.md`]
 
 ## Status
 
-Built for the Agentic Cinema hackathon, ClickHouse track. Active development — the schema, MCP
-transport, API surface, vision pipeline and war-room UI are in place; the data generator and
-evaluation harness are in progress.
+Built for the Agentic Cinema hackathon, ClickHouse track. The investigation path, MCP transport,
+Vertex AI vision and reasoning, evidence gates, remediation approval, synthetic data generator,
+evaluation harness, and war-room UI are implemented. The UI includes primary-incident,
+negative-control, and small-sample evidence-guard scenarios. See [`infra/README.md`](infra/README.md)
+for the Cloud Run deployment and smoke-test procedure.
 
 ## Contributing
 

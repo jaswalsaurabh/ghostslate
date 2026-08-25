@@ -1,8 +1,11 @@
-import type { InvestigationCaseConfig } from '../config/investigation-cases.js';
+import {
+  INVESTIGATION_CASES,
+  type InvestigationCaseConfig,
+} from '../config/investigation-cases.js';
 import type { GroundedKpiMetrics } from '../hooks/use-clickhouse-metrics.js';
 import type { EvidenceGateReason } from '../types.js';
 import { CaseOverviewMetrics } from './CaseOverviewMetrics.js';
-import { SegmentedControl } from './ui/index.js';
+import { Select } from './ui/index.js';
 
 interface CaseOverviewProps {
   activeCase: InvestigationCaseConfig;
@@ -12,10 +15,10 @@ interface CaseOverviewProps {
   onSelectCase: (id: InvestigationCaseConfig['id']) => void;
 }
 
-const CASE_OPTIONS = [
-  { value: 'primary', label: 'Primary incident' },
-  { value: 'negative-control', label: 'Negative control' },
-] as const;
+const CASE_OPTIONS = Object.values(INVESTIGATION_CASES).map((investigationCase) => ({
+  value: investigationCase.id,
+  label: investigationCase.label,
+}));
 
 function getOverviewTitle({
   activeCase,
@@ -190,13 +193,14 @@ export function CaseOverview({
           <div className="font-mono text-forensic-meta font-bold uppercase tracking-eyebrow text-text-muted break-keep whitespace-nowrap max-w-full truncate">
             {activeCase.eyebrow}
           </div>
-          <SegmentedControl
-            label="Investigation case"
+          <Select
+            label="Demo scenario"
             options={CASE_OPTIONS}
             value={activeCase.id}
             onValueChange={onSelectCase}
-            size="sm"
             className="font-mono uppercase"
+            layout="inline"
+            disabled={investigating}
           />
         </div>
         <h1
