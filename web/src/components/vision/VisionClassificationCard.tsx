@@ -1,7 +1,6 @@
 import { Sparkles } from 'lucide-react';
 import type { FrameClassificationData } from '../../types.js';
 import { Button } from '../ui/index.js';
-import { formatTime } from './BroadcastSampleStrip.js';
 import { classificationStyles } from './classification-styles.js';
 
 interface VisionClassificationCardProps {
@@ -43,25 +42,16 @@ export function VisionClassificationCard({
 }: VisionClassificationCardProps) {
   if (!displayed) {
     return (
-      <div className="mx-5 mb-3 flex items-center justify-between gap-3 rounded-inset border border-interactive-border/50 bg-interactive-surface/20 p-3.5">
+      <div className="mx-5 mb-3 rounded-inset border border-interactive-border/50 bg-interactive-surface/20 p-3.5">
         <div>
           <p className="m-0 font-sans text-forensic-heading font-bold text-text-primary">
             No frame classified yet
           </p>
           <p className="m-0 mt-0.5 font-sans text-section text-text-muted">
-            Click Classify in the player or sample any frame.
+            Use the single Classify action in the player, or sample a frame below to move the
+            playhead before classifying.
           </p>
         </div>
-        <Button
-          variant="primary"
-          size="sm"
-          loading={classifying}
-          onClick={() => onClassify(currentTime)}
-          icon={<Sparkles className="size-3.5" />}
-          className="font-sans shrink-0 shadow-sm"
-        >
-          {classifying ? 'Analyzing…' : `Classify ${formatTime(currentTime)}`}
-        </Button>
       </div>
     );
   }

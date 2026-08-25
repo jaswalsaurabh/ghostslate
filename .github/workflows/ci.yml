@@ -50,6 +50,9 @@ jobs:
       - name: Format check
         run: pnpm format:check
 
+      - name: Line limit check
+        run: pnpm check:lines
+
       - name: Dedupe check
         run: pnpm dedupe:check
 

@@ -14,20 +14,19 @@
     "lucide-react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "recharts": "3.10.1",
     "sonner": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "4.3.3",
+    "@tailwindcss/vite": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "@vitejs/plugin-react": "6.0.5",
+    "@vitejs/plugin-react": "catalog:",
     "eslint": "catalog:",
-    "tailwindcss": "4.3.3",
+    "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "typescript-eslint": "catalog:",
-    "vite": "8.2.1",
+    "vite": "catalog:",
     "vitest": "catalog:"
   }
 }

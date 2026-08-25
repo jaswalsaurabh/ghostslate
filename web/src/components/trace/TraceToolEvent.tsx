@@ -3,10 +3,7 @@ import { AlertOctagon, Check, Copy, Database, Eye } from 'lucide-react';
 import type { InvestigationTraceEvent } from '../../types.js';
 import { ClickHouseResultViewer } from '../ClickHouseResultViewer.js';
 import { Button } from '../ui/index.js';
-
-function eventTime(timestamp: string) {
-  return timestamp.split('T')[1]?.slice(0, 8) ?? '';
-}
+import { TraceEventShell } from './TraceEventShell.js';
 
 function SqlDisclosure({ sql }: { sql: string }) {
   const [copied, setCopied] = useState(false);
@@ -55,28 +52,20 @@ export function TraceToolEvent({
 }: {
   event: Extract<InvestigationTraceEvent, { type: 'tool_call' | 'tool_result' | 'vision_call' }>;
 }) {
-  const time = eventTime(event.timestamp);
-
   if (event.type === 'vision_call') {
     const { name, args } = event.data;
     return (
-      <article className="evidence-event-grid py-2.5 border-t border-border-subtle">
-        <span className="grid size-6 place-items-center rounded-md bg-interactive-surface text-interactive shrink-0 mt-0.5">
-          <Eye className="size-3.5" aria-hidden="true" />
-        </span>
-        <div className="min-w-0">
-          <div className="mb-1 flex items-center justify-between gap-2 font-sans text-forensic-heading font-bold text-text-primary">
-            <span>Vision tool · {name}</span>
-            <span className="font-mono text-forensic-meta font-normal text-text-muted">
-              <time dateTime={event.timestamp}>{time}</time> · {String(args.video_file ?? '')} @{' '}
-              {String(args.timestamp_seconds ?? '')}s
-            </span>
-          </div>
-          <p className="m-0 font-sans text-forensic-meta leading-evidence text-text-secondary">
-            Gemini Vision sampled multimodal frame for visual anomaly detection.
-          </p>
-        </div>
-      </article>
+      <TraceEventShell
+        icon={<Eye className="size-3.5" aria-hidden="true" />}
+        iconClassName="bg-interactive-surface text-interactive"
+        timestamp={event.timestamp}
+        title={`Vision tool · ${name}`}
+        meta={`${String(args.video_file ?? '')} @ ${String(args.timestamp_seconds ?? '')}s`}
+      >
+        <p className="m-0 font-sans text-forensic-meta leading-evidence text-text-secondary">
+          Gemini Vision sampled multimodal frame for visual anomaly detection.
+        </p>
+      </TraceEventShell>
     );
   }
 
@@ -84,26 +73,21 @@ export function TraceToolEvent({
     const { name, args } = event.data;
     const sql = typeof args.query === 'string' ? args.query : null;
     return (
-      <article className="evidence-event-grid py-2.5 border-t border-border-subtle">
-        <span className="grid size-6 place-items-center rounded-md bg-status-success-surface text-status-success shrink-0 mt-0.5">
-          <Database className="size-3.5" aria-hidden="true" />
-        </span>
-        <div className="min-w-0">
-          <div className="mb-1 flex items-center justify-between gap-2 font-sans text-forensic-heading font-bold text-text-primary">
-            <span>MCP tool · {name}</span>
-            <span className="font-mono text-forensic-meta font-normal text-text-muted">
-              <time dateTime={event.timestamp}>{time}</time> · mcp-clickhouse
-            </span>
-          </div>
-          {sql ? (
-            <SqlDisclosure sql={sql} />
-          ) : (
-            <p className="m-0 font-mono text-forensic-code text-text-muted">
-              Arguments · {JSON.stringify(args)}
-            </p>
-          )}
-        </div>
-      </article>
+      <TraceEventShell
+        icon={<Database className="size-3.5" aria-hidden="true" />}
+        iconClassName="bg-status-success-surface text-status-success"
+        timestamp={event.timestamp}
+        title={`MCP tool · ${name}`}
+        meta="mcp-clickhouse"
+      >
+        {sql ? (
+          <SqlDisclosure sql={sql} />
+        ) : (
+          <p className="m-0 font-mono text-forensic-code text-text-muted">
+            Arguments · {JSON.stringify(args)}
+          </p>
+        )}
+      </TraceEventShell>
     );
   }
 
@@ -111,71 +95,54 @@ export function TraceToolEvent({
 
   if (isError) {
     return (
-      <article className="evidence-event-grid py-2.5 border-t border-border-subtle" role="alert">
-        <span className="grid size-6 place-items-center rounded-md bg-status-critical-surface text-status-critical shrink-0 mt-0.5">
-          <AlertOctagon className="size-3.5" aria-hidden="true" />
-        </span>
-        <div className="min-w-0">
-          <div className="mb-1 flex items-center justify-between gap-2 font-sans text-forensic-heading font-bold text-status-critical">
-            <span>{name} failed</span>
-            <time
-              dateTime={event.timestamp}
-              className="font-mono text-forensic-meta font-normal text-status-critical"
-            >
-              {time}
-            </time>
-          </div>
-          <pre className="m-0 overflow-auto font-mono text-forensic-code text-status-critical whitespace-pre-wrap">
-            {String(result ?? 'Unknown error')}
-          </pre>
-        </div>
-      </article>
+      <TraceEventShell
+        icon={<AlertOctagon className="size-3.5" aria-hidden="true" />}
+        iconClassName="bg-status-critical-surface text-status-critical"
+        timestamp={event.timestamp}
+        title={`${name} failed`}
+        role="alert"
+        titleClassName="text-status-critical"
+        timeClassName="text-status-critical"
+      >
+        <pre className="m-0 overflow-auto font-mono text-forensic-code text-status-critical whitespace-pre-wrap">
+          {String(result ?? 'Unknown error')}
+        </pre>
+      </TraceEventShell>
     );
   }
 
   if (name === 'finalize_investigation') {
     return (
-      <article className="evidence-event-grid py-2.5 border-t border-border-subtle">
-        <span className="grid size-6 place-items-center rounded-md bg-status-success-surface text-status-success shrink-0 mt-0.5">
-          <Check className="size-3.5" aria-hidden="true" />
-        </span>
-        <div className="min-w-0">
-          <div className="mb-1 flex items-center justify-between gap-2 font-sans text-forensic-heading font-bold text-status-success">
-            <span>MCP tool · finalize_investigation</span>
-            <span className="font-mono text-forensic-meta font-normal text-text-muted">
-              <time dateTime={event.timestamp}>{time}</time> ·{' '}
-              {durationMs ? `${durationMs} ms` : 'completed'}
-            </span>
-          </div>
-          <p className="m-0 font-sans text-forensic-meta leading-evidence text-text-secondary">
-            Grounding completed. Every numeric claim maps to returned ClickHouse evidence.
-          </p>
-        </div>
-      </article>
+      <TraceEventShell
+        icon={<Check className="size-3.5" aria-hidden="true" />}
+        iconClassName="bg-status-success-surface text-status-success"
+        timestamp={event.timestamp}
+        title="MCP tool · finalize_investigation"
+        meta={durationMs ? `${durationMs} ms` : 'completed'}
+        titleClassName="text-status-success"
+      >
+        <p className="m-0 font-sans text-forensic-meta leading-evidence text-text-secondary">
+          Grounding completed. Every numeric claim maps to returned ClickHouse evidence.
+        </p>
+      </TraceEventShell>
     );
   }
 
   return (
-    <article className="evidence-event-grid py-2.5 border-t border-border-subtle">
-      <span className="grid size-6 place-items-center rounded-md bg-status-success-surface text-status-success shrink-0 mt-0.5">
-        <Database className="size-3.5" aria-hidden="true" />
-      </span>
-      <div className="min-w-0">
-        <div className="mb-1 flex items-center justify-between gap-2 font-sans text-forensic-heading font-bold text-text-primary">
-          <span>MCP query completed · {name}</span>
-          <span className="font-mono text-forensic-meta font-normal text-text-muted">
-            <time dateTime={event.timestamp}>{time}</time>
-            {durationMs ? ` · ${durationMs} ms` : ''}
-          </span>
-        </div>
-        {sql && name !== 'run_query' && <SqlDisclosure sql={sql} />}
-        <ClickHouseResultViewer
-          rawResult={String(result ?? '')}
-          durationMs={typeof durationMs === 'number' ? durationMs : undefined}
-          rowsReturned={typeof rowsReturned === 'number' ? rowsReturned : undefined}
-          rowsScanned={typeof rowsScanned === 'number' ? rowsScanned : undefined}
-        />
-      </div>
-    </article>
+    <TraceEventShell
+      icon={<Database className="size-3.5" aria-hidden="true" />}
+      iconClassName="bg-status-success-surface text-status-success"
+      timestamp={event.timestamp}
+      title={`MCP query completed · ${name}`}
+      meta={durationMs ? `${durationMs} ms` : undefined}
+    >
+      {sql && name !== 'run_query' && <SqlDisclosure sql={sql} />}
+      <ClickHouseResultViewer
+        rawResult={String(result ?? '')}
+        durationMs={typeof durationMs === 'number' ? durationMs : undefined}
+        rowsReturned={typeof rowsReturned === 'number' ? rowsReturned : undefined}
+        rowsScanned={typeof rowsScanned === 'number' ? rowsScanned : undefined}
+      />
+    </TraceEventShell>
   );
 }

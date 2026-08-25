@@ -1,8 +1,8 @@
-import { Activity, Database, DollarSign, Percent, Zap } from 'lucide-react';
 import type { InvestigationCaseConfig } from '../config/investigation-cases.js';
 import type { GroundedKpiMetrics } from '../hooks/use-clickhouse-metrics.js';
 import type { EvidenceGateReason } from '../types.js';
-import { Metric, SegmentedControl } from './ui/index.js';
+import { CaseOverviewMetrics } from './CaseOverviewMetrics.js';
+import { SegmentedControl } from './ui/index.js';
 
 interface CaseOverviewProps {
   activeCase: InvestigationCaseConfig;
@@ -133,7 +133,7 @@ function getOverviewSummary({
 export function CaseOverview({
   activeCase,
   metrics,
-  investigating: _investigating,
+  investigating,
   visionConfirmed = false,
   onSelectCase,
 }: CaseOverviewProps) {
@@ -221,55 +221,7 @@ export function CaseOverview({
         </p>
       </div>
 
-      {/* Tier 2: Cockpit KPI Stat Row */}
-      <div className="grid grid-cols-1 gap-px border-t border-border-subtle bg-border-subtle sm:grid-cols-2 lg:grid-cols-4">
-        <Metric
-          label="Revenue at risk"
-          value={metrics.revenueLoss}
-          detail={metrics.revenueLossSubtext}
-          tag={metrics.revenueLossTag}
-          tone={metrics.revenueLossVariant}
-          icon={<DollarSign className="size-3.5" />}
-          variant="column"
-          className="bg-surface-panel"
-        />
-        <Metric
-          label="Slate bleed"
-          value={metrics.slateBleedRate}
-          detail={metrics.slateBleedSubtext}
-          tag={metrics.slateBleedTag}
-          tone={metrics.slateBleedVariant}
-          icon={<Percent className="size-3.5" />}
-          variant="column"
-          className="bg-surface-panel"
-        />
-        <Metric
-          label="Offending SSP"
-          value={metrics.offendingSsp}
-          detail={metrics.sspSubtext}
-          tag={metrics.sspLatency}
-          tone={metrics.sspVariant}
-          icon={
-            outcome === 'no_incident' ? (
-              <Activity className="size-3.5" />
-            ) : (
-              <Zap className="size-3.5" />
-            )
-          }
-          variant="column"
-          className="bg-surface-panel"
-        />
-        <Metric
-          label="Telemetry scanned"
-          value={metrics.scannedLogs}
-          detail={metrics.scannedLogsSubtext}
-          tag={metrics.scannedLogsTag}
-          tone={metrics.isGroundedFromMcp ? 'interactive' : 'neutral'}
-          icon={<Database className="size-3.5" />}
-          variant="column"
-          className="bg-surface-panel"
-        />
-      </div>
+      <CaseOverviewMetrics metrics={metrics} investigating={investigating} outcome={outcome} />
     </section>
   );
 }

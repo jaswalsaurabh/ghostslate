@@ -78,7 +78,7 @@ export function InvestigationPanel(props: InvestigationPanelProps) {
       className="rounded-2xl border border-border-subtle bg-surface-panel shadow-panel-subtle overflow-hidden"
       aria-labelledby="investigation-title"
     >
-      <div className="flex items-start justify-between gap-4 border-b border-border-subtle p-4 sm:px-5">
+      <div className="flex items-start justify-between gap-4 border-b border-border-subtle p-4 max-md:flex-col sm:px-5">
         <div className="flex items-start gap-2.5">
           <span className="mt-0.5 font-sans text-forensic-meta font-bold tracking-module text-interactive">
             02
@@ -100,7 +100,7 @@ export function InvestigationPanel(props: InvestigationPanelProps) {
           loading={props.investigating}
           variant="primary"
           size="sm"
-          className="h-8.5 shrink-0 font-sans tracking-wide"
+          className="h-8.5 shrink-0 font-sans tracking-wide max-md:w-full"
           icon={
             props.trace.length > 0 ? (
               <RotateCw aria-hidden="true" className="size-3.5" />
