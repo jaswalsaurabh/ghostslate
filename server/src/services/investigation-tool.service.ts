@@ -21,7 +21,32 @@ export interface ToolOutcome {
 }
 
 const MAX_MODEL_RESULT_ROWS = 50;
+const MAX_TRACE_RESULT_CHARS = 256 * 1_024;
 const MODEL_TRUNCATION_NOTE = `Output truncated to first ${MAX_MODEL_RESULT_ROWS} rows. Use GROUP BY aggregation for full dataset analysis.`;
+const BLOCKED_QUERY_PATTERN =
+  /\b(?:file|hdfs|jdbc|mongodb|mysql|odbc|postgresql|redis|remote|remoteSecure|s3|s3Cluster|url)\s*\(|\b(?:system|information_schema)\s*\.|\bINTO\s+OUTFILE\b/i;
+
+function validateExploratoryQuery(value: unknown): string | undefined {
+  if (typeof value !== 'string') return 'run_query requires a SQL string';
+  const query = value.trim();
+  if (!query || query.length > 20_000) return 'Exploratory SQL must be 1-20,000 characters';
+  if (!/^(?:EXPLAIN\s+)?(?:SELECT|WITH)\b/i.test(query)) {
+    return 'Only read-only SELECT, WITH, or EXPLAIN SELECT queries are allowed';
+  }
+
+  const withoutTerminator = query.endsWith(';') ? query.slice(0, -1) : query;
+  if (withoutTerminator.includes(';')) return 'Multiple SQL statements are not allowed';
+  if (BLOCKED_QUERY_PATTERN.test(query)) {
+    return 'Query references a blocked external source or system namespace';
+  }
+  return undefined;
+}
+
+function traceResult(resultText: string): string {
+  const rowLimited = truncateQueryResultForModel(resultText);
+  if (rowLimited.length <= MAX_TRACE_RESULT_CHARS) return rowLimited;
+  return `${rowLimited.slice(0, MAX_TRACE_RESULT_CHARS)}\n[trace output truncated]`;
+}
 
 export const INSPECTABLE_MEDIA_DURATIONS_SECONDS = {
   [PRIMARY_INCIDENT_MEDIA_MAPPING.permittedMediaFile]:
@@ -188,12 +213,22 @@ export class InvestigationToolService {
       };
     }
 
+    if (name === 'run_query') {
+      const error = validateExploratoryQuery(args.query);
+      if (error) return { modelText: error, resultText: error, isError: true };
+    } else if (name === 'list_tables') {
+      args = { database: 'ghostslate' };
+    } else {
+      const error = `Unsupported investigation tool: ${name}`;
+      return { modelText: error, resultText: error, isError: true };
+    }
+
     const response = await this.mcpService.callTool(name, args);
     const resultText = response.content?.[0]?.text || JSON.stringify(response);
     const parsed = parseJson(resultText);
     return {
       modelText: truncateQueryResultForModel(resultText),
-      resultText,
+      resultText: traceResult(resultText),
       isError: response.isError || false,
       rowsReturned: rowsReturnedFrom(parsed),
       rowsScanned: rowsScannedFrom(parsed) ?? rowsScannedFrom(response),
@@ -210,7 +245,7 @@ export class InvestigationToolService {
     if (response.isError) {
       return {
         modelText: resultText,
-        resultText,
+        resultText: traceResult(resultText),
         isError: true,
         renderedSql,
         rowsScanned,
@@ -230,7 +265,7 @@ export class InvestigationToolService {
       }
       return {
         modelText,
-        resultText,
+        resultText: traceResult(resultText),
         isError: false,
         evidenceRows,
         renderedSql,

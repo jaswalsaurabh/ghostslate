@@ -18,6 +18,26 @@ export class ValidationError extends DomainError {
   readonly errorCode = 'VALIDATION_ERROR';
 }
 
+export class ForbiddenError extends DomainError {
+  readonly statusCode = 403;
+  readonly errorCode = 'FORBIDDEN';
+}
+
+export class PayloadTooLargeError extends DomainError {
+  readonly statusCode = 413;
+  readonly errorCode = 'PAYLOAD_TOO_LARGE';
+}
+
+export class UnsupportedMediaTypeError extends DomainError {
+  readonly statusCode = 415;
+  readonly errorCode = 'UNSUPPORTED_MEDIA_TYPE';
+}
+
+export class RateLimitError extends DomainError {
+  readonly statusCode = 429;
+  readonly errorCode = 'RATE_LIMITED';
+}
+
 export class ConflictError extends DomainError {
   readonly statusCode = 409;
   readonly errorCode = 'CONFLICT';

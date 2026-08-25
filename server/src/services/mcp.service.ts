@@ -1,5 +1,7 @@
 import { ServiceUnavailableError } from '../errors/domain-error.js';
 
+const MAX_SSE_EVENT_BYTES = 1 * 1_024 * 1_024;
+
 export interface McpToolDefinition {
   name: string;
   description?: string;
@@ -174,6 +176,9 @@ export class McpClientService {
         }
 
         buffer += decoder.decode(value, { stream: true });
+        if (Buffer.byteLength(buffer, 'utf8') > MAX_SSE_EVENT_BYTES) {
+          throw new ServiceUnavailableError('MCP event exceeds the safe response limit');
+        }
         const normalized = buffer.replace(/\r\n/g, '\n');
         const events = normalized.split('\n\n');
         buffer = events.pop() || '';
@@ -207,10 +212,11 @@ export class McpClientService {
 
     if (eventType === 'endpoint') {
       const endpointPath = data.trim();
-      this.postUrl = endpointPath.startsWith('http')
-        ? endpointPath
-        : `${this.baseUrl}${endpointPath.startsWith('/') ? '' : '/'}${endpointPath}`;
-      const url = new URL(this.postUrl);
+      const url = new URL(endpointPath, `${this.baseUrl}/`);
+      if (url.origin !== new URL(this.baseUrl).origin) {
+        throw new ServiceUnavailableError('MCP server returned a cross-origin session endpoint');
+      }
+      this.postUrl = url.toString();
       this.sessionId = url.searchParams.get('session_id');
       return;
     }

@@ -21,6 +21,10 @@ export interface FrameClassification {
   frameBase64?: string;
 }
 
+const MAX_CACHED_FRAMES = 256;
+const MAX_FRAME_BYTES = 10 * 1_024 * 1_024;
+const FRAME_EXTRACTION_TIMEOUT_MS = 10_000;
+
 export class VisionService {
   private readonly ai: GoogleGenAI;
   private readonly modelName: string;
@@ -55,11 +59,21 @@ export class VisionService {
 
     return new Promise<Buffer>((resolve, reject) => {
       const ffmpeg = spawn('ffmpeg', [
+        '-nostdin',
+        '-hide_banner',
+        '-loglevel',
+        'error',
+        '-protocol_whitelist',
+        'file,pipe',
+        '-max_alloc',
+        String(64 * 1_024 * 1_024),
         '-ss',
         timestampSeconds.toFixed(2),
         '-i',
         videoPath,
-        '-vframes',
+        '-frames:v',
+        '1',
+        '-threads',
         '1',
         '-q:v',
         '2',
@@ -69,27 +83,46 @@ export class VisionService {
       ]);
 
       const chunks: Buffer[] = [];
-      const errChunks: Buffer[] = [];
+      let frameBytes = 0;
+      let settled = false;
+      const timeout = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        ffmpeg.kill('SIGKILL');
+        reject(new ServiceUnavailableError('Frame extraction timed out'));
+      }, FRAME_EXTRACTION_TIMEOUT_MS);
+
+      const fail = (message: string) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        ffmpeg.kill('SIGKILL');
+        reject(new ServiceUnavailableError(message));
+      };
 
       ffmpeg.stdout.on('data', (chunk: Buffer) => {
+        frameBytes += chunk.length;
+        if (frameBytes > MAX_FRAME_BYTES) {
+          fail('Extracted frame exceeds the safe output limit');
+          return;
+        }
         chunks.push(chunk);
       });
-
-      ffmpeg.stderr.on('data', (chunk: Buffer) => {
-        errChunks.push(chunk);
-      });
+      ffmpeg.stderr.resume();
 
       ffmpeg.on('close', (code) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
         if (code === 0 && chunks.length > 0) {
           resolve(Buffer.concat(chunks));
         } else {
-          const errOutput = Buffer.concat(errChunks).toString('utf-8');
-          reject(new ServiceUnavailableError(`ffmpeg frame extraction failed: ${errOutput}`));
+          reject(new ServiceUnavailableError('Frame extraction failed'));
         }
       });
 
-      ffmpeg.on('error', (err) => {
-        reject(new ServiceUnavailableError(`Failed to spawn ffmpeg: ${err.message}`));
+      ffmpeg.on('error', () => {
+        fail('Frame extraction service is unavailable');
       });
     });
   }
@@ -100,6 +133,8 @@ export class VisionService {
     // Idempotency rule: Check cache first
     const cached = this.cache.get(contentHash);
     if (cached) {
+      this.cache.delete(contentHash);
+      this.cache.set(contentHash, cached);
       return {
         ...cached,
         cached: true,
@@ -173,6 +208,10 @@ Provide output adhering strictly to this JSON structure:
     };
 
     this.cache.set(contentHash, classification);
+    if (this.cache.size > MAX_CACHED_FRAMES) {
+      const oldestHash = this.cache.keys().next().value;
+      if (oldestHash) this.cache.delete(oldestHash);
+    }
     return classification;
   }
 

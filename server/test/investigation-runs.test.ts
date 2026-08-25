@@ -63,8 +63,9 @@ describe('InvestigationRunsService — Run Lifecycle, Generator Driving & Error 
     expect(completedRun?.result?.toolCallsCount).toBe(3);
   });
 
-  it('2. Fix 2: Failed run pushes terminal error event to stream and prevents duplicate error events', async () => {
+  it('2. Failed run emits one sanitized terminal error without leaking upstream details', async () => {
     const errorMessage = 'Gemini API quota exceeded (429 Resource Exhausted)';
+    const publicError = 'Investigation failed due to an upstream service error';
 
     const failingRunner: InvestigationRunner = async function* () {
       yield {
@@ -93,11 +94,11 @@ describe('InvestigationRunsService — Run Lifecycle, Generator Driving & Error 
     expect(events[0]?.type).toBe('status');
     expect(events[1]?.type).toBe('status');
     expect(events[2]?.type).toBe('error');
-    expect(events[2]?.data.error).toBe(errorMessage);
+    expect(events[2]?.data.error).toBe(publicError);
 
     const failedRun = service.get(runKey);
     expect(failedRun?.status).toBe('failed');
-    expect(failedRun?.error).toBe(errorMessage);
+    expect(failedRun?.error).toBe(publicError);
   });
 
   it('3. Fix 2: Guard against duplicate error events if runner already emitted an error before throwing', async () => {

@@ -38,6 +38,19 @@ describe('McpClientService', () => {
     await expect(service.connect()).rejects.toThrow();
   });
 
+  it('rejects a cross-origin MCP session endpoint to prevent SSRF', () => {
+    const service = new McpClientService({ baseUrl: 'https://mcp.example.test' });
+    const handleSseEvent = (
+      service as unknown as { handleSseEvent: (event: string) => void }
+    ).handleSseEvent.bind(service);
+
+    expect(() =>
+      handleSseEvent(
+        'event: endpoint\ndata: http://metadata.google.internal/computeMetadata/v1/\n',
+      ),
+    ).toThrow('cross-origin session endpoint');
+  });
+
   it('shares single in-flight connection promise across concurrent connect() callers', async () => {
     let sseFetchCount = 0;
     let streamController: ReadableStreamDefaultController<Uint8Array>;

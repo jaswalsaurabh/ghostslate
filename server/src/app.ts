@@ -1,5 +1,4 @@
 import express, { type Express } from 'express';
-import cors from 'cors';
 import { pinoHttp } from 'pino-http';
 import type { Logger } from 'pino';
 import path from 'node:path';
@@ -20,16 +19,29 @@ import { createVisionRouter } from './routes/vision.route.js';
 import { MetricsService } from './services/metrics.service.js';
 import { NotFoundError } from './errors/domain-error.js';
 import { createErrorHandler } from './middleware/error-handler.js';
+import { securityHeaders } from './middleware/security-headers.js';
+import { createOriginProtection } from './middleware/origin-protection.js';
+import { createRateLimit } from './middleware/rate-limit.js';
 
 export interface AppContext {
   logger: Logger;
 }
 
+function trustedProxyHops(): number | false {
+  if (process.env.NODE_ENV !== 'production') return false;
+  const hops = Number(process.env.TRUST_PROXY_HOPS ?? 1);
+  if (!Number.isInteger(hops) || hops < 0 || hops > 5) {
+    throw new Error('TRUST_PROXY_HOPS must be an integer from 0 to 5');
+  }
+  return hops;
+}
+
 export function createApp({ logger }: AppContext): Express {
   const app = express();
 
-  app.use(cors());
-  app.use(express.json());
+  app.disable('x-powered-by');
+  app.set('trust proxy', trustedProxyHops());
+  app.use(securityHeaders);
   app.use(
     pinoHttp({
       logger,
@@ -38,6 +50,32 @@ export function createApp({ logger }: AppContext): Express {
       },
     }),
   );
+  app.use(
+    '/api',
+    createRateLimit({ name: 'api', maxRequests: 120, windowMs: 60_000 }),
+    createOriginProtection(),
+  );
+  app.use(
+    '/api/investigate/spike',
+    createRateLimit({ name: 'investigation', maxRequests: 10, windowMs: 15 * 60_000 }),
+  );
+  app.use(
+    '/api/vision/classify',
+    createRateLimit({ name: 'vision', maxRequests: 30, windowMs: 15 * 60_000 }),
+  );
+  app.use(
+    '/api/investigate/runs/:runKey/stream',
+    createRateLimit({ name: 'stream', maxRequests: 30, windowMs: 60_000 }),
+  );
+  app.use(
+    '/api/investigate/runs/:runKey/remediation/approve',
+    createRateLimit({ name: 'remediation', maxRequests: 10, windowMs: 15 * 60_000 }),
+  );
+  app.use('/api', express.json({ limit: '16kb', strict: true }));
+  app.use('/api', (_req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store');
+    next();
+  });
 
   const mcpService = new McpClientService();
   const healthService = new HealthService(mcpService);

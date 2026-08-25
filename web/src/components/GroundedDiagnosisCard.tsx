@@ -66,11 +66,11 @@ export const GroundedDiagnosisCard: React.FC<GroundedDiagnosisCardProps> = ({
   return (
     <>
       <section
-        className={`mx-5 mb-5 overflow-hidden rounded-inset border shadow-sm ${outcomeStyle}`}
+        className={`@container mx-3.5 mb-3.5 overflow-hidden rounded-inset border shadow-sm sm:mx-5 sm:mb-5 ${outcomeStyle}`}
         aria-labelledby="diagnosis-card-title"
       >
-        <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-border-subtle px-4 py-2.5">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col items-stretch gap-2.5 border-b border-border-subtle px-3 py-2.5 @min-[52rem]:flex-row @min-[52rem]:items-center @min-[52rem]:justify-between @min-[52rem]:px-4">
+          <div className="flex min-w-0 items-center gap-2">
             {isGrounded ? (
               <ShieldCheck className="size-4.5 text-status-success shrink-0" aria-hidden="true" />
             ) : grounding ? (
@@ -86,80 +86,85 @@ export const GroundedDiagnosisCard: React.FC<GroundedDiagnosisCardProps> = ({
             </span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 max-sm:w-full max-sm:justify-between">
+          <div className="flex min-w-0 flex-col items-start gap-2 @min-[38rem]:flex-row @min-[38rem]:items-center @min-[52rem]:ml-auto">
             {grounding ? (
               grounding.grounded ? (
-                <span className="flex items-center gap-1 rounded-md border border-status-success-border bg-status-success-surface px-2 py-1 font-mono text-forensic-meta font-bold text-status-success">
+                <span className="flex max-w-full items-center gap-1 rounded-md border border-status-success-border bg-status-success-surface px-2 py-1 font-mono text-forensic-meta font-bold text-status-success">
                   {grounding.checkedClaims} claims verified
                 </span>
               ) : (
-                <span className="rounded-md border border-status-critical-border bg-status-critical-surface px-2 py-1 font-mono text-forensic-meta font-bold text-status-critical">
+                <span className="max-w-full rounded-md border border-status-critical-border bg-status-critical-surface px-2 py-1 font-mono text-forensic-meta font-bold text-status-critical">
                   {grounding.violations.length} ungrounded claim
                   {grounding.violations.length > 1 ? 's' : ''}
                 </span>
               )
             ) : (
-              <span className="rounded-md border border-border-subtle bg-surface-card px-2 py-1 font-sans text-forensic-meta font-bold text-text-muted">
+              <span className="max-w-full rounded-md border border-border-subtle bg-surface-card px-2 py-1 font-sans text-forensic-meta font-bold text-text-muted">
                 Grounding unavailable
               </span>
             )}
-            <Button
-              variant="secondary"
-              size="sm"
-              aria-live="polite"
-              onClick={() => void copyReport()}
-              icon={
-                copied ? (
-                  <Check aria-hidden="true" className="size-3.5 text-status-success" />
-                ) : (
-                  <Copy aria-hidden="true" className="size-3.5" />
-                )
-              }
-            >
-              {copied ? 'Copied' : 'Copy report'}
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={onExportEvidenceJson}
-              icon={<Download aria-hidden="true" className="size-3.5" />}
-            >
-              JSON
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={onExportEvidenceMarkdown}
-              icon={<FileText aria-hidden="true" className="size-3.5" />}
-            >
-              Markdown
-            </Button>
+            <div className="grid w-full min-w-0 grid-cols-2 gap-2 @min-[26rem]:w-auto @min-[26rem]:grid-cols-3">
+              <Button
+                variant="secondary"
+                size="sm"
+                aria-live="polite"
+                onClick={() => void copyReport()}
+                className="col-span-2 min-w-0 @min-[26rem]:col-span-1"
+                icon={
+                  copied ? (
+                    <Check aria-hidden="true" className="size-3.5 text-status-success" />
+                  ) : (
+                    <Copy aria-hidden="true" className="size-3.5" />
+                  )
+                }
+              >
+                {copied ? 'Copied' : 'Copy report'}
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={onExportEvidenceJson}
+                className="min-w-0"
+                icon={<Download aria-hidden="true" className="size-3.5" />}
+              >
+                JSON
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={onExportEvidenceMarkdown}
+                className="min-w-0"
+                icon={<FileText aria-hidden="true" className="size-3.5" />}
+              >
+                Markdown
+              </Button>
+            </div>
           </div>
         </div>
 
-        <div className="p-4">
-          <div className="text-diagnosis leading-diagnosis text-text-secondary">
+        <div className="min-w-0 p-3 @min-[32rem]:p-4">
+          <div className="min-w-0 text-diagnosis leading-diagnosis text-text-secondary">
             <MarkdownText content={diagnosis} />
           </div>
 
           <div className="mt-3 flex flex-wrap gap-1.5" aria-label="Evidence summary tags">
             {hasClickHouseEvidence && (
-              <span className="rounded-md border border-border-subtle bg-surface-card px-2 py-1 font-sans text-forensic-meta text-text-secondary">
+              <span className="max-w-full wrap-break-word rounded-md border border-border-subtle bg-surface-card px-2 py-1 font-sans text-forensic-meta text-text-secondary">
                 ClickHouse · observed query result
               </span>
             )}
             {hasVisionEvidence && (
-              <span className="rounded-md border border-border-subtle bg-surface-card px-2 py-1 font-sans text-forensic-meta text-text-secondary">
+              <span className="max-w-full wrap-break-word rounded-md border border-border-subtle bg-surface-card px-2 py-1 font-sans text-forensic-meta text-text-secondary">
                 Vision · Gemini multimodal
               </span>
             )}
             {hasRateCardEvidence && (
-              <span className="rounded-md border border-border-subtle bg-surface-card px-2 py-1 font-sans text-forensic-meta text-text-secondary">
+              <span className="max-w-full wrap-break-word rounded-md border border-border-subtle bg-surface-card px-2 py-1 font-sans text-forensic-meta text-text-secondary">
                 Rate card · queried CPM
               </span>
             )}
             {grounding && (
-              <span className="rounded-md border border-border-subtle bg-surface-card px-2 py-1 font-mono text-forensic-meta text-text-secondary">
+              <span className="max-w-full wrap-break-word rounded-md border border-border-subtle bg-surface-card px-2 py-1 font-mono text-forensic-meta text-text-secondary">
                 Grounding · {grounding.violations.length} violations
               </span>
             )}
@@ -177,10 +182,12 @@ export const GroundedDiagnosisCard: React.FC<GroundedDiagnosisCardProps> = ({
               </div>
               <div className="mt-2 space-y-1 font-mono text-forensic-code text-text-secondary">
                 {grounding.violations.map((v, i) => (
-                  <div key={i} className="flex items-start gap-1">
+                  <div key={i} className="flex min-w-0 flex-wrap items-start gap-1">
                     <span className="font-bold text-status-critical">Claim:</span>
                     <span className="font-bold text-text-primary">{v.claim}</span>
-                    <span className="text-text-muted">— in: “{v.context}”</span>
+                    <span className="min-w-0 flex-1 wrap-break-word text-text-muted">
+                      — in: “{v.context}”
+                    </span>
                   </div>
                 ))}
               </div>
@@ -190,12 +197,14 @@ export const GroundedDiagnosisCard: React.FC<GroundedDiagnosisCardProps> = ({
           {/* Remediation trigger row if staged */}
           {remediation?.status === 'staged' && !isReviewing && (
             <div className="mt-3.5 flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle pt-3 font-sans text-forensic-meta text-text-secondary">
-              <span>Suggested action: reroute this cohort only. Operator approval required.</span>
+              <span className="min-w-0 flex-1 wrap-break-word">
+                Suggested action: reroute this cohort only. Operator approval required.
+              </span>
               <Button
                 onClick={() => setIsReviewing(true)}
                 variant="success"
                 size="sm"
-                className="shrink-0 font-sans uppercase tracking-wider"
+                className="w-full shrink-0 font-sans uppercase tracking-wider @min-[24rem]:w-auto"
               >
                 Review remediation
               </Button>
