@@ -1,5 +1,6 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { extname, join, relative, sep } from 'node:path';
+import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
@@ -26,9 +27,9 @@ const excludedDirectories = new Set([
   'node_modules',
 ]);
 
-async function collectSourceFiles(directory) {
+async function collectSourceFiles(directory: string): Promise<string[]> {
   const entries = await readdir(directory, { withFileTypes: true });
-  const files = [];
+  const files: string[] = [];
 
   for (const entry of entries) {
     if (entry.isSymbolicLink()) continue;
@@ -43,13 +44,19 @@ async function collectSourceFiles(directory) {
   return files;
 }
 
-function countLines(source) {
+function countLines(source: string): number {
   if (source.length === 0) return 0;
   return source.endsWith('\n') ? source.split('\n').length - 1 : source.split('\n').length;
 }
 
+interface LineLimitViolation {
+  lines: number;
+  limit: number;
+  path: string;
+}
+
 const files = await collectSourceFiles(repositoryRoot);
-const violations = [];
+const violations: LineLimitViolation[] = [];
 
 for (const file of files) {
   const path = relative(repositoryRoot, file).split(sep).join('/');

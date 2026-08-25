@@ -33,6 +33,13 @@ One version of any technology, repo-wide. This is enforced, not aspirational:
 - Adding a dependency is a deliberate decision. Prefer the standard library or a few lines of code
   over a package that must be learned, configured, and debugged inside a ten-day budget.
 
+## Repository scripts
+
+Node-based repository scripts belong in `scripts/*.ts` and run through the catalog-pinned `tsx`
+binary. Use shell scripts only when the task is inherently shell-native (for example, invoking
+OS-level secret-scanning tools); new JavaScript or TypeScript logic must not be added as `.mjs` or
+`.js` scripts.
+
 ## Architecture
 
 ```

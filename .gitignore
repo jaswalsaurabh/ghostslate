@@ -82,6 +82,7 @@ frames/
 !server/**/*.ts
 !web/**/*.ts
 !tools/**/*.ts
+!scripts/**/*.ts
 .cache/
 .frame-cache/
 

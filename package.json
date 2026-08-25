@@ -11,10 +11,10 @@
     "dev": "pnpm --parallel --filter ./web --filter ./server dev",
     "build": "pnpm --filter ./server build && pnpm --filter ./web build",
     "start": "pnpm --filter ./server start",
-    "typecheck": "pnpm -r typecheck",
+    "typecheck": "tsc --noEmit && pnpm -r typecheck",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "check:lines": "node scripts/check-line-limits.mjs",
+    "check:lines": "tsx scripts/check-line-limits.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "pnpm -r test",
@@ -24,10 +24,12 @@
     "prepare": "husky"
   },
   "devDependencies": {
+    "@types/node": "catalog:",
     "eslint": "catalog:",
     "husky": "catalog:",
     "lint-staged": "catalog:",
     "prettier": "catalog:",
+    "tsx": "catalog:",
     "typescript": "catalog:",
     "typescript-eslint": "catalog:"
   },
