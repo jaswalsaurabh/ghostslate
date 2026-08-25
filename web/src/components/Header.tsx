@@ -1,5 +1,5 @@
 import { Moon, Sun } from 'lucide-react';
-import { useTheme } from '../hooks/use-theme.js';
+import type { Theme } from '../hooks/use-theme.js';
 import type { SystemHealth } from '../types.js';
 import { IconButton, StatusIndicator, type StatusTone } from './ui/index.js';
 
@@ -10,10 +10,18 @@ interface HeaderProps {
   healthLoading: boolean;
   healthError: string | null;
   vertexState: VertexRuntimeState;
+  theme: Theme;
+  onToggleTheme: () => void;
 }
 
-export function Header({ health, healthLoading, healthError, vertexState }: HeaderProps) {
-  const { theme, toggleTheme } = useTheme();
+export function Header({
+  health,
+  healthLoading,
+  healthError,
+  vertexState,
+  theme,
+  onToggleTheme,
+}: HeaderProps) {
   const mcpConnected = Boolean(health?.mcp?.connected);
   const vertexCopy = {
     idle: 'Vertex AI idle',
@@ -88,7 +96,7 @@ export function Header({ health, healthLoading, healthError, vertexState }: Head
 
           <IconButton
             label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
-            onClick={toggleTheme}
+            onClick={onToggleTheme}
             variant="secondary"
             className="h-8.5 w-8.5 shrink-0"
             icon={

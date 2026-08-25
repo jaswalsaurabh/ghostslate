@@ -28,7 +28,7 @@ export function SegmentedControl<Value extends string>({
   return (
     <div
       aria-label={label}
-      className={`inline-flex rounded-md border border-border-subtle bg-surface-card p-1 ${className}`}
+      className={`inline-flex gap-0.5 rounded-md border border-border-subtle bg-surface-card p-1 ${className}`}
       role="group"
     >
       {options.map((option) => {
@@ -39,7 +39,7 @@ export function SegmentedControl<Value extends string>({
             type="button"
             aria-pressed={selected}
             disabled={option.disabled}
-            className={`${sizeClass} rounded-sm font-semibold transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interactive disabled:cursor-not-allowed disabled:opacity-50 ${
+            className={`${sizeClass} rounded-sm font-semibold transition-[background-color,box-shadow,color] duration-fast hover:shadow-border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interactive disabled:cursor-not-allowed disabled:opacity-50 ${
               selected
                 ? 'bg-surface-panel text-text-primary shadow-sm'
                 : 'text-text-muted hover:bg-surface-hover hover:text-text-primary'

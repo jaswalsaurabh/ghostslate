@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
+import { CircleCheck, CircleX, Info, X } from 'lucide-react';
+import { Toaster, toast } from 'sonner';
 import { frameClassificationSchema } from './api/index.js';
 import { CaseOverview } from './components/CaseOverview.js';
 import { Header, type VertexRuntimeState } from './components/Header.js';
 import { InvestigationPanel, type TraceFilter } from './components/InvestigationPanel.js';
 import { VisionPanel } from './components/VisionPanel.js';
-import { Toast, ToastRegion } from './components/ui/index.js';
 import { INVESTIGATION_CASES, type InvestigationCaseId } from './config/index.js';
 import { useClickHouseMetrics } from './hooks/use-clickhouse-metrics.js';
 import { useFrameClassification } from './hooks/use-frame-classification.js';
@@ -12,16 +13,16 @@ import { useHealth } from './hooks/use-health.js';
 import { useInvestigationCase } from './hooks/use-investigation-case.js';
 import { useInvestigationStream } from './hooks/use-investigation-stream.js';
 import { useRemediation } from './hooks/use-remediation.js';
-import { useToast } from './hooks/use-toast.js';
+import { useTheme } from './hooks/use-theme.js';
 import { useVideoPlayer } from './hooks/use-video-player.js';
 
 export function App() {
   const { activeCaseId, activeCase, selectCase: setActiveCaseId } = useInvestigationCase();
+  const { theme, toggleTheme } = useTheme();
   const [traceFilter, setTraceFilter] = useState<TraceFilter>('all');
   const health = useHealth();
   const player = useVideoPlayer();
   const manualVision = useFrameClassification();
-  const toast = useToast();
   const investigation = useInvestigationStream();
   const metrics = useClickHouseMetrics(investigation.investigationTrace);
   const remediation = useRemediation({
@@ -73,7 +74,9 @@ export function App() {
     player.reset();
     setTraceFilter('all');
     setActiveCaseId(nextCase);
-    toast.showToast(`${INVESTIGATION_CASES[nextCase].label} loaded`);
+    toast.info('Investigation case loaded', {
+      description: `${INVESTIGATION_CASES[nextCase].label} is ready to run against the configured evidence window.`,
+    });
   };
 
   const runInvestigation = () => {
@@ -84,7 +87,9 @@ export function App() {
       from: activeCase.from,
       to: activeCase.to,
     });
-    toast.showToast(`Running ${activeCase.label.toLowerCase()} through the live forensic pipeline`);
+    toast.info('Investigation started', {
+      description: `Running ${activeCase.label.toLowerCase()} through the live forensic pipeline.`,
+    });
   };
 
   const classifyFrame = async (timestamp?: number) => {
@@ -95,7 +100,9 @@ export function App() {
       timestamp: targetTimestamp,
     });
     if (result) {
-      toast.showToast(`Operator sample classified as ${result.classification.toUpperCase()}`);
+      toast.success('Operator sample classified', {
+        description: `Gemini Vision returned ${result.classification.toUpperCase()} for the selected frame.`,
+      });
     }
   };
 
@@ -112,6 +119,8 @@ export function App() {
         healthLoading={health.loading}
         healthError={health.error}
         vertexState={vertexState}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
 
       <main id="war-room" className="war-room-shell pb-10 pt-6 max-md:pt-3">
@@ -168,11 +177,29 @@ export function App() {
         </div>
       </main>
 
-      {toast.message && (
-        <ToastRegion>
-          <Toast title={toast.message} tone="success" onDismiss={toast.dismissToast} />
-        </ToastRegion>
-      )}
+      <Toaster
+        position="bottom-right"
+        theme={theme}
+        closeButton
+        expand
+        visibleToasts={4}
+        gap={10}
+        duration={4_500}
+        toastOptions={{
+          className: 'ghostslate-toast',
+          classNames: {
+            title: 'font-sans text-forensic-meta font-bold tracking-label text-text-primary',
+            description: 'font-sans text-compact leading-section text-text-secondary',
+            closeButton: 'ghostslate-toast-close',
+          },
+        }}
+        icons={{
+          success: <CircleCheck aria-hidden="true" className="size-4 text-status-success" />,
+          info: <Info aria-hidden="true" className="size-4 text-interactive" />,
+          error: <CircleX aria-hidden="true" className="size-4 text-status-critical" />,
+          close: <X aria-hidden="true" className="size-3.5" />,
+        }}
+      />
     </div>
   );
 }

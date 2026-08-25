@@ -11,10 +11,11 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "lucide-react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "lucide-react": "catalog:",
     "recharts": "3.10.1",
+    "sonner": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
