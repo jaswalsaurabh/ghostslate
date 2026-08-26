@@ -57,6 +57,9 @@ jobs:
       - name: Line limit check
         run: pnpm check:lines
 
+      - name: Line limit check
+        run: pnpm check:lines
+
       - name: Dedupe check
         run: pnpm dedupe:check
 
