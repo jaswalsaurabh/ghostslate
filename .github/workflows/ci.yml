@@ -1,11 +1,11 @@
 name: CI
 
 on:
-  push:
+  pull_request:
     branches:
       - main
       - develop
-  pull_request:
+  push:
     branches:
       - main
       - develop
@@ -21,7 +21,8 @@ jobs:
   quality-checks:
     name: Quality checks
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -41,14 +42,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Typecheck
-        run: pnpm typecheck
+      - name: Scan tracked files for secrets
+        run: ./scripts/scan-secrets.sh --all-tracked
+
+      - name: Format check
+        run: pnpm format:check
 
       - name: Lint
         run: pnpm lint
 
-      - name: Format check
-        run: pnpm format:check
+      - name: Typecheck
+        run: pnpm typecheck
 
       - name: Line limit check
         run: pnpm check:lines
@@ -61,3 +65,44 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+  container:
+    name: Verify linux/amd64 production container
+    needs: quality-checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+
+      - name: Build linux/amd64 image without publishing
+        run: |
+          docker buildx build \
+            --platform linux/amd64 \
+            --provenance=false \
+            --file infra/Dockerfile \
+            --tag ghostslate:ci \
+            --load \
+            .
+
+      - name: Verify image architecture
+        run: |
+          test "$(docker image inspect ghostslate:ci --format '{{.Os}}/{{.Architecture}}')" = "linux/amd64"
+
+      - name: Verify image runs as non-root
+        run: |
+          test "$(docker image inspect ghostslate:ci --format '{{.Config.User}}')" = "node"
+
+      - name: Scan image for HIGH and CRITICAL vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ghostslate:ci
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          scanners: vuln
+          severity: HIGH,CRITICAL
