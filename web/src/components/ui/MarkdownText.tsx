@@ -23,7 +23,7 @@ export const renderFormattedInline = (text: string): React.ReactNode => {
       return (
         <code
           key={idx}
-          className={`px-1.5 py-0.5 mx-0.5 rounded font-mono text-forensic-code font-semibold tracking-tight ${
+          className={`mx-0.5 inline-block max-w-full break-all rounded px-1.5 py-0.5 align-baseline font-mono text-forensic-code font-semibold tracking-tight ${
             isCritical
               ? 'bg-status-critical-surface text-status-critical border border-status-critical-border/50'
               : 'bg-surface-card text-text-primary border border-border-subtle'
@@ -86,7 +86,7 @@ export const MarkdownText: React.FC<MarkdownTextProps> = ({ content, className =
                 <span className="font-mono text-forensic-meta font-bold text-interactive shrink-0 mt-px min-w-4.5">
                   {i + 1}.
                 </span>
-                <div className="flex-1">{item}</div>
+                <div className="min-w-0 flex-1 wrap-break-word">{item}</div>
               </div>
             ))}
           </div>,
@@ -100,7 +100,7 @@ export const MarkdownText: React.FC<MarkdownTextProps> = ({ content, className =
                 className="flex items-start gap-2 font-sans text-diagnosis leading-diagnosis text-text-primary"
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-interactive shrink-0 mt-1.75" />
-                <div className="flex-1">{item}</div>
+                <div className="min-w-0 flex-1 wrap-break-word">{item}</div>
               </div>
             ))}
           </div>,
@@ -127,10 +127,10 @@ export const MarkdownText: React.FC<MarkdownTextProps> = ({ content, className =
       renderedBlocks.push(
         <div
           key={`header-${blockKey++}`}
-          className="flex items-center gap-1.5 pt-2 pb-0.5 border-b border-border-subtle/60 font-sans text-forensic-heading font-bold text-interactive uppercase tracking-wider"
+          className="flex min-w-0 items-center gap-1.5 border-b border-border-subtle/60 pt-2 pb-0.5 font-sans text-forensic-heading font-bold wrap-break-word text-interactive uppercase tracking-wider"
         >
           <span className="w-1 h-3 bg-interactive rounded-xs" />
-          <span>{title}</span>
+          <span className="min-w-0">{title}</span>
         </div>,
       );
       continue;
@@ -163,7 +163,7 @@ export const MarkdownText: React.FC<MarkdownTextProps> = ({ content, className =
     renderedBlocks.push(
       <p
         key={`p-${blockKey++}`}
-        className="m-0 font-sans text-diagnosis leading-diagnosis text-text-primary"
+        className="m-0 min-w-0 font-sans text-diagnosis leading-diagnosis wrap-break-word text-text-primary"
       >
         {renderFormattedInline(line)}
       </p>,
@@ -172,7 +172,7 @@ export const MarkdownText: React.FC<MarkdownTextProps> = ({ content, className =
 
   flushList();
 
-  return <div className={`flex flex-col gap-2 ${className}`}>{renderedBlocks}</div>;
+  return <div className={`flex min-w-0 flex-col gap-2 ${className}`}>{renderedBlocks}</div>;
 };
 
 /**

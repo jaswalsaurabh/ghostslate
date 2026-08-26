@@ -1,4 +1,5 @@
-export type InvestigationCaseId = 'primary' | 'negative-control';
+export type InvestigationCaseId = 'primary' | 'negative-control' | 'small-sample-guard';
+export type InvestigationCaseSampleSet = 'incident' | 'control';
 
 export interface InvestigationCaseConfig {
   readonly id: InvestigationCaseId;
@@ -13,6 +14,9 @@ export interface InvestigationCaseConfig {
   readonly prompt: string;
   readonly mediaSource: string;
   readonly videoFile: string;
+  readonly poster: string;
+  readonly sampleSet: InvestigationCaseSampleSet;
+  readonly manualVisionEnabled: boolean;
   readonly expectedOutcome: 'incident' | 'no_incident';
 }
 
@@ -31,6 +35,9 @@ export const INVESTIGATION_CASES = {
       'Vision classifier detected possible slate bleed on channel ch-01. Correlate the incident window with SCTE-35 cue logs, isolate any statistically significant SSP, device class, and codec cohort, visually confirm on-air slate when required, and compute only ClickHouse-grounded unmonetized loss.',
     mediaSource: '/media/test_stream_slate.mp4',
     videoFile: 'test_stream_slate.mp4',
+    poster: '/media/content_frame.png',
+    sampleSet: 'incident',
+    manualVisionEnabled: true,
     expectedOutcome: 'incident',
   },
   'negative-control': {
@@ -47,6 +54,29 @@ export const INVESTIGATION_CASES = {
       'Investigate ad stitch performance for channel ch-01 in this control window. Apply the minimum-cue, absolute failure, and cohort-dispersion guards. Do not call Vision, assert a root cause, calculate attributable loss, or propose remediation unless authoritative ClickHouse evidence establishes an incident.',
     mediaSource: '/media/test_stream_ad.mp4',
     videoFile: 'test_stream_ad.mp4',
+    poster: '/media/ad_frame.png',
+    sampleSet: 'control',
+    manualVisionEnabled: false,
+    expectedOutcome: 'no_incident',
+  },
+  'small-sample-guard': {
+    id: 'small-sample-guard',
+    label: 'Insufficient evidence',
+    shortLabel: 'Evidence guard',
+    eyebrow: 'Evidence guard · FAST-01 · ch-01',
+    heading: 'Validate the small-sample evidence guard',
+    description:
+      'Sparse telemetry window used to verify that causal claims stay silent below the minimum cue count.',
+    channel: 'ch-01',
+    from: '2026-08-14T19:00:00.000Z',
+    to: '2026-08-14T19:15:00.000Z',
+    prompt:
+      'Investigate ad stitch performance for channel ch-01 in this sparse evidence window. Apply the minimum-cue, absolute failure, and cohort-dispersion guards. Do not call Vision, assert a root cause, calculate attributable loss, or propose remediation unless authoritative ClickHouse evidence establishes an incident.',
+    mediaSource: '/media/test_stream_ad.mp4',
+    videoFile: 'test_stream_ad.mp4',
+    poster: '/media/ad_frame.png',
+    sampleSet: 'control',
+    manualVisionEnabled: false,
     expectedOutcome: 'no_incident',
   },
 } as const satisfies Readonly<Record<InvestigationCaseId, InvestigationCaseConfig>>;

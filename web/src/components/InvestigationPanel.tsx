@@ -8,12 +8,13 @@ import type {
 } from '../types.js';
 import { GroundedDiagnosisCard } from './GroundedDiagnosisCard.js';
 import { InvestigationEventItem } from './InvestigationEventItem.js';
-import { Button, SegmentedControl } from './ui/index.js';
+import { Button, SegmentedControl, StatusIndicator } from './ui/index.js';
 
 export type TraceFilter = 'all' | 'query' | 'reasoning';
 
 interface InvestigationPanelProps {
   activeCase: InvestigationCaseConfig;
+  executionMode: 'live' | 'cached_replay' | null;
   investigating: boolean;
   reconnecting: boolean;
   trace: InvestigationTraceEvent[];
@@ -31,6 +32,8 @@ interface InvestigationPanelProps {
   remediationError: string | null;
   onApproveRemediation: () => Promise<void>;
   onRefreshRemediation: () => Promise<void>;
+  onExportEvidenceJson: () => void;
+  onExportEvidenceMarkdown: () => void;
 }
 
 const stages = ['Observe', 'Correlate', 'Verify', 'Diagnose'] as const;
@@ -75,10 +78,10 @@ export function InvestigationPanel(props: InvestigationPanelProps) {
 
   return (
     <section
-      className="rounded-2xl border border-border-subtle bg-surface-panel shadow-panel-subtle overflow-hidden"
+      className="rounded-2xl border border-border-subtle bg-surface-panel overflow-hidden"
       aria-labelledby="investigation-title"
     >
-      <div className="flex items-start justify-between gap-4 border-b border-border-subtle p-4 sm:px-5">
+      <div className="relative z-content flex items-start justify-between gap-4 border-b border-border-subtle bg-surface-panel p-4 max-md:flex-col sm:px-5">
         <div className="flex items-start gap-2.5">
           <span className="mt-0.5 font-sans text-forensic-meta font-bold tracking-module text-interactive">
             02
@@ -100,7 +103,7 @@ export function InvestigationPanel(props: InvestigationPanelProps) {
           loading={props.investigating}
           variant="primary"
           size="sm"
-          className="h-8.5 shrink-0 font-sans tracking-wide"
+          className="h-8.5 shrink-0 font-sans tracking-wide max-md:w-full"
           icon={
             props.trace.length > 0 ? (
               <RotateCw aria-hidden="true" className="size-3.5" />
@@ -117,7 +120,7 @@ export function InvestigationPanel(props: InvestigationPanelProps) {
         </Button>
       </div>
 
-      <div className="investigation-prompt-grid mx-5 mt-4 gap-4 rounded-inset border border-reasoning-border/40 bg-reasoning-surface p-3 sm:px-4">
+      <div className="mx-5 mt-4 rounded-inset border border-border-strong bg-reasoning-surface p-3 sm:px-4">
         <div className="min-w-0">
           <span className="mb-1 block font-sans text-forensic-meta font-bold uppercase tracking-widest text-reasoning-fg">
             <Sparkles className="inline size-3.5 mr-1" />
@@ -126,17 +129,15 @@ export function InvestigationPanel(props: InvestigationPanelProps) {
           <p className="m-0 font-sans text-forensic-body leading-normal text-text-primary">
             {props.activeCase.prompt}
           </p>
-        </div>
-        <div className="self-center border-l border-border-subtle pl-4 font-sans text-forensic-meta leading-evidence text-text-secondary whitespace-nowrap max-md:border-t max-md:border-l-0 max-md:pl-0 max-md:pt-3 max-md:whitespace-normal">
-          <span className="block font-sans text-forensic-meta uppercase text-text-muted">
-            Investigation window · UTC
-          </span>
-          <strong className="block font-mono text-forensic-code text-text-primary">
-            {formatWindow(props.activeCase.from)} → {formatWindow(props.activeCase.to)}
-          </strong>
-          <span className="block font-sans text-text-muted">
-            {props.activeCase.channel} · FAST-01
-          </span>
+          <div className="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1 border-t border-border-subtle/70 pt-2.5 font-sans text-forensic-meta">
+            <span className="text-text-muted">
+              Investigation window · UTC{' '}
+              <strong className="font-mono font-semibold text-text-primary">
+                {formatWindow(props.activeCase.from)} → {formatWindow(props.activeCase.to)}
+              </strong>
+            </span>
+            <span className="font-mono text-text-muted">{props.activeCase.channel} · FAST-01</span>
+          </div>
         </div>
       </div>
 
@@ -180,6 +181,15 @@ export function InvestigationPanel(props: InvestigationPanelProps) {
           <div className="flex items-center gap-2">
             <span>Live evidence trace · {props.trace.length} events</span>
             {props.reconnecting && <span className="text-status-warning">(Reconnecting...)</span>}
+            {props.executionMode && (
+              <StatusIndicator
+                label={
+                  props.executionMode === 'live' ? 'Live investigation' : 'Cached evidence replay'
+                }
+                tone={props.executionMode === 'live' ? 'running' : 'success'}
+                appearance="inline"
+              />
+            )}
           </div>
           <SegmentedControl
             label="Trace filters"
@@ -230,6 +240,8 @@ export function InvestigationPanel(props: InvestigationPanelProps) {
           remediationError={props.remediationError}
           onApproveRemediation={props.onApproveRemediation}
           onRefreshRemediation={props.onRefreshRemediation}
+          onExportEvidenceJson={props.onExportEvidenceJson}
+          onExportEvidenceMarkdown={props.onExportEvidenceMarkdown}
         />
       )}
     </section>

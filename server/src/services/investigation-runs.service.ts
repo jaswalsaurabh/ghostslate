@@ -1,5 +1,10 @@
 import { createHash } from 'node:crypto';
 import type { InvestigationEvent, InvestigationResult } from './investigation.service.js';
+import { ServiceUnavailableError } from '../errors/domain-error.js';
+
+const MAX_RETAINED_RUNS = 100;
+const RUN_RETENTION_MS = 60 * 60 * 1_000;
+const PUBLIC_INVESTIGATION_ERROR = 'Investigation failed due to an upstream service error';
 
 export type RunStatus = 'running' | 'complete' | 'failed';
 
@@ -40,11 +45,16 @@ export class InvestigationRunsService {
   }
 
   startOrAttach(input: InvestigationInput): { runKey: string; created: boolean } {
+    this.pruneInactiveRuns();
     const runKey = this.computeRunKey(input);
     const existing = this.runs.get(runKey);
 
     if (existing && (existing.status === 'running' || existing.status === 'complete')) {
       return { runKey, created: false };
+    }
+
+    if (this.runs.size >= MAX_RETAINED_RUNS) {
+      throw new ServiceUnavailableError('Investigation capacity is temporarily exhausted');
     }
 
     const run: InvestigationRun = {
@@ -71,16 +81,19 @@ export class InvestigationRunsService {
         }
         this.recordEvent(runKey, value);
       }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      this.failRun(runKey, msg);
+    } catch {
+      this.failRun(runKey);
     }
   }
 
   private recordEvent(runKey: string, event: InvestigationEvent): void {
     const run = this.runs.get(runKey);
     if (!run) return;
-    run.events.push(event);
+    run.events.push(
+      event.type === 'error'
+        ? { ...event, data: { ...event.data, error: PUBLIC_INVESTIGATION_ERROR } }
+        : event,
+    );
     this.notifyListeners(runKey);
   }
 
@@ -94,25 +107,26 @@ export class InvestigationRunsService {
     this.notifyListeners(runKey);
   }
 
-  private failRun(runKey: string, error: string): void {
+  private failRun(runKey: string): void {
     const run = this.runs.get(runKey);
     if (!run) return;
 
     // Guard against duplicate error events if the runner already yielded one
     const lastEvent = run.events[run.events.length - 1];
     const isDuplicate =
-      lastEvent?.type === 'error' && String(lastEvent.data?.error ?? '') === error;
+      lastEvent?.type === 'error' &&
+      String(lastEvent.data?.error ?? '') === PUBLIC_INVESTIGATION_ERROR;
 
     if (!isDuplicate) {
       run.events.push({
         type: 'error',
         timestamp: new Date().toISOString(),
-        data: { error },
+        data: { error: PUBLIC_INVESTIGATION_ERROR },
       });
     }
 
     run.status = 'failed';
-    run.error = error;
+    run.error = PUBLIC_INVESTIGATION_ERROR;
     this.notifyListeners(runKey);
   }
 
@@ -175,6 +189,26 @@ export class InvestigationRunsService {
   hasListener(runKey: string): boolean {
     const set = this.listeners.get(runKey);
     return Boolean(set && set.size > 0);
+  }
+
+  private pruneInactiveRuns(): void {
+    const expiry = Date.now() - RUN_RETENTION_MS;
+    for (const [runKey, run] of this.runs) {
+      if (run.status !== 'running' && Date.parse(run.startedAt) <= expiry) {
+        this.runs.delete(runKey);
+        this.listeners.delete(runKey);
+      }
+    }
+
+    if (this.runs.size < MAX_RETAINED_RUNS) return;
+
+    for (const [runKey, run] of this.runs) {
+      if (run.status !== 'running') {
+        this.runs.delete(runKey);
+        this.listeners.delete(runKey);
+        if (this.runs.size < MAX_RETAINED_RUNS) return;
+      }
+    }
   }
 
   private notifyListeners(runKey: string): void {

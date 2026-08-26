@@ -82,6 +82,7 @@ frames/
 !server/**/*.ts
 !web/**/*.ts
 !tools/**/*.ts
+!scripts/**/*.ts
 .cache/
 .frame-cache/
 
@@ -131,3 +132,27 @@ CLAUDE.md
 .agent/logo-archive/
 # Local design explorations are reference material, not shipped application code.
 web/design/
+
+mock-*.html
+
+# Markdown is publish-by-exception. Add a specific exception before committing
+# a new public Markdown document.
+*.md
+!AGENTS.md
+!GEMINI.md
+!PROJECT-OVERVIEW.md
+!README.md
+!SECURITY.md
+!.agent/
+!.agent/design-system.md
+!eval/
+!eval/README.md
+!infra/
+!infra/*.md
+!sql/
+!sql/README.md
+!sql/benchmarks/
+!sql/benchmarks/*.md
+!tools/
+!tools/generator/
+!tools/generator/README.md

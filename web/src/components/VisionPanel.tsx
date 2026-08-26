@@ -1,4 +1,5 @@
 import { useEffect, useState, type RefObject } from 'react';
+import { Fingerprint, ScanEye, Timer } from 'lucide-react';
 import type { InvestigationCaseConfig } from '../config/investigation-cases.js';
 import type { FrameClassificationData, InvestigationEvidenceSummary } from '../types.js';
 import { EvidenceGateCard } from './EvidenceGateCard.js';
@@ -6,7 +7,7 @@ import { BroadcastPlayer } from './vision/BroadcastPlayer.js';
 import { BroadcastSampleStrip } from './vision/BroadcastSampleStrip.js';
 import { VisionClassificationCard } from './vision/VisionClassificationCard.js';
 import { classificationStyles } from './vision/classification-styles.js';
-import { SegmentedControl } from './ui/index.js';
+import { SegmentedControl, Tooltip } from './ui/index.js';
 
 interface VisionPanelProps {
   activeCase: InvestigationCaseConfig;
@@ -171,33 +172,49 @@ export function VisionPanel(props: VisionPanelProps) {
         displayed={evidenceAtPlayhead}
         confidence={playerConfidence}
         classifying={props.classifying}
-        onClassify={props.onClassify}
+        onClassify={props.activeCase.manualVisionEnabled ? props.onClassify : undefined}
+        classifyDisabled={!props.activeCase.manualVisionEnabled}
       />
 
       <div className="mx-5 mt-3 grid grid-cols-3 gap-2" aria-label="Selected frame evidence">
-        <div className="min-w-0 rounded-inset border border-border-subtle bg-surface-card p-2.5">
-          <span className="block font-mono text-forensic-meta font-bold uppercase tracking-wider text-text-muted">
-            Classification
-          </span>
+        <div className="flex min-w-0 items-center gap-2 rounded-inset border border-border-subtle bg-surface-card p-2.5">
+          <Tooltip content="Frame classification" placement="top">
+            <span
+              aria-label="Frame classification"
+              className={`inline-flex size-6 items-center justify-center rounded-md ${displayedStyles?.surface ?? 'bg-surface-hover'} ${displayedStyles?.text ?? 'text-text-muted'}`}
+            >
+              <ScanEye aria-hidden="true" className="size-3.5" />
+            </span>
+          </Tooltip>
           <strong
-            className={`mt-1 block truncate font-mono text-section font-bold ${displayedStyles?.text ?? 'text-text-muted'}`}
+            className={`min-w-0 truncate font-mono text-section font-bold ${displayedStyles?.text ?? 'text-text-muted'}`}
           >
             {displayed?.classification.toUpperCase() ?? 'AWAITING'}
           </strong>
         </div>
-        <div className="min-w-0 rounded-inset border border-border-subtle bg-surface-card p-2.5">
-          <span className="block font-mono text-forensic-meta font-bold uppercase tracking-wider text-text-muted">
-            Vision latency
-          </span>
-          <strong className="mt-1 block truncate font-mono text-section font-bold text-text-primary">
+        <div className="flex min-w-0 items-center gap-2 rounded-inset border border-border-subtle bg-surface-card p-2.5">
+          <Tooltip content="Vision analysis latency" placement="top">
+            <span
+              aria-label="Vision analysis latency"
+              className="inline-flex size-6 items-center justify-center rounded-md bg-interactive-surface text-interactive"
+            >
+              <Timer aria-hidden="true" className="size-3.5" />
+            </span>
+          </Tooltip>
+          <strong className="min-w-0 truncate font-mono text-section font-bold text-text-primary">
             {displayedLatency === null ? '—' : `${(displayedLatency / 1000).toFixed(2)} s`}
           </strong>
         </div>
-        <div className="min-w-0 rounded-inset border border-border-subtle bg-surface-card p-2.5">
-          <span className="block font-mono text-forensic-meta font-bold uppercase tracking-wider text-text-muted">
-            Frame hash
-          </span>
-          <strong className="mt-1 block truncate font-mono text-section font-bold text-text-primary">
+        <div className="flex min-w-0 items-center gap-2 rounded-inset border border-border-subtle bg-surface-card p-2.5">
+          <Tooltip content="Content hash for the classified frame" placement="top">
+            <span
+              aria-label="Content hash for the classified frame"
+              className="inline-flex size-6 items-center justify-center rounded-md bg-surface-hover text-text-muted"
+            >
+              <Fingerprint aria-hidden="true" className="size-3.5" />
+            </span>
+          </Tooltip>
+          <strong className="min-w-0 truncate font-mono text-section font-bold text-text-primary">
             {displayed
               ? `${displayed.contentHash.slice(0, 4)}…${displayed.contentHash.slice(-4)}`
               : '—'}

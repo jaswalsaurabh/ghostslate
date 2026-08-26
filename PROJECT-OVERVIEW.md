@@ -221,10 +221,15 @@ control, that no cause is asserted.
 
 ## 10. Demo Script (3 min)
 
-1. **0:00** — Stream plays. Slate appears. Every dashboard shows green, HTTP 200. _"Nothing is alerting. This channel is losing money right now."_
+1. **0:00** — Choose the primary incident from the scenario selector. Stream plays. Slate appears. Every dashboard shows green, HTTP 200. _"Nothing is alerting. This channel is losing money right now."_
 2. **0:25** — Prompt: _"Sponsorship revenue dropped 18% during the Q3 break. Audit cue markers and stitcher logs for unmonetized slate bleed."_
 3. **0:40** — Gemini vision flags the slate frames; UI shows classified thumbnails.
 4. **1:00** — Live MCP trace: schema discovery → ASOF JOIN correlation → dimension isolation. Real SQL, real timings, rows scanned.
 5. **1:50** — Diagnosis: SSP auction latency breaching the stitcher deadline for one device/codec cohort. Loss figure computed from the rate-card table.
 6. **2:20** — Negative control: a second window where the agent correctly reports no root cause.
 7. **2:40** — Remediation proposal, operator approves, close.
+
+The UI also includes an insufficient-evidence scenario (a sub-20-cue window) that demonstrates the
+agent refusing to attribute a cause, calculate loss, or propose remediation when the evidence gate
+cannot be satisfied. Completed runs can be replayed from the in-memory idempotency cache and
+exported as a grounded evidence bundle for review.

@@ -8,6 +8,7 @@ import type { InvestigationTraceEvent, GroundingReport } from '../types.js';
 
 export interface UseInvestigationStreamResult {
   runKey: string | null;
+  executionMode: 'live' | 'cached_replay' | null;
   investigating: boolean;
   reconnecting: boolean;
   investigationTrace: InvestigationTraceEvent[];
@@ -24,6 +25,7 @@ export interface UseInvestigationStreamResult {
 
 export function useInvestigationStream(): UseInvestigationStreamResult {
   const [runKey, setRunKey] = useState<string | null>(null);
+  const [executionMode, setExecutionMode] = useState<'live' | 'cached_replay' | null>(null);
   const [investigating, setInvestigating] = useState<boolean>(false);
   const [reconnecting, setReconnecting] = useState<boolean>(false);
   const [investigationTrace, setInvestigationTrace] = useState<InvestigationTraceEvent[]>([]);
@@ -53,6 +55,7 @@ export function useInvestigationStream(): UseInvestigationStreamResult {
   const resetInvestigation = useCallback(() => {
     closeStream();
     setRunKey(null);
+    setExecutionMode(null);
     setInvestigating(false);
     setReconnecting(false);
     setInvestigationTrace([]);
@@ -67,6 +70,7 @@ export function useInvestigationStream(): UseInvestigationStreamResult {
       startAbortControllerRef.current = controller;
 
       setRunKey(null);
+      setExecutionMode(null);
       setInvestigating(true);
       setReconnecting(false);
       setInvestigationTrace([]);
@@ -100,6 +104,7 @@ export function useInvestigationStream(): UseInvestigationStreamResult {
 
         const { runKey: currentRunKey } = runResponse;
         setRunKey(currentRunKey);
+        setExecutionMode(runResponse.created ? 'live' : 'cached_replay');
 
         const es = new EventSource(
           `/api/investigate/runs/${encodeURIComponent(currentRunKey)}/stream`,
@@ -178,6 +183,7 @@ export function useInvestigationStream(): UseInvestigationStreamResult {
 
   return {
     runKey,
+    executionMode,
     investigating,
     reconnecting,
     investigationTrace,

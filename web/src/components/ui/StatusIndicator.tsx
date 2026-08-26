@@ -7,6 +7,7 @@ export interface StatusIndicatorProps {
   label: string;
   detail?: string;
   tone?: StatusTone;
+  appearance?: 'pill' | 'inline';
   icon?: ReactNode;
   loading?: boolean;
   className?: string;
@@ -34,13 +35,21 @@ export function StatusIndicator({
   label,
   detail,
   tone = 'idle',
+  appearance = 'pill',
   icon,
   loading = false,
   className = '',
 }: StatusIndicatorProps) {
+  const appearanceClasses =
+    appearance === 'inline'
+      ? 'gap-1.5 font-mono text-forensic-meta uppercase tracking-micro'
+      : 'h-8.5 gap-1.75 rounded-md border px-2.5 font-mono text-compact uppercase tracking-micro select-none';
+
   return (
     <span
-      className={`inline-flex h-8.5 items-center gap-1.75 rounded-md border px-2.5 font-mono text-compact uppercase tracking-micro select-none ${toneClasses[tone]} ${className}`}
+      className={`inline-flex items-center ${appearanceClasses} ${
+        appearance === 'pill' ? toneClasses[tone] : 'text-text-secondary'
+      } ${className}`}
       role="status"
     >
       {loading ? (

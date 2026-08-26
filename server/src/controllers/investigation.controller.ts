@@ -19,15 +19,12 @@ const isoUtcString = z
 // Single owner of default investigation window across the application.
 export const InvestigateSpikeSchema = z
   .object({
-    prompt: z.string().min(1, 'Prompt is required'),
+    prompt: z.string().trim().min(1, 'Prompt is required').max(2_000, 'Prompt is too long'),
     channel: z
       .string()
       .trim()
       .toLowerCase()
-      .regex(
-        /^[a-z0-9_-]+$/,
-        'Channel must contain only alphanumeric characters, underscores, or hyphens',
-      )
+      .regex(/^ch-01$/, 'Only the configured channel ch-01 may be investigated')
       .default('ch-01'),
     from: isoUtcString.default('2026-08-14T19:00:00.000Z'),
     to: isoUtcString.default('2026-08-14T23:00:00.000Z'),
@@ -35,7 +32,24 @@ export const InvestigateSpikeSchema = z
   .refine((data) => new Date(data.from).getTime() < new Date(data.to).getTime(), {
     message: 'Start time (from) must be strictly before end time (to)',
     path: ['from'],
-  });
+  })
+  .refine(
+    (data) => new Date(data.to).getTime() - new Date(data.from).getTime() <= 24 * 60 * 60 * 1_000,
+    {
+      message: 'Investigation window cannot exceed 24 hours',
+      path: ['to'],
+    },
+  );
+
+const RunKeySchema = z.string().regex(/^[a-f0-9]{64}$/, 'Run key must be a SHA-256 identifier');
+
+function parseRunKey(value: unknown): string {
+  const parsed = RunKeySchema.safeParse(value);
+  if (!parsed.success) {
+    throw new ValidationError(parsed.error.issues[0]?.message ?? 'Invalid run key');
+  }
+  return parsed.data;
+}
 
 export class InvestigationController {
   constructor(
@@ -63,10 +77,7 @@ export class InvestigationController {
     let isClosed = false;
 
     try {
-      const runKey = String(req.params.runKey ?? '').trim();
-      if (!runKey) {
-        throw new ValidationError('Run key parameter is required');
-      }
+      const runKey = parseRunKey(req.params.runKey);
 
       const run = this.runsService.get(runKey);
       if (!run) {
@@ -126,11 +137,10 @@ export class InvestigationController {
       }
       if (headersFlushed || res.headersSent) {
         if (!res.writableEnded) {
-          const errorMsg = err instanceof Error ? err.message : String(err);
           const errorEvent = {
             type: 'error',
             timestamp: new Date().toISOString(),
-            data: { error: errorMsg },
+            data: { error: 'Investigation stream failed' },
           };
           res.write(`data: ${JSON.stringify(errorEvent)}\n\n`);
           res.end();
@@ -143,10 +153,7 @@ export class InvestigationController {
 
   getRemediation = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const runKey = String(req.params.runKey ?? '').trim();
-      if (!runKey) {
-        throw new ValidationError('Run key parameter is required');
-      }
+      const runKey = parseRunKey(req.params.runKey);
 
       const run = this.runsService.get(runKey);
       if (!run) {
@@ -162,10 +169,7 @@ export class InvestigationController {
 
   approveRemediation = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const runKey = String(req.params.runKey ?? '').trim();
-      if (!runKey) {
-        throw new ValidationError('Run key parameter is required');
-      }
+      const runKey = parseRunKey(req.params.runKey);
 
       const run = this.runsService.get(runKey);
       if (!run) {

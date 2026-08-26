@@ -2,7 +2,7 @@
   /* Surfaces */
   --color-surface-base: var(--gs-ocean-950);
   --color-surface-panel: var(--gs-neutral-900);
-  --color-surface-card: var(--gs-neutral-850);
+  --color-surface-card: var(--gs-neutral-800);
   --color-surface-hover: var(--gs-neutral-750);
   --color-surface-scrim: color-mix(in oklab, var(--gs-neutral-950) 80%, transparent);
   --color-surface-overlay: color-mix(in oklab, var(--gs-neutral-1000) 76%, transparent);

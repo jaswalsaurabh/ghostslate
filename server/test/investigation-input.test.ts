@@ -41,4 +41,22 @@ describe('InvestigateSpikeSchema validation', () => {
       }),
     ).toThrow();
   });
+
+  it('bounds unauthenticated investigation cost and scope', () => {
+    expect(() => InvestigateSpikeSchema.parse({ prompt: 'x'.repeat(2_001) })).toThrow(
+      'Prompt is too long',
+    );
+
+    expect(() =>
+      InvestigateSpikeSchema.parse({ channel: 'ch-02', prompt: 'Check anomaly' }),
+    ).toThrow('Only the configured channel ch-01 may be investigated');
+
+    expect(() =>
+      InvestigateSpikeSchema.parse({
+        prompt: 'Check anomaly',
+        from: '2026-08-14T00:00:00.000Z',
+        to: '2026-08-15T00:00:00.001Z',
+      }),
+    ).toThrow('Investigation window cannot exceed 24 hours');
+  });
 });

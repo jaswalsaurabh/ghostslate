@@ -36,10 +36,14 @@ export function BroadcastSampleStrip({
   selectedTime,
   onSeek,
 }: BroadcastSampleStripProps) {
-  const samples = activeCase.id === 'primary' ? incidentSamples : controlSamples;
+  const samples = activeCase.sampleSet === 'incident' ? incidentSamples : controlSamples;
 
   return (
-    <div className="grid grid-cols-4 gap-2 mt-2 mx-5 mb-3" aria-label="Sampled broadcast frames">
+    <div
+      className="mx-5 mb-3 mt-2 grid grid-cols-4 gap-2"
+      aria-label="Sampled broadcast frames"
+      role="group"
+    >
       {samples.map((sample) => {
         const isSelected = Math.abs(selectedTime - sample.time) < 0.8;
         const styles = classificationStyles[sample.type];
@@ -50,7 +54,7 @@ export function BroadcastSampleStrip({
             onClick={() => onSeek(sample.time)}
             aria-label={`${sample.label} frame at ${sample.time} seconds`}
             aria-pressed={isSelected}
-            className={`broadcast-thumbnail group relative cursor-pointer overflow-hidden rounded-md border bg-surface-card p-0 transition-all duration-fast focus-visible:outline-2 focus-visible:outline-interactive ${
+            className={`broadcast-thumbnail group relative min-h-10 cursor-pointer overflow-hidden rounded-md border bg-surface-card p-0 transition-all duration-fast focus-visible:outline-2 focus-visible:outline-interactive ${
               isSelected ? styles.selected : 'border-border-subtle hover:border-border-strong'
             }`}
           >
