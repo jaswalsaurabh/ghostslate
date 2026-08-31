@@ -218,6 +218,7 @@ describe('InvestigationRunsService — Run Lifecycle, Generator Driving & Error 
 
   it('6. Normalisation: whitespace, internal runs, and casing collapse to the same key; channel/window differ', () => {
     const dummyRunner: InvestigationRunner = async function* () {
+      yield* [];
       return {
         diagnosis: '',
         steps: [],

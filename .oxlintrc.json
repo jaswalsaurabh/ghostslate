@@ -1,0 +1,29 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "jsPlugins": [{ "name": "design-token", "specifier": "./scripts/design-token-plugin.ts" }],
+  "plugins": ["eslint", "typescript", "oxc"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error"
+  },
+  "rules": {
+    "typescript/no-unused-vars": [
+      "error",
+      { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }
+    ],
+    "typescript/no-explicit-any": "error"
+  },
+  "overrides": [
+    {
+      "files": ["web/src/**/*.{ts,tsx}"],
+      "rules": { "design-token/no-stock-palette": "error" }
+    }
+  ],
+  "ignorePatterns": [
+    "**/dist/**",
+    "**/node_modules/**",
+    "**/.vite/**",
+    "**/coverage/**",
+    "**/*.d.ts"
+  ]
+}

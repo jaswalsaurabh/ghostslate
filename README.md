@@ -158,7 +158,7 @@ and attribution; the server renders the result into a grounded diagnosis.
 | Technology                                   | Role                                                                                                                       |
 | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | **Vitest**                                   | One test runner for both packages, version shared via catalog                                                              |
-| **ESLint + Prettier + Husky**                | Lint and format, enforced pre-commit via lint-staged                                                                       |
+| **Oxlint + Oxfmt + Husky**                   | Fast linting and formatting, enforced pre-commit via lint-staged                                                           |
 | **Docker Compose**                           | Local development — ClickHouse, MCP server and app in one command                                                          |
 | **Google Cloud Run**                         | Deployment target. One container serves the built UI _and_ the API                                                         |
 | **Python 3** (`clickhouse-connect`, `faker`) | Anomaly injection only. The bulk synthetic baseline is generated inside ClickHouse with `INSERT ... SELECT FROM numbers()` |
@@ -383,6 +383,7 @@ pnpm test           # vitest across the workspace
 pnpm typecheck
 pnpm lint           # pnpm lint:fix to autofix
 pnpm format
+pnpm format:check
 pnpm dedupe:check
 ```
 

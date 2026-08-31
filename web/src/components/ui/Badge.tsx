@@ -1,7 +1,13 @@
 import React from 'react';
 
 export type BadgeVariant =
-  'primary' | 'critical' | 'warning' | 'success' | 'reasoning' | 'neutral' | 'data';
+  | 'primary'
+  | 'critical'
+  | 'warning'
+  | 'success'
+  | 'reasoning'
+  | 'neutral'
+  | 'data';
 
 export type BadgeSize = 'sm' | 'md';
 

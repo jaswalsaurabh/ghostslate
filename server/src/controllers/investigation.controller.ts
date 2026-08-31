@@ -92,7 +92,7 @@ export class InvestigationController {
         res.write(': keep-alive\n\n');
       }, 15000);
 
-      while (!isClosed) {
+      while (true) {
         const { value: event, done } = await iterator.next();
         if (done || isClosed) {
           break;
