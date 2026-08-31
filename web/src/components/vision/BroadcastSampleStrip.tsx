@@ -1,20 +1,6 @@
 import type { InvestigationCaseConfig } from '../../config/investigation-cases.js';
 import { classificationStyles } from './classification-styles.js';
 
-export const incidentSamples = [
-  { time: 9.8, image: '/media/content_frame.png', label: 'Content', type: 'content' },
-  { time: 7.5, image: '/media/slate_frame.png', label: 'Slate', type: 'slate' },
-  { time: 17.2, image: '/media/slate_frame.png', label: 'Slate persists', type: 'slate' },
-  { time: 25.4, image: '/media/ad_frame.png', label: 'Advertisement', type: 'ad' },
-] as const;
-
-export const controlSamples = [
-  { time: 5.2, image: '/media/content_frame.png', label: 'Content', type: 'content' },
-  { time: 12.4, image: '/media/ad_frame.png', label: 'Advertisement', type: 'ad' },
-  { time: 17.2, image: '/media/ad_frame.png', label: 'Advertisement', type: 'ad' },
-  { time: 25.4, image: '/media/content_frame.png', label: 'Content', type: 'content' },
-] as const;
-
 export function formatTimecode(seconds: number) {
   const mins = Math.floor(seconds / 60);
   const secs = (seconds % 60).toFixed(1);
@@ -36,7 +22,7 @@ export function BroadcastSampleStrip({
   selectedTime,
   onSeek,
 }: BroadcastSampleStripProps) {
-  const samples = activeCase.sampleSet === 'incident' ? incidentSamples : controlSamples;
+  const samples = activeCase.samples;
 
   return (
     <div

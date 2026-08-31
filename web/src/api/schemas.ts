@@ -4,6 +4,46 @@ export const finiteNonNegative = z.number().finite().nonnegative();
 export const optionalNonNegative = finiteNonNegative.optional();
 export const apiValueSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
 
+export const scenarioIdSchema = z.enum([
+  'primary',
+  'negative-control',
+  'small-sample-guard',
+  'latency-confounder-isolation',
+  'stb-error-confounder',
+  'black-screen-timeout',
+]);
+
+export const scenarioSampleSchema = z.object({
+  time: finiteNonNegative,
+  image: z.string().startsWith('/media/'),
+  label: z.string().min(1),
+  type: z.enum(['slate', 'ad', 'content']),
+});
+
+export const investigationScenarioSchema = z.object({
+  id: scenarioIdSchema,
+  label: z.string().min(1),
+  shortLabel: z.string().min(1),
+  eyebrow: z.string().min(1),
+  heading: z.string().min(1),
+  description: z.string().min(1),
+  channel: z.literal('ch-01'),
+  from: z.string().datetime({ offset: true }),
+  to: z.string().datetime({ offset: true }),
+  prompt: z.string().min(1),
+  mediaSource: z.string().startsWith('/media/'),
+  poster: z.string().startsWith('/media/'),
+  durationSeconds: finiteNonNegative.positive(),
+  samples: z.array(scenarioSampleSchema).length(4),
+  visionMode: z.enum(['required', 'disabled']),
+  expectedOutcome: z.enum(['incident', 'no_incident']),
+});
+
+export const scenarioCatalogSchema = z.object({
+  defaultScenarioId: scenarioIdSchema,
+  scenarios: z.array(investigationScenarioSchema).length(6),
+});
+
 export const apiErrorSchema = z.object({
   error: z
     .object({

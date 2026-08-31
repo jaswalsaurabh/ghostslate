@@ -14,12 +14,7 @@ export interface UseInvestigationStreamResult {
   investigationTrace: InvestigationTraceEvent[];
   finalDiagnosis: string | null;
   groundingReport: GroundingReport | undefined;
-  startInvestigation: (input: {
-    prompt: string;
-    channel: string;
-    from: string;
-    to: string;
-  }) => Promise<void>;
+  startInvestigation: (input: { scenarioId: string; prompt: string }) => Promise<void>;
   resetInvestigation: () => void;
 }
 
@@ -64,7 +59,7 @@ export function useInvestigationStream(): UseInvestigationStreamResult {
   }, [closeStream]);
 
   const startInvestigation = useCallback(
-    async (input: { prompt: string; channel: string; from: string; to: string }) => {
+    async (input: { scenarioId: string; prompt: string }) => {
       closeStream();
       const controller = new AbortController();
       startAbortControllerRef.current = controller;

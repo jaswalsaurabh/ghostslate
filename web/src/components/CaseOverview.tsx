@@ -1,7 +1,4 @@
-import {
-  INVESTIGATION_CASES,
-  type InvestigationCaseConfig,
-} from '../config/investigation-cases.js';
+import type { InvestigationCaseConfig } from '../config/investigation-cases.js';
 import type { GroundedKpiMetrics } from '../hooks/use-clickhouse-metrics.js';
 import type { EvidenceGateReason } from '../types.js';
 import { CaseOverviewMetrics } from './CaseOverviewMetrics.js';
@@ -9,16 +6,12 @@ import { Select } from './ui/index.js';
 
 interface CaseOverviewProps {
   activeCase: InvestigationCaseConfig;
+  cases: readonly InvestigationCaseConfig[];
   metrics: GroundedKpiMetrics;
   investigating: boolean;
   visionConfirmed?: boolean;
   onSelectCase: (id: InvestigationCaseConfig['id']) => void;
 }
-
-const CASE_OPTIONS = Object.values(INVESTIGATION_CASES).map((investigationCase) => ({
-  value: investigationCase.id,
-  label: investigationCase.label,
-}));
 
 function getOverviewTitle({
   activeCase,
@@ -135,11 +128,16 @@ function getOverviewSummary({
 
 export function CaseOverview({
   activeCase,
+  cases,
   metrics,
   investigating,
   visionConfirmed = false,
   onSelectCase,
 }: CaseOverviewProps) {
+  const caseOptions = cases.map((investigationCase) => ({
+    value: investigationCase.id,
+    label: investigationCase.label,
+  }));
   const summaryData = metrics.evidenceSummary;
   const outcome = summaryData?.outcome;
   const candidate = summaryData?.candidate;
@@ -194,7 +192,7 @@ export function CaseOverview({
           </div>
           <Select
             label="Demo scenario"
-            options={CASE_OPTIONS}
+            options={caseOptions}
             value={activeCase.id}
             onValueChange={onSelectCase}
             className="font-mono uppercase"

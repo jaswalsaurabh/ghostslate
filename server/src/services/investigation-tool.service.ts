@@ -7,7 +7,7 @@ import {
   type DiagnosisRow,
   type InvestigationContext,
 } from './evidence.helper.js';
-import { getPermittedMediaMapping, PRIMARY_INCIDENT_MEDIA_MAPPING } from './incident.constants.js';
+import { ScenarioService } from './scenario.service.js';
 
 export interface ToolOutcome {
   modelText: string;
@@ -18,6 +18,7 @@ export interface ToolOutcome {
   renderedSql?: string;
   rowsReturned?: number | undefined;
   rowsScanned?: number | undefined;
+  resolvedArgs?: Record<string, unknown> | undefined;
 }
 
 const MAX_MODEL_RESULT_ROWS = 50;
@@ -47,13 +48,6 @@ function traceResult(resultText: string): string {
   if (rowLimited.length <= MAX_TRACE_RESULT_CHARS) return rowLimited;
   return `${rowLimited.slice(0, MAX_TRACE_RESULT_CHARS)}\n[trace output truncated]`;
 }
-
-export const INSPECTABLE_MEDIA_DURATIONS_SECONDS = {
-  [PRIMARY_INCIDENT_MEDIA_MAPPING.permittedMediaFile]:
-    PRIMARY_INCIDENT_MEDIA_MAPPING.maxTimestampSeconds,
-  'ad.mp4': 15,
-  'content.mp4': 10,
-} as const;
 
 function parseJson(resultText: string): unknown {
   try {
@@ -153,23 +147,10 @@ export function createInvestigationToolDeclarations(): FunctionDeclaration[] {
     {
       name: 'classify_frame',
       description:
-        'Inspect the actual video frame at a given timestamp and classify what is on screen as ' +
-        '"slate", "ad", or "content". Use this to confirm visually whether an ad break bled filler ' +
-        'slate to air. Returns classification, confidence, slate type, detected text, and visual summary.',
-      parameters: {
-        type: Type.OBJECT,
-        properties: {
-          video_file: {
-            type: Type.STRING,
-            description: `The demo stream to inspect for this incident (e.g. ${PRIMARY_INCIDENT_MEDIA_MAPPING.permittedMediaFile}).`,
-          },
-          timestamp_seconds: {
-            type: Type.NUMBER,
-            description: `Offset into the synthetic demo stream, in seconds. Must be >= 0 and strictly less than media clip duration (${PRIMARY_INCIDENT_MEDIA_MAPPING.permittedMediaFile}: ${PRIMARY_INCIDENT_MEDIA_MAPPING.maxTimestampSeconds}s).`,
-          },
-        },
-        required: ['video_file', 'timestamp_seconds'],
-      },
+        'Classify the active scenario\'s server-selected video frame as "slate", "ad", or ' +
+        '"content". Accepts no arguments; the model cannot select a file or timestamp. Returns ' +
+        'classification, confidence, slate type, detected text, and visual summary.',
+      parameters: { type: Type.OBJECT, properties: {} },
     },
     {
       name: 'collect_diagnosis_evidence',
@@ -192,6 +173,7 @@ export class InvestigationToolService {
   constructor(
     private readonly mcpService: McpClientService,
     private readonly visionService: VisionService,
+    private readonly scenarioService: ScenarioService = new ScenarioService(),
   ) {}
 
   async execute(
@@ -286,32 +268,21 @@ export class InvestigationToolService {
   }
 
   private async classifyFrame(
-    args: Record<string, unknown>,
+    _args: Record<string, unknown>,
     context: InvestigationContext,
   ): Promise<ToolOutcome> {
-    const mapping = getPermittedMediaMapping(context);
-    if (!mapping) {
+    const scenario = this.scenarioService.findByContext(context);
+    if (!scenario) {
       const errorText = `No synthetic stream media is mapped to investigation window ${context.from} to ${context.to} for channel ${context.channel}. Visual confirmation is only available for mapped incident windows.`;
       return { modelText: errorText, resultText: errorText, isError: true };
     }
-
-    const videoFile = String(args.video_file ?? '');
-    if (videoFile !== mapping.permittedMediaFile) {
-      const errorText = `Media file "${videoFile}" is not mapped to the active incident context. Permitted media for this investigation is "${mapping.permittedMediaFile}".`;
+    if (scenario.visionMode === 'disabled' || scenario.agentSampleTimestampSeconds === null) {
+      const errorText = `Visual confirmation is disabled for scenario "${scenario.id}".`;
       return { modelText: errorText, resultText: errorText, isError: true };
     }
 
-    const timestamp = Number(args.timestamp_seconds);
-    if (
-      !Number.isFinite(timestamp) ||
-      timestamp < mapping.minTimestampSeconds ||
-      timestamp >= mapping.maxTimestampSeconds
-    ) {
-      const errorText = `Invalid timestamp_seconds "${String(args.timestamp_seconds)}" for ${mapping.permittedMediaFile}. Provide a number >= ${mapping.minTimestampSeconds} and strictly less than ${mapping.maxTimestampSeconds}.`;
-      return { modelText: errorText, resultText: errorText, isError: true };
-    }
-
-    const frame = await this.visionService.classifyVideoTimestamp(videoFile, timestamp);
+    const timestamp = scenario.agentSampleTimestampSeconds;
+    const frame = await this.visionService.classifyVideoTimestamp(scenario.videoFile, timestamp);
     if (
       !['slate', 'ad', 'content'].includes(frame.classification) ||
       (frame.slate_type !== null &&
@@ -326,6 +297,16 @@ export class InvestigationToolService {
     const normalizedFrame = { ...frame, timestampSeconds: timestamp };
     const { frameBase64: _frameBase64, ...modelFacing } = normalizedFrame;
     const modelText = JSON.stringify(modelFacing);
-    return { modelText, resultText: modelText, isError: false, frame: normalizedFrame };
+    return {
+      modelText,
+      resultText: modelText,
+      isError: false,
+      frame: normalizedFrame,
+      resolvedArgs: {
+        scenario_id: scenario.id,
+        video_file: scenario.videoFile,
+        timestamp_seconds: timestamp,
+      },
+    };
   }
 }

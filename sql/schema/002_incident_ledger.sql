@@ -8,7 +8,7 @@ CREATE DATABASE IF NOT EXISTS ghostslate_eval;
 
 CREATE TABLE IF NOT EXISTS ghostslate_eval.injected_incidents (
     incident_id LowCardinality(String),
-    kind LowCardinality(String), -- 'primary', 'confounder', 'negative_control'
+    kind LowCardinality(String), -- 'primary', 'positive_variant', 'confounder', 'negative_control'
     channel_id LowCardinality(String),
     window_start DateTime64(3, 'UTC'),
     window_end DateTime64(3, 'UTC'),

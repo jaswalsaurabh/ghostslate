@@ -3,43 +3,14 @@ import { z } from 'zod';
 import { InvestigationRunsService } from '../services/investigation-runs.service.js';
 import { RemediationService } from '../services/remediation.service.js';
 import { NotFoundError, ValidationError } from '../errors/domain-error.js';
+import type { ScenarioService } from '../services/scenario.service.js';
 
-const isoUtcString = z
-  .string()
-  .trim()
-  .refine(
-    (val) =>
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(val) && !isNaN(Date.parse(val)),
-    { message: 'Must be a valid ISO-8601 UTC string ending with Z' },
-  )
-  .transform((val) => new Date(val).toISOString());
-
-// Primary incident window recorded in ghostslate_eval.injected_incidents
-// and asserted in sql/checks/004-incident-assertions.sql (channel ch-01, 2026-08-14 19:00-23:00 UTC).
-// Single owner of default investigation window across the application.
 export const InvestigateSpikeSchema = z
   .object({
+    scenarioId: z.string().trim().min(1, 'Scenario ID is required').max(64),
     prompt: z.string().trim().min(1, 'Prompt is required').max(2_000, 'Prompt is too long'),
-    channel: z
-      .string()
-      .trim()
-      .toLowerCase()
-      .regex(/^ch-01$/, 'Only the configured channel ch-01 may be investigated')
-      .default('ch-01'),
-    from: isoUtcString.default('2026-08-14T19:00:00.000Z'),
-    to: isoUtcString.default('2026-08-14T23:00:00.000Z'),
   })
-  .refine((data) => new Date(data.from).getTime() < new Date(data.to).getTime(), {
-    message: 'Start time (from) must be strictly before end time (to)',
-    path: ['from'],
-  })
-  .refine(
-    (data) => new Date(data.to).getTime() - new Date(data.from).getTime() <= 24 * 60 * 60 * 1_000,
-    {
-      message: 'Investigation window cannot exceed 24 hours',
-      path: ['to'],
-    },
-  );
+  .strict();
 
 const RunKeySchema = z.string().regex(/^[a-f0-9]{64}$/, 'Run key must be a SHA-256 identifier');
 
@@ -55,6 +26,7 @@ export class InvestigationController {
   constructor(
     private readonly runsService: InvestigationRunsService,
     private readonly remediationService: RemediationService,
+    private readonly scenarioService: ScenarioService,
   ) {}
 
   investigateSpike = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -64,7 +36,14 @@ export class InvestigationController {
         throw new ValidationError(parsed.error.issues.map((i) => i.message).join(', '));
       }
 
-      const { runKey, created } = this.runsService.startOrAttach(parsed.data);
+      const scenario = this.scenarioService.require(parsed.data.scenarioId);
+      const { runKey, created } = this.runsService.startOrAttach({
+        scenarioId: scenario.id,
+        prompt: parsed.data.prompt,
+        channel: scenario.channel,
+        from: scenario.from,
+        to: scenario.to,
+      });
       res.status(200).json({ runKey, created });
     } catch (err: unknown) {
       next(err);

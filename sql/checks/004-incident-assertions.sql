@@ -1,14 +1,15 @@
 -- GhostSlate Incident Integrity Assertions
 -- Every query must return ok = 1.
 
--- Assertion 1: Injected incident ledger contains exactly the 4 documented incidents
+-- Assertion 1: Injected incident ledger contains exactly the 5 documented incidents
 SELECT (
-    count() = 4
+    count() = 5
     AND countIf(incident_id = 'primary-ssp-beta-ctv-hevc' AND kind = 'primary') = 1
     AND countIf(incident_id = 'confounder-ssp-gamma-slow-but-inside-deadline' AND kind = 'confounder') = 1
     AND countIf(incident_id = 'confounder-set-top-box-errors' AND kind = 'confounder') = 1
     AND countIf(incident_id = 'negative-control-diffuse-primetime' AND kind = 'negative_control') = 1
-) AS ok -- assertion_1_ledger_contains_all_four_incidents
+    AND countIf(incident_id = 'variant-ssp-delta-mobile-h264-black-screen' AND kind = 'positive_variant') = 1
+) AS ok -- assertion_1_ledger_contains_all_five_incidents
 FROM ghostslate_eval.injected_incidents FINAL;
 
 -- Assertion 2: Primary incident cohort (ssp-beta x connected_tv x hevc) has slate+timeout rate > 90% in window
@@ -156,7 +157,7 @@ FROM (
 
 -- Assertion 9: Ledger constants check (asserts stored windows match source-of-truth literals)
 SELECT (
-    count() = 4
+    count() = 5
     AND countIf(
         incident_id = 'primary-ssp-beta-ctv-hevc'
         AND kind = 'primary'
@@ -194,10 +195,21 @@ SELECT (
         AND window_end = toDateTime64('2026-08-09 23:00:00.000', 3, 'UTC')
         AND expected_root_cause = ''
     ) = 1
+    AND countIf(
+        incident_id = 'variant-ssp-delta-mobile-h264-black-screen'
+        AND kind = 'positive_variant'
+        AND channel_id = 'ch-01'
+        AND window_start = toDateTime64('2026-08-16 10:00:00.000', 3, 'UTC')
+        AND window_end = toDateTime64('2026-08-16 12:00:00.000', 3, 'UTC')
+        AND ssp_id = 'ssp-delta'
+        AND device_class = 'mobile'
+        AND codec = 'h264'
+        AND expected_root_cause = 'ssp-delta auction latency on mobile/h264'
+    ) = 1
 ) AS ok -- assertion_9_ledger_constants_match_source_of_truth
 FROM ghostslate_eval.injected_incidents FINAL;
 
--- Assertion 10: Status/latency invariant across all mutated partitions (20260809, 20260812, 20260814)
+-- Assertion 10: Status/latency invariant across all mutated partitions
 -- Asserts zero rows have stitch_status disagreeing with ad_response_latency_ms under 450/1200 thresholds, ERROR excepted.
 SELECT (
     countIf(
@@ -209,4 +221,54 @@ SELECT (
     ) = 0
 ) AS ok -- assertion_10_status_latency_invariant_across_mutated_partitions
 FROM ghostslate.ssai_stitch_attempts
-WHERE toDate(attempt_time) IN ('2026-08-09', '2026-08-12', '2026-08-14');
+WHERE toDate(attempt_time) IN ('2026-08-09', '2026-08-12', '2026-08-14', '2026-08-16');
+
+-- Assertion 11: Black-screen variant is a significant isolated timeout cohort
+SELECT (
+    cues = 40
+    AND total_attempts = 7812
+    AND unmonetized_impressions = 7732
+    AND unmonetized_pct = 98.98
+    AND p95_latency >= 1800
+) AS ok -- assertion_11_black_screen_variant_degraded
+FROM (
+    SELECT
+        count(DISTINCT splice_event_id) AS cues,
+        count() AS total_attempts,
+        countIf(stitch_status IN ('SLATE_FALLBACK', 'TIMEOUT')) AS unmonetized_impressions,
+        round(100.0 * unmonetized_impressions / total_attempts, 2) AS unmonetized_pct,
+        quantileTDigest(0.95)(ad_response_latency_ms) AS p95_latency
+    FROM ghostslate.ssai_stitch_attempts
+    WHERE attempt_time >= toDateTime64('2026-08-16 10:00:00.000', 3, 'UTC')
+      AND attempt_time < toDateTime64('2026-08-16 12:00:00.000', 3, 'UTC')
+      AND ssp_id = 'ssp-delta' AND device_class = 'mobile' AND codec = 'h264'
+);
+
+-- Assertion 12: Black-screen sibling cohorts remain below the qualifying threshold
+SELECT (
+    countIf(unmonetized_rate >= 0.05) = 0
+) AS ok -- assertion_12_black_screen_siblings_healthy
+FROM (
+    SELECT
+        ssp_id, device_class, codec,
+        countIf(stitch_status IN ('SLATE_FALLBACK', 'TIMEOUT')) / count() AS unmonetized_rate
+    FROM ghostslate.ssai_stitch_attempts
+    WHERE attempt_time >= toDateTime64('2026-08-16 10:00:00.000', 3, 'UTC')
+      AND attempt_time < toDateTime64('2026-08-16 12:00:00.000', 3, 'UTC')
+      AND NOT (ssp_id = 'ssp-delta' AND device_class = 'mobile' AND codec = 'h264')
+    GROUP BY ssp_id, device_class, codec
+    HAVING count(DISTINCT splice_event_id) >= 20
+);
+
+-- Assertion 13: The same black-screen cohort is healthy outside the injected window
+SELECT (
+    unmonetized_rate < 0.05
+) AS ok -- assertion_13_black_screen_cohort_healthy_outside_window
+FROM (
+    SELECT countIf(stitch_status IN ('SLATE_FALLBACK', 'TIMEOUT')) / count() AS unmonetized_rate
+    FROM ghostslate.ssai_stitch_attempts
+    WHERE toDate(attempt_time) = '2026-08-16'
+      AND (attempt_time < toDateTime64('2026-08-16 10:00:00.000', 3, 'UTC')
+        OR attempt_time >= toDateTime64('2026-08-16 12:00:00.000', 3, 'UTC'))
+      AND ssp_id = 'ssp-delta' AND device_class = 'mobile' AND codec = 'h264'
+);

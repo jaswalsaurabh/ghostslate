@@ -2,8 +2,8 @@
 
 The 100M-row baseline is generated inside ClickHouse and is deliberately
 uneventful. This script rewrites a few thousand of those rows so the telemetry
-contains one real incident, two red herrings and a window where nothing is
-wrong — the four cases the investigation is judged on.
+contains two real incident variants, two red herrings and a window where nothing
+is wrong — the five injected conditions the investigation is judged on.
 
     python tools/generator/inject.py            # apply everything not yet applied
     python tools/generator/inject.py --dry-run  # print the SQL instead

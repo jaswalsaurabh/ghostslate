@@ -58,9 +58,10 @@ curl --fail "$SERVICE_URL/api/health"
 ```
 
 The health response must report the service as healthy and show a connected MCP dependency. Then
-run the primary, clean-control, and small-sample scenarios from the UI. Confirm that the primary
-case produces grounded evidence and that the two guardrail cases produce no root cause, loss, or
-remediation.
+run all six scenarios from the UI. Confirm that the primary, latency-isolation, and black-screen
+cases select their measured cohorts and that the clean-control, set-top-box confounder, and
+small-sample cases produce no root cause, loss, or remediation. Both positive visual variants must
+classify the server-mapped frame before finalization.
 
 ## Required production settings
 

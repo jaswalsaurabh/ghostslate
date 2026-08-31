@@ -172,8 +172,8 @@ export function VisionPanel(props: VisionPanelProps) {
         displayed={evidenceAtPlayhead}
         confidence={playerConfidence}
         classifying={props.classifying}
-        onClassify={props.activeCase.manualVisionEnabled ? props.onClassify : undefined}
-        classifyDisabled={!props.activeCase.manualVisionEnabled}
+        onClassify={props.activeCase.visionMode === 'required' ? props.onClassify : undefined}
+        classifyDisabled={props.activeCase.visionMode === 'disabled'}
       />
 
       <div className="mx-5 mt-3 grid grid-cols-3 gap-2" aria-label="Selected frame evidence">

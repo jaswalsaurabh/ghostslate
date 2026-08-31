@@ -22,6 +22,9 @@ import { createErrorHandler } from './middleware/error-handler.js';
 import { securityHeaders } from './middleware/security-headers.js';
 import { createOriginProtection } from './middleware/origin-protection.js';
 import { createRateLimit } from './middleware/rate-limit.js';
+import { ScenarioService } from './services/scenario.service.js';
+import { ScenarioController } from './controllers/scenario.controller.js';
+import { createScenarioRouter } from './routes/scenario.route.js';
 
 export interface AppContext {
   logger: Logger;
@@ -78,6 +81,7 @@ export function createApp({ logger }: AppContext): Express {
   });
 
   const mcpService = new McpClientService();
+  const scenarioService = new ScenarioService();
   const healthService = new HealthService(mcpService);
   const healthController = new HealthController(healthService);
 
@@ -95,10 +99,13 @@ export function createApp({ logger }: AppContext): Express {
   const investigationController = new InvestigationController(
     investigationRunsService,
     remediationService,
+    scenarioService,
   );
 
-  const visionController = new VisionController(visionService);
+  const visionController = new VisionController(visionService, scenarioService);
+  const scenarioController = new ScenarioController(scenarioService);
 
+  app.use('/api', createScenarioRouter(scenarioController));
   app.use('/api', createHealthRouter(healthController));
   app.use('/api', createInvestigationRouter(investigationController));
   app.use('/api', createVisionRouter(visionController));

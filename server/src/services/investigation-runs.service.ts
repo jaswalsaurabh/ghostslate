@@ -18,6 +18,7 @@ export interface InvestigationRun {
 }
 
 export interface InvestigationInput {
+  scenarioId: string;
   prompt: string;
   channel: string;
   from: string;
@@ -35,12 +36,13 @@ export class InvestigationRunsService {
   constructor(private readonly runner: InvestigationRunner) {}
 
   computeRunKey(input: InvestigationInput): string {
+    const scenarioId = input.scenarioId.trim().toLowerCase();
     const channel = input.channel.trim().toLowerCase();
     const from = input.from.trim();
     const to = input.to.trim();
     const prompt = input.prompt.trim().replace(/\s+/g, ' ').toLowerCase();
 
-    const normalized = `${channel}|${from}|${to}|${prompt}`;
+    const normalized = `${scenarioId}|${channel}|${from}|${to}|${prompt}`;
     return createHash('sha256').update(normalized).digest('hex');
   }
 

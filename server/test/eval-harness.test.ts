@@ -25,6 +25,7 @@ interface ExpectedIncident {
   totalAttempts: number;
   unmonetizedImpressions: number;
   unmonetizedPct: number;
+  p95AuctionMs?: number;
   cpmUsd: number;
   expectedLoss: number;
 }
@@ -35,10 +36,13 @@ interface EvalCase {
   from: string;
   to: string;
   canonicalEvidencePath: string | null;
+  frameEvidencePath?: string | null;
+  liveTranscriptPath?: string | null;
   transcriptPath: string | null;
   expected: {
     selectedIncident: ExpectedIncident | null;
     requireVisionConfirmation: boolean;
+    expectedSlateType?: FrameClassification['slate_type'];
   };
 }
 
@@ -128,14 +132,26 @@ function caseEvidence(evalCase: EvalCase): {
   throw new Error(`${evalCase.id} has no evidence source`);
 }
 
+function caseFrame(
+  evalCase: EvalCase,
+  events: InvestigationEvent[] | null,
+): FrameClassification | null {
+  if (events) return capturedFrame(events);
+  if (evalCase.frameEvidencePath) {
+    return readJson(evalCase.frameEvidencePath) as FrameClassification;
+  }
+  return null;
+}
+
 describe('GhostSlate evaluation harness', () => {
   const metrics = new MetricsService();
   const grounding = new GroundingService();
 
-  it('defines the five roadmap cases', () => {
+  it('defines the six roadmap cases', () => {
     expect(evalCases.map((evalCase) => evalCase.id)).toEqual([
       'primary-incident',
       'latency-confounder-isolation',
+      'black-screen-timeout',
       'stb-error-confounder',
       'negative-control',
       'small-sample-guard',
@@ -163,9 +179,22 @@ describe('GhostSlate evaluation harness', () => {
         unmonetizedPct: expected.unmonetizedPct,
         cpmUsd: expected.cpmUsd,
       });
+      if (expected.p95AuctionMs !== undefined) {
+        expect(incident?.p95AuctionMs).toBe(expected.p95AuctionMs);
+      }
       expect(metrics.computeLoss(incident!.unmonetizedImpressions, incident!.cpmUsd!)).toBe(
         expected.expectedLoss,
       );
+    });
+
+    it('requires configured visual evidence for positive visual cases', () => {
+      if (!evalCase.expected.requireVisionConfirmation) return;
+      const frame = caseFrame(evalCase, events);
+      expect(frame).toMatchObject({
+        classification: 'slate',
+        slate_type: evalCase.expected.expectedSlateType ?? expect.any(String),
+        contentHash: expect.any(String),
+      });
     });
 
     it('finishes every captured run successfully within 15 turns', () => {
@@ -177,6 +206,23 @@ describe('GhostSlate evaluation harness', () => {
       expect(finalizations.length).toBeGreaterThan(0);
       expect(finalizations.at(-1)?.data.isError).toBe(false);
       expect(events.find((event) => event.type === 'diagnosis')).toBeDefined();
+    });
+
+    it('preserves complete live evidence for newly captured positive cases', () => {
+      if (!evalCase.liveTranscriptPath) return;
+      const liveEvents = readTranscript(evalCase.liveTranscriptPath);
+      expect(canonicalRowsFromTranscript(evalCase, liveEvents).length).toBeGreaterThan(0);
+      expect(capturedFrame(liveEvents)?.classification).toBe('slate');
+      expect(
+        liveEvents.some(
+          (event) =>
+            event.type === 'tool_result' &&
+            event.data.name === 'run_query' &&
+            event.data.isError === false,
+        ),
+      ).toBe(true);
+      expect(liveEvents.find((event) => event.type === 'diagnosis')).toBeDefined();
+      expect(maximumReasoningTurn(liveEvents)).toBeLessThanOrEqual(15);
     });
   });
 

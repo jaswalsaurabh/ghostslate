@@ -45,7 +45,7 @@ export function BroadcastPlayer({
 }: BroadcastPlayerProps) {
   const isSlate = displayed?.classification === 'slate';
   const styles = displayed ? classificationStyles[displayed.classification] : null;
-  const maximum = duration || 35;
+  const maximum = duration || activeCase.durationSeconds;
   const timelineValue = Math.min(currentTime, maximum);
 
   return (
@@ -137,7 +137,7 @@ export function BroadcastPlayer({
                 aria-hidden="true"
                 className="pointer-events-none absolute top-1/2 left-0 z-content h-1 w-full -translate-y-1/2 rounded-full bg-media-track peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-interactive forced-colors:hidden"
               >
-                {activeCase.sampleSet === 'incident' && (
+                {activeCase.expectedOutcome === 'incident' && (
                   <span className="broadcast-cue-zone absolute h-full bg-status-critical/80" />
                 )}
                 <span

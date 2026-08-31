@@ -335,11 +335,12 @@ domain errors that the HTTP layer maps to status codes in one place.
 
 ### API surface
 
-| Endpoint                 | Method | Purpose                                                       |
-| ------------------------ | ------ | ------------------------------------------------------------- |
-| `/api/health`            | GET    | Service and dependency health                                 |
-| `/api/vision/classify`   | POST   | Classify a sampled frame via Gemini vision                    |
-| `/api/investigate/spike` | POST   | Run an investigation, streaming the agent trace back over SSE |
+| Endpoint                       | Method | Purpose                                                       |
+| ------------------------------ | ------ | ------------------------------------------------------------- |
+| `/api/health`                  | GET    | Service and dependency health                                 |
+| `/api/investigation-scenarios` | GET    | Return the server-owned six-case investigation catalog        |
+| `/api/vision/classify`         | POST   | Classify a scenario-authorized frame via Gemini vision        |
+| `/api/investigate/spike`       | POST   | Run an investigation, streaming the agent trace back over SSE |
 
 ### Data model
 
@@ -401,8 +402,9 @@ Engineering conventions for contributors and coding agents live in [`AGENTS.md`]
 
 Built for the Agentic Cinema hackathon, ClickHouse track. The investigation path, MCP transport,
 Vertex AI vision and reasoning, evidence gates, remediation approval, synthetic data generator,
-evaluation harness, and war-room UI are implemented. The UI includes primary-incident,
-negative-control, and small-sample evidence-guard scenarios. See [`infra/README.md`](infra/README.md)
+evaluation harness, and war-room UI are implemented. A server-owned catalog drives six one-channel
+cases: primary incident, negative control, small-sample guard, latency-confounder isolation,
+set-top-box error rejection, and a black-screen timeout variant. See [`infra/README.md`](infra/README.md)
 for the Cloud Run deployment and smoke-test procedure.
 
 ## Contributing
