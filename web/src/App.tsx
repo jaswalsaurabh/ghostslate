@@ -15,6 +15,7 @@ import { useInvestigationStream } from './hooks/use-investigation-stream.js';
 import { useRemediation } from './hooks/use-remediation.js';
 import { useTheme } from './hooks/use-theme.js';
 import { useVideoPlayer } from './hooks/use-video-player.js';
+import { formatClassificationLabel } from './utils/display-labels.js';
 import { downloadEvidenceJson, downloadEvidenceMarkdown } from './utils/evidence-export.js';
 
 export function App() {
@@ -135,7 +136,7 @@ export function App() {
     });
     if (result) {
       toast.success('Operator sample classified', {
-        description: `Gemini Vision returned ${result.classification.toUpperCase()} for the selected frame.`,
+        description: `Gemini Vision returned ${formatClassificationLabel(result.classification)} for the selected frame.`,
       });
     }
   };

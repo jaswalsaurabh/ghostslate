@@ -145,6 +145,7 @@ mock-*.html
 !SECURITY.md
 !.agent/
 !.agent/design-system.md
+!.agent/text-casing-standard.md
 !eval/
 !eval/README.md
 !infra/

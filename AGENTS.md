@@ -112,6 +112,8 @@ that nothing checks is not an answer key.
 - The war-room view must surface, live: the prompt, each MCP tool call with its actual SQL, rows
   scanned and execution time, the agent's narrowing hypotheses, classified frames, and the final
   grounded diagnosis. Showing real SQL and real timings is the cheapest proof of runtime use.
+- **Text casing is canonical in `.agent/text-casing-standard.md`.** Read it before adding or
+  changing user-visible UI copy, labels, statuses, tooltips, accessibility names, or display values.
 
 ## Complexity budget
 

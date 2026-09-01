@@ -42,8 +42,8 @@ export function StatusIndicator({
 }: StatusIndicatorProps) {
   const appearanceClasses =
     appearance === 'inline'
-      ? 'gap-1.5 font-mono text-forensic-meta uppercase tracking-micro'
-      : 'h-8.5 gap-1.75 rounded-md border px-2.5 font-mono text-compact uppercase tracking-micro select-none';
+      ? 'gap-1.5 font-mono text-forensic-meta tracking-micro'
+      : 'h-8.5 gap-1.75 rounded-md border px-2.5 font-mono text-compact tracking-micro select-none';
 
   return (
     <span

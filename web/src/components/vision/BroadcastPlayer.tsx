@@ -3,6 +3,7 @@ import { Pause, Play, Sparkles } from 'lucide-react';
 import type { InvestigationCaseConfig } from '../../config/investigation-cases.js';
 import type { FrameClassificationData } from '../../types.js';
 import { Button, IconButton } from '../ui/index.js';
+import { formatClassificationLabel } from '../../utils/display-labels.js';
 import { formatTime, formatTimecode } from './BroadcastSampleStrip.js';
 import { classificationStyles } from './classification-styles.js';
 
@@ -97,7 +98,7 @@ export function BroadcastPlayer({
           </b>
           {displayed && (
             <span className="block truncate font-mono text-micro text-media-text-primary sm:text-section">
-              Frame classification: {displayed.classification.toUpperCase()}
+              Frame classification: {formatClassificationLabel(displayed.classification)}
               {isSlate && displayed.slate_type ? ` (${displayed.slate_type})` : ''}
             </span>
           )}

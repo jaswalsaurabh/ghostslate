@@ -184,6 +184,9 @@ export function CaseOverview({
     thresholds,
     visionConfirmed,
   });
+  const eyebrowParts = activeCase.eyebrow.split(' · ');
+  const channelId = eyebrowParts.pop();
+
   return (
     <section
       aria-labelledby="incident-title"
@@ -192,8 +195,9 @@ export function CaseOverview({
       {/* Tier 1: Incident Hero Banner */}
       <div className={`p-5 sm:p-6 ${outcomeBannerBg}`}>
         <div className="flex flex-wrap items-center justify-between gap-3 max-sm:flex-col max-sm:items-start">
-          <div className="font-mono text-forensic-meta font-bold uppercase tracking-eyebrow text-text-muted break-keep whitespace-nowrap max-w-full truncate">
-            {activeCase.eyebrow}
+          <div className="font-mono text-forensic-meta font-bold tracking-eyebrow text-text-muted break-keep whitespace-nowrap max-w-full truncate">
+            <span className="uppercase">{eyebrowParts.join(' · ')}</span>
+            {channelId ? <> · {channelId}</> : null}
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2 max-sm:w-full max-sm:justify-start">
             <Select
@@ -201,7 +205,7 @@ export function CaseOverview({
               options={caseOptions}
               value={activeCase.id}
               onValueChange={onSelectCase}
-              className="font-mono uppercase"
+              className="font-mono"
               layout="inline"
               disabled={investigating}
             />

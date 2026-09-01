@@ -39,13 +39,13 @@ export function Header({
           : 'idle';
   const mobileHealth = (() => {
     if (healthLoading || (!health && !healthError)) {
-      return { label: 'Checking...', tone: 'warning', loading: true } as const;
+      return { label: 'Checking…', tone: 'warning', loading: true } as const;
     }
     if (healthError) {
-      return { label: 'API Issue', tone: 'error', loading: false } as const;
+      return { label: 'API issue', tone: 'error', loading: false } as const;
     }
     if (!mcpConnected) {
-      return { label: 'MCP Error', tone: 'error', loading: false } as const;
+      return { label: 'MCP error', tone: 'error', loading: false } as const;
     }
     return { label: 'API + MCP', tone: 'ready', loading: false } as const;
   })() satisfies { label: string; tone: StatusTone; loading: boolean };

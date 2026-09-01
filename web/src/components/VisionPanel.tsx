@@ -7,6 +7,7 @@ import { BroadcastPlayer } from './vision/BroadcastPlayer.js';
 import { BroadcastSampleStrip } from './vision/BroadcastSampleStrip.js';
 import { VisionClassificationCard } from './vision/VisionClassificationCard.js';
 import { classificationStyles } from './vision/classification-styles.js';
+import { formatClassificationLabel } from '../utils/display-labels.js';
 import { SegmentedControl, Tooltip } from './ui/index.js';
 
 interface VisionPanelProps {
@@ -189,7 +190,7 @@ export function VisionPanel(props: VisionPanelProps) {
           <strong
             className={`min-w-0 truncate font-mono text-section font-bold ${displayedStyles?.text ?? 'text-text-muted'}`}
           >
-            {displayed?.classification.toUpperCase() ?? 'AWAITING'}
+            {displayed ? formatClassificationLabel(displayed.classification) : 'Awaiting'}
           </strong>
         </div>
         <div className="flex min-w-0 items-center gap-2 rounded-inset border border-border-subtle bg-surface-card p-2.5">
