@@ -1,6 +1,7 @@
 [data-theme='light'] {
   /* Surfaces */
-  --color-surface-base: var(--gs-sand-50);
+  --color-surface-base: color-mix(in oklab, var(--gs-neutral-0) 91%, var(--gs-neutral-600) 9%);
+  --color-surface-header: var(--gs-neutral-0);
   --color-surface-panel: var(--gs-neutral-0);
   --color-surface-card: var(--gs-sand-25);
   --color-surface-hover: var(--gs-sand-100);

@@ -51,7 +51,7 @@ export function Header({
   })() satisfies { label: string; tone: StatusTone; loading: boolean };
 
   return (
-    <header className="sticky top-0 z-sticky h-17 border-b border-border-subtle bg-surface-base/88 backdrop-blur-header">
+    <header className="sticky top-0 z-sticky h-17 border-b border-border-subtle bg-surface-header/88 backdrop-blur-header">
       <div className="war-room-shell flex h-full min-w-0 items-center justify-between gap-4 sm:gap-6">
         <div className="min-w-0 shrink-0">
           <img
