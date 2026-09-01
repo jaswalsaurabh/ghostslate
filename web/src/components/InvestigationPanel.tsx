@@ -1,4 +1,4 @@
-import { Database, Play, RotateCw, Sparkles } from 'lucide-react';
+import { Database, Sparkles } from 'lucide-react';
 import type { InvestigationCaseConfig } from '../config/investigation-cases.js';
 import type {
   GroundingReport,
@@ -8,7 +8,7 @@ import type {
 } from '../types.js';
 import { GroundedDiagnosisCard } from './GroundedDiagnosisCard.js';
 import { InvestigationEventItem } from './InvestigationEventItem.js';
-import { Button, SegmentedControl, StatusIndicator } from './ui/index.js';
+import { SegmentedControl, StatusIndicator } from './ui/index.js';
 
 export type TraceFilter = 'all' | 'query' | 'reasoning';
 
@@ -20,7 +20,6 @@ interface InvestigationPanelProps {
   trace: InvestigationTraceEvent[];
   filter: TraceFilter;
   onFilter: (filter: TraceFilter) => void;
-  onRun: () => void;
   finalDiagnosis: string | null;
   grounding?: GroundingReport | undefined;
   evidenceSummary?: InvestigationEvidenceSummary | undefined;
@@ -98,26 +97,6 @@ export function InvestigationPanel(props: InvestigationPanelProps) {
             </p>
           </div>
         </div>
-        <Button
-          onClick={props.onRun}
-          loading={props.investigating}
-          variant="primary"
-          size="sm"
-          className="h-8.5 shrink-0 font-sans tracking-wide max-md:w-full"
-          icon={
-            props.trace.length > 0 ? (
-              <RotateCw aria-hidden="true" className="size-3.5" />
-            ) : (
-              <Play aria-hidden="true" className="size-3.5 fill-current" />
-            )
-          }
-        >
-          {props.investigating
-            ? 'Running investigation'
-            : props.trace.length > 0
-              ? 'Replay investigation'
-              : 'Run investigation'}
-        </Button>
       </div>
 
       <div className="mx-5 mt-4 rounded-inset border border-border-strong bg-reasoning-surface p-3 sm:px-4">

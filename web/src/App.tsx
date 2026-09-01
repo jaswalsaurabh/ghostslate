@@ -163,8 +163,10 @@ export function App() {
           cases={cases}
           metrics={metrics}
           investigating={investigation.investigating}
+          hasRun={investigation.investigationTrace.length > 0}
           visionConfirmed={agentFrame?.classification === 'slate'}
           onSelectCase={selectCase}
+          onRun={runInvestigation}
         />
 
         <div className="war-room-workspace mt-4">
@@ -197,7 +199,6 @@ export function App() {
             trace={investigation.investigationTrace}
             filter={traceFilter}
             onFilter={setTraceFilter}
-            onRun={runInvestigation}
             finalDiagnosis={investigation.finalDiagnosis}
             grounding={investigation.groundingReport}
             evidenceSummary={metrics.evidenceSummary}
