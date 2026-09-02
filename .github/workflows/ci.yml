@@ -86,7 +86,7 @@ jobs:
         run: |
           docker buildx build \
             --platform linux/amd64 \
-            --provenance=true \
+            --provenance=false \
             --file infra/Dockerfile \
             --tag ghostslate:ci \
             --load \
