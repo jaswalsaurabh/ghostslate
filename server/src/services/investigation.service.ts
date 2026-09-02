@@ -404,8 +404,8 @@ Strict Grounding Rules:
             yield emit('tool_result', {
               name: call.name,
               sql:
-                call.name === 'run_query' && typeof call.args?.query === 'string'
-                  ? call.args.query
+                call.name === 'run_query' && typeof outcome.resolvedArgs?.query === 'string'
+                  ? outcome.resolvedArgs.query
                   : undefined,
               result: outcome.resultText,
               isError: outcome.isError,

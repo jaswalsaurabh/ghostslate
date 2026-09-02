@@ -59,6 +59,16 @@ export class McpClientService {
     ).replace(/\/$/, '');
     this.authToken = config?.authToken ?? process.env.CLICKHOUSE_MCP_AUTH_TOKEN;
     this.timeoutMs = config?.timeoutMs || 30000;
+
+    if (process.env.NODE_ENV === 'production') {
+      const parsed = new URL(this.baseUrl);
+      if (parsed.protocol !== 'https:') {
+        throw new Error('MCP_SERVER_URL must use HTTPS in production');
+      }
+      if (!this.authToken || this.authToken.trim().length < 32) {
+        throw new Error('CLICKHOUSE_MCP_AUTH_TOKEN must be a strong secret in production');
+      }
+    }
   }
 
   private getHeaders(): Record<string, string> {
@@ -264,8 +274,10 @@ export class McpClientService {
     };
 
     return new Promise<T>((resolve, reject) => {
+      const requestAbort = new AbortController();
       const timer = setTimeout(() => {
         this.pendingRequests.delete(id);
+        requestAbort.abort();
         reject(
           new ServiceUnavailableError(
             `MCP request '${method}' timed out after ${this.timeoutMs}ms`,
@@ -274,8 +286,14 @@ export class McpClientService {
       }, this.timeoutMs);
 
       this.pendingRequests.set(id, {
-        resolve: resolve as (value: unknown) => void,
-        reject,
+        resolve: (value) => {
+          clearTimeout(timer);
+          resolve(value as T);
+        },
+        reject: (error) => {
+          clearTimeout(timer);
+          reject(error);
+        },
         timer,
       });
 
@@ -290,11 +308,19 @@ export class McpClientService {
         method: 'POST',
         headers,
         body: JSON.stringify(payload),
-      }).catch((err) => {
-        clearTimeout(timer);
-        this.pendingRequests.delete(id);
-        reject(err);
-      });
+        signal: requestAbort.signal,
+      })
+        .then((response) => {
+          if (!response.ok)
+            throw new ServiceUnavailableError(`MCP endpoint returned HTTP ${response.status}`);
+        })
+        .catch((err) => {
+          const pending = this.pendingRequests.get(id);
+          if (pending) {
+            this.pendingRequests.delete(id);
+            pending.reject(err instanceof Error ? err : new Error(String(err)));
+          }
+        });
     });
   }
 
@@ -315,11 +341,15 @@ export class McpClientService {
       headers.Authorization = `Bearer ${this.authToken}`;
     }
 
-    await fetch(postUrl, {
+    const response = await fetch(postUrl, {
       method: 'POST',
       headers,
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(this.timeoutMs),
     });
+    if (!response.ok) {
+      throw new ServiceUnavailableError(`MCP endpoint returned HTTP ${response.status}`);
+    }
   }
 
   async listTools(): Promise<McpToolDefinition[]> {

@@ -25,7 +25,29 @@ const MAX_MODEL_RESULT_ROWS = 50;
 const MAX_TRACE_RESULT_CHARS = 256 * 1_024;
 const MODEL_TRUNCATION_NOTE = `Output truncated to first ${MAX_MODEL_RESULT_ROWS} rows. Use GROUP BY aggregation for full dataset analysis.`;
 const BLOCKED_QUERY_PATTERN =
-  /\b(?:file|hdfs|jdbc|mongodb|mysql|odbc|postgresql|redis|remote|remoteSecure|s3|s3Cluster|url)\s*\(|\b(?:system|information_schema)\s*\.|\bINTO\s+OUTFILE\b/i;
+  /\b(?:file|hdfs|jdbc|mongodb|mysql|odbc|postgresql|redis|remote|remoteSecure|s3|s3Cluster|url|http|https|azureBlobStorage|gcs|iceberg|deltaLake|input|numbers|generateRandom|sleep)\s*\(|\b(?:system|information_schema)\s*\.|\bINTO\s+OUTFILE\b|\b(?:SETTINGS|FORMAT|INSERT|ALTER|TRUNCATE|DROP|CREATE|OPTIMIZE|SYSTEM)\b/i;
+
+const ALLOWED_TABLES = new Set([
+  'ghostslate.scte35_cue_events',
+  'ghostslate.ssai_stitch_attempts',
+  'ghostslate.slate_observations',
+  'ghostslate.advertiser_inventory',
+  'scte35_cue_events',
+  'ssai_stitch_attempts',
+  'slate_observations',
+  'advertiser_inventory',
+]);
+
+function validateTableReferences(query: string): string | undefined {
+  const references = [...query.matchAll(/\b(?:FROM|JOIN)\s+([a-zA-Z0-9_.]+)/gi)].map((match) =>
+    match[1]?.toLowerCase(),
+  );
+  if (references.length === 0) return 'Exploratory SQL must read an approved application table';
+  if (references.some((table) => !table || !ALLOWED_TABLES.has(table))) {
+    return 'Exploratory SQL references a table outside the application allowlist';
+  }
+  return undefined;
+}
 
 function validateExploratoryQuery(value: unknown): string | undefined {
   if (typeof value !== 'string') return 'run_query requires a SQL string';
@@ -40,7 +62,17 @@ function validateExploratoryQuery(value: unknown): string | undefined {
   if (BLOCKED_QUERY_PATTERN.test(query)) {
     return 'Query references a blocked external source or system namespace';
   }
+  if (/--|\/\*/.test(query)) return 'SQL comments are not allowed';
+  const tableError = validateTableReferences(query);
+  if (tableError) return tableError;
   return undefined;
+}
+
+function applyQueryLimits(query: string): string {
+  // The MCP ClickHouse user enforces resource limits in its read-only profile.
+  // Query-level SETTINGS are intentionally not appended: ClickHouse rejects
+  // attempts to override settings when readonly=1.
+  return query;
 }
 
 function traceResult(resultText: string): string {
@@ -124,11 +156,15 @@ export function createInvestigationToolDeclarations(): FunctionDeclaration[] {
     {
       name: 'run_query',
       description:
-        'Execute a read-only SQL query against ClickHouse database for exploratory analysis.',
+        'Execute a validated, read-only SQL query against approved GhostSlate ClickHouse tables. ' +
+        'The server applies row, byte, memory, thread, and execution-time limits.',
       parameters: {
         type: Type.OBJECT,
         properties: {
-          query: { type: Type.STRING, description: 'The ClickHouse SQL query to execute.' },
+          query: {
+            type: Type.STRING,
+            description: 'A read-only query over approved GhostSlate tables.',
+          },
         },
         required: ['query'],
       },
@@ -198,6 +234,7 @@ export class InvestigationToolService {
     if (name === 'run_query') {
       const error = validateExploratoryQuery(args.query);
       if (error) return { modelText: error, resultText: error, isError: true };
+      args = { query: applyQueryLimits(String(args.query).trim()) };
     } else if (name === 'list_tables') {
       args = { database: 'ghostslate' };
     } else {
@@ -214,12 +251,15 @@ export class InvestigationToolService {
       isError: response.isError || false,
       rowsReturned: rowsReturnedFrom(parsed),
       rowsScanned: rowsScannedFrom(parsed) ?? rowsScannedFrom(response),
+      resolvedArgs: args,
     };
   }
 
   private async collectDiagnosisEvidence(context: InvestigationContext): Promise<ToolOutcome> {
     const renderedSql = renderLossAttributionQuery(context);
-    const response = await this.mcpService.callTool('run_query', { query: renderedSql });
+    const response = await this.mcpService.callTool('run_query', {
+      query: applyQueryLimits(renderedSql),
+    });
     const resultText = response.content?.[0]?.text || JSON.stringify(response);
     const parsed = parseJson(resultText);
     const rowsScanned = rowsScannedFrom(parsed) ?? rowsScannedFrom(response);
@@ -229,7 +269,7 @@ export class InvestigationToolService {
         modelText: resultText,
         resultText: traceResult(resultText),
         isError: true,
-        renderedSql,
+        renderedSql: applyQueryLimits(renderedSql),
         rowsScanned,
       };
     }
@@ -250,7 +290,7 @@ export class InvestigationToolService {
         resultText: traceResult(resultText),
         isError: false,
         evidenceRows,
-        renderedSql,
+        renderedSql: applyQueryLimits(renderedSql),
         rowsReturned: evidenceRows.length,
         rowsScanned,
       };
@@ -261,7 +301,7 @@ export class InvestigationToolService {
         modelText: errorText,
         resultText: errorText,
         isError: true,
-        renderedSql,
+        renderedSql: applyQueryLimits(renderedSql),
         rowsScanned,
       };
     }

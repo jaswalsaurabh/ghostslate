@@ -50,6 +50,7 @@ export function useFrameClassification(): UseFrameClassificationResult {
       const response = await fetch('/api/vision/classify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ scenarioId, timestamp }),
         signal: controller.signal,
       });

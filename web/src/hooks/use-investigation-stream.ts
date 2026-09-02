@@ -84,6 +84,7 @@ export function useInvestigationStream(): UseInvestigationStreamResult {
         const response = await fetch('/api/investigate/spike', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify(input),
           signal: controller.signal,
         });
@@ -103,6 +104,7 @@ export function useInvestigationStream(): UseInvestigationStreamResult {
 
         const es = new EventSource(
           `/api/investigate/runs/${encodeURIComponent(currentRunKey)}/stream`,
+          { withCredentials: true },
         );
         eventSourceRef.current = es;
 

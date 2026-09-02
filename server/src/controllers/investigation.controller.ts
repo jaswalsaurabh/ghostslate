@@ -4,6 +4,7 @@ import { InvestigationRunsService } from '../services/investigation-runs.service
 import { RemediationService } from '../services/remediation.service.js';
 import { NotFoundError, ValidationError } from '../errors/domain-error.js';
 import type { ScenarioService } from '../services/scenario.service.js';
+import { getOrSetAnonymousSession } from '../middleware/anonymous-session.js';
 
 export const InvestigateSpikeSchema = z
   .object({
@@ -31,19 +32,23 @@ export class InvestigationController {
 
   investigateSpike = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
+      const session = getOrSetAnonymousSession(req, res);
       const parsed = InvestigateSpikeSchema.safeParse(req.body);
       if (!parsed.success) {
         throw new ValidationError(parsed.error.issues.map((i) => i.message).join(', '));
       }
 
       const scenario = this.scenarioService.require(parsed.data.scenarioId);
-      const { runKey, created } = this.runsService.startOrAttach({
-        scenarioId: scenario.id,
-        prompt: parsed.data.prompt,
-        channel: scenario.channel,
-        from: scenario.from,
-        to: scenario.to,
-      });
+      const { runKey, created } = this.runsService.startOrAttach(
+        {
+          scenarioId: scenario.id,
+          prompt: parsed.data.prompt,
+          channel: scenario.channel,
+          from: scenario.from,
+          to: scenario.to,
+        },
+        session,
+      );
       res.status(200).json({ runKey, created });
     } catch (err: unknown) {
       next(err);
@@ -56,9 +61,10 @@ export class InvestigationController {
     let isClosed = false;
 
     try {
+      const session = getOrSetAnonymousSession(req, res);
       const runKey = parseRunKey(req.params.runKey);
 
-      const run = this.runsService.get(runKey);
+      const run = this.runsService.get(runKey, session);
       if (!run) {
         throw new NotFoundError(`Investigation run not found: ${runKey}`);
       }
@@ -69,7 +75,7 @@ export class InvestigationController {
       res.flushHeaders?.();
       headersFlushed = true;
 
-      const iterator = this.runsService.subscribe(runKey);
+      const iterator = this.runsService.subscribe(runKey, session);
 
       const cleanup = () => {
         if (isClosed) return;
@@ -132,9 +138,10 @@ export class InvestigationController {
 
   getRemediation = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
+      const session = getOrSetAnonymousSession(req, res);
       const runKey = parseRunKey(req.params.runKey);
 
-      const run = this.runsService.get(runKey);
+      const run = this.runsService.get(runKey, session);
       if (!run) {
         throw new NotFoundError(`Investigation run not found: ${runKey}`);
       }
@@ -148,9 +155,10 @@ export class InvestigationController {
 
   approveRemediation = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
+      const session = getOrSetAnonymousSession(req, res);
       const runKey = parseRunKey(req.params.runKey);
 
-      const run = this.runsService.get(runKey);
+      const run = this.runsService.get(runKey, session);
       if (!run) {
         throw new NotFoundError(`Investigation run not found: ${runKey}`);
       }

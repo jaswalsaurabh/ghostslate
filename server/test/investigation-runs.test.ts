@@ -272,6 +272,10 @@ describe('InvestigationRunsService — Run Lifecycle, Generator Driving & Error 
       to: '2026-08-18T02:00:00.000Z',
     });
     expect(keyDifferentScenario).not.toBe(keyCanonical);
+
+    expect(service.computeRunKey(baseInput, 'anonymous-session-a')).not.toBe(
+      service.computeRunKey(baseInput, 'anonymous-session-b'),
+    );
   });
 
   it('7. Replay: subscribing to a completed run yields the full buffered event sequence in order and ends', async () => {

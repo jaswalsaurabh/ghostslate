@@ -18,5 +18,5 @@ def connect() -> Client:
         username=os.environ.get("CLICKHOUSE_ADMIN_USER", "default"),
         password=os.environ.get("CLICKHOUSE_ADMIN_PASSWORD", "ghostslate_admin_local_dev"),
         secure=os.environ.get("CLICKHOUSE_SECURE", "false").lower() == "true",
-        verify=os.environ.get("CLICKHOUSE_VERIFY", "false").lower() == "true",
+        verify=os.environ.get("CLICKHOUSE_VERIFY", "true").lower() == "true",
     )
