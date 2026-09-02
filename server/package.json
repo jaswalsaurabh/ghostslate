@@ -7,11 +7,10 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "eslint src",
+    "lint": "oxlint src",
     "test": "vitest run"
   },
   "dependencies": {
-    "@clickhouse/client": "1.23.1",
     "@google/genai": "2.17.1",
     "express": "5.2.1",
     "pino": "catalog:",
@@ -21,10 +20,8 @@
   "devDependencies": {
     "@types/express": "5.0.6",
     "@types/node": "catalog:",
-    "eslint": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:",
-    "typescript-eslint": "catalog:",
     "vitest": "catalog:"
   }
 }

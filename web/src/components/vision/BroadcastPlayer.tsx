@@ -3,6 +3,7 @@ import { Pause, Play, Sparkles } from 'lucide-react';
 import type { InvestigationCaseConfig } from '../../config/investigation-cases.js';
 import type { FrameClassificationData } from '../../types.js';
 import { Button, IconButton } from '../ui/index.js';
+import { formatClassificationLabel } from '../../utils/display-labels.js';
 import { formatTime, formatTimecode } from './BroadcastSampleStrip.js';
 import { classificationStyles } from './classification-styles.js';
 
@@ -45,7 +46,7 @@ export function BroadcastPlayer({
 }: BroadcastPlayerProps) {
   const isSlate = displayed?.classification === 'slate';
   const styles = displayed ? classificationStyles[displayed.classification] : null;
-  const maximum = duration || 35;
+  const maximum = duration || activeCase.durationSeconds;
   const timelineValue = Math.min(currentTime, maximum);
 
   return (
@@ -97,7 +98,7 @@ export function BroadcastPlayer({
           </b>
           {displayed && (
             <span className="block truncate font-mono text-micro text-media-text-primary sm:text-section">
-              Frame classification: {displayed.classification.toUpperCase()}
+              Frame classification: {formatClassificationLabel(displayed.classification)}
               {isSlate && displayed.slate_type ? ` (${displayed.slate_type})` : ''}
             </span>
           )}
@@ -137,7 +138,7 @@ export function BroadcastPlayer({
                 aria-hidden="true"
                 className="pointer-events-none absolute top-1/2 left-0 z-content h-1 w-full -translate-y-1/2 rounded-full bg-media-track peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-interactive forced-colors:hidden"
               >
-                {activeCase.sampleSet === 'incident' && (
+                {activeCase.expectedOutcome === 'incident' && (
                   <span className="broadcast-cue-zone absolute h-full bg-status-critical/80" />
                 )}
                 <span

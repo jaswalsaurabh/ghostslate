@@ -148,6 +148,12 @@ export class RemediationService {
     created: boolean;
     remediation: EmittedRemediationState;
   } {
+    if (process.env.NODE_ENV === 'production') {
+      throw new ConflictError(
+        'Remediation emission is disabled in unauthenticated production mode',
+      );
+    }
+
     const existing = this.emissions.get(runKey);
     if (existing) {
       return {

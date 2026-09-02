@@ -19,11 +19,9 @@ Build and deploy the single-container service from the repository root. The comm
 credentials in Secret Manager; do not pass ClickHouse or MCP passwords on the command line.
 
 ```bash
-: "${CLICKHOUSE_HOST_SECRET_NAME:?Set the Secret Manager name before deploying}"
-: "${CLICKHOUSE_USER_SECRET_NAME:?Set the Secret Manager name before deploying}"
-: "${CLICKHOUSE_AGENT_PASSWORD_SECRET_NAME:?Set the Secret Manager name before deploying}"
 : "${CLICKHOUSE_MCP_AUTH_TOKEN_SECRET_NAME:?Set the Secret Manager name before deploying}"
 : "${MCP_SERVER_URL_SECRET_NAME:?Set the Secret Manager name before deploying}"
+: "${RUN_KEY_SECRET_NAME:?Set the Secret Manager name before deploying}"
 
 gcloud auth configure-docker REGION-docker.pkg.dev
 gcloud builds submit \
@@ -37,8 +35,11 @@ gcloud run deploy ghostslate \
   --timeout 300 \
   --concurrency 20 \
   --max-instances 3 \
-  --set-env-vars NODE_ENV=production,TRUST_PROXY_HOPS=1,GCP_PROJECT_ID=PROJECT_ID,GCP_REGION=REGION,GEMINI_MODEL=gemini-2.5-flash,CLICKHOUSE_DATABASE=ghostslate,CLICKHOUSE_PORT=8443,CLICKHOUSE_SECURE=true,CLICKHOUSE_MCP_SERVER_TRANSPORT=sse,PORT=8080 \
-  --set-secrets CLICKHOUSE_HOST=${CLICKHOUSE_HOST_SECRET_NAME}:latest,CLICKHOUSE_USER=${CLICKHOUSE_USER_SECRET_NAME}:latest,CLICKHOUSE_AGENT_PASSWORD=${CLICKHOUSE_AGENT_PASSWORD_SECRET_NAME}:latest,CLICKHOUSE_MCP_AUTH_TOKEN=${CLICKHOUSE_MCP_AUTH_TOKEN_SECRET_NAME}:latest,MCP_SERVER_URL=${MCP_SERVER_URL_SECRET_NAME}:latest
+  --ingress internal-and-cloud-load-balancing \
+  --no-default-url \
+  --allow-unauthenticated \
+  --set-env-vars NODE_ENV=production,TRUST_PROXY_HOPS=1,GCP_PROJECT_ID=PROJECT_ID,GCP_REGION=REGION,GEMINI_MODEL=gemini-2.5-flash,CLICKHOUSE_MCP_SERVER_TRANSPORT=sse,REMEDIATION_ENABLED=false,PORT=8080 \
+  --set-secrets CLICKHOUSE_MCP_AUTH_TOKEN=${CLICKHOUSE_MCP_AUTH_TOKEN_SECRET_NAME}:latest,MCP_SERVER_URL=${MCP_SERVER_URL_SECRET_NAME}:latest,RUN_KEY_SECRET=${RUN_KEY_SECRET_NAME}:latest
 ```
 
 Replace `PROJECT_ID`, `REGION`, `TAG`, the Artifact Registry repository, and Secret Manager names
@@ -53,18 +54,19 @@ After deployment, capture the service URL and verify the health endpoint before 
 investigation:
 
 ```bash
-SERVICE_URL="$(gcloud run services describe ghostslate --region REGION --format='value(status.url)')"
-curl --fail "$SERVICE_URL/api/health"
+curl --fail "https://PUBLIC_LOAD_BALANCER_HOST/api/health"
 ```
 
 The health response must report the service as healthy and show a connected MCP dependency. Then
-run the primary, clean-control, and small-sample scenarios from the UI. Confirm that the primary
-case produces grounded evidence and that the two guardrail cases produce no root cause, loss, or
-remediation.
+run all six scenarios from the UI. Confirm that the primary, latency-isolation, and black-screen
+cases select their measured cohorts and that the clean-control, set-top-box confounder, and
+small-sample cases produce no root cause, loss, or remediation. Both positive visual variants must
+classify the server-mapped frame before finalization.
 
 ## Required production settings
 
-- `CLICKHOUSE_HOST`, `CLICKHOUSE_USER`, and `CLICKHOUSE_AGENT_PASSWORD` are runtime secrets.
+- ClickHouse credentials are runtime secrets on the `mcp-clickhouse` service only; the GhostSlate
+  API receives only the MCP endpoint and bearer token.
 - `MCP_SERVER_URL` points to the official SSE `mcp-clickhouse` service.
 - `CLICKHOUSE_MCP_AUTH_TOKEN` is supplied when the deployed MCP server requires authentication.
 - `GCP_PROJECT_ID`, `GCP_REGION`, and `GEMINI_MODEL` select Vertex AI at runtime.
@@ -77,6 +79,8 @@ remediation.
 - Use a dedicated read-only ClickHouse role for the agent and rotate secrets after the demo.
 - Keep `CLICKHOUSE_MCP_AUTH_DISABLED=false`; production MCP traffic requires the Secret
   Manager-provided bearer token.
+- Set `RUN_KEY_SECRET` to a randomly generated value of at least 32 characters. It scopes anonymous
+  idempotency keys to a session and must never be committed.
 
 ## Public edge protection
 

@@ -2,7 +2,13 @@ import React from 'react';
 import { Loader2 } from 'lucide-react';
 
 export type ButtonVariant =
-  'primary' | 'secondary' | 'critical' | 'warning' | 'success' | 'ghost' | 'outline';
+  | 'primary'
+  | 'secondary'
+  | 'critical'
+  | 'warning'
+  | 'success'
+  | 'ghost'
+  | 'outline';
 
 export type ButtonSize = 'sm' | 'md' | 'lg' | 'icon';
 

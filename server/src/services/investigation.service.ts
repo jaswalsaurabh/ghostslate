@@ -131,7 +131,7 @@ Database Context:
 Available tools:
 - \`run_query\`: Execute read-only ClickHouse SQL for exploratory analysis.
 - \`list_tables\`: Inspect available tables.
-- \`classify_frame\`: Inspect video frames at timestamps to classify 'slate', 'ad', or 'content'.
+- \`classify_frame\`: Classify the active scenario's server-selected frame as 'slate', 'ad', or 'content'. It accepts no arguments; the server owns the media source and timestamp.
 - \`collect_diagnosis_evidence\`: Collect authoritative server-rendered telemetry evidence for the investigation window (no arguments).
 - \`finalize_investigation\`: Finalize the investigation and publish the grounded forensic diagnosis (no arguments).
 
@@ -141,7 +141,7 @@ Investigation Procedure (Follow These 5 Sequential Phases):
 2. Phase 2 — Temporal Correlation & Anomaly Detection:
    Use \`run_query\` to correlate SCTE-35 cue events with stitch attempts in the incident window using temporal ASOF matching (e.g. \`FROM ghostslate.ssai_stitch_attempts AS s ASOF LEFT JOIN ghostslate.scte35_cue_events AS c ON s.channel_id = c.channel_id AND s.splice_event_id = c.splice_event_id AND s.attempt_time >= c.cue_time\`). Aggregate across cues at cohort grain using \`GROUP BY s.channel_id, s.ssp_id, s.device_class, s.codec\`, count distinct splice events as \`cues\`, and guard small cohorts with \`HAVING cues >= ${MINIMUM_COHORT_CUES}\`.
 3. Phase 3 — Multi-Dimensional Cohort Isolation & Visual Confirmation:
-   Explore multi-dimensional dimensions (\`channel_id × ssp_id × device_class × codec\`) to check if a specific cohort exhibits anomalous unmonetized rates. If an anomaly is found, call \`classify_frame\` on the stream to visually confirm on-air slate bleed.
+   Explore multi-dimensional dimensions (\`channel_id × ssp_id × device_class × codec\`) to check if a specific cohort exhibits anomalous unmonetized rates. If an anomaly is found, call \`classify_frame\` with no arguments to visually confirm the server-mapped incident frame.
 4. Phase 4 — Evidence Collection:
    Call \`collect_diagnosis_evidence\` (with no arguments) to snapshot the authoritative server-rendered evidence and rate cards for this window.
 5. Phase 5 — Finalization:
@@ -360,9 +360,10 @@ Strict Grounding Rules:
               }
             }
 
+            const resolvedArgs = outcome.resolvedArgs ?? call.args;
             yield emit('frame_classified', {
               name: call.name,
-              args: call.args,
+              args: resolvedArgs,
               durationMs: queryDurationMs,
               latencyMs: queryDurationMs,
               ...outcome.frame,
@@ -403,8 +404,8 @@ Strict Grounding Rules:
             yield emit('tool_result', {
               name: call.name,
               sql:
-                call.name === 'run_query' && typeof call.args?.query === 'string'
-                  ? call.args.query
+                call.name === 'run_query' && typeof outcome.resolvedArgs?.query === 'string'
+                  ? outcome.resolvedArgs.query
                   : undefined,
               result: outcome.resultText,
               isError: outcome.isError,

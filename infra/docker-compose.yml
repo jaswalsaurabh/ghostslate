@@ -62,16 +62,12 @@ services:
     environment:
       - PORT=8080
       - LOG_LEVEL=info
-      - NODE_ENV=production
+      - NODE_ENV=development
       - TRUST_PROXY_HOPS=${TRUST_PROXY_HOPS:-0}
-      - CLICKHOUSE_HOST=${CLICKHOUSE_HOST:-clickhouse}
-      - CLICKHOUSE_PORT=${CLICKHOUSE_PORT:-8123}
-      - CLICKHOUSE_DATABASE=${CLICKHOUSE_DATABASE:-ghostslate}
-      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-ghostslate_agent}
-      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_AGENT_PASSWORD:-ghostslate_agent_local_dev}
       - MCP_SERVER_URL=${MCP_SERVER_URL:-http://mcp-clickhouse:8000}
       - CLICKHOUSE_MCP_AUTH_TOKEN=${CLICKHOUSE_MCP_AUTH_TOKEN:-ghostslate_mcp_local_dev_only}
-      - CLICKHOUSE_MCP_AUTH_DISABLED=${CLICKHOUSE_MCP_AUTH_DISABLED:-false}
+      - RUN_KEY_SECRET=${RUN_KEY_SECRET:-local_run_key_secret_change_me}
+      - REMEDIATION_ENABLED=${REMEDIATION_ENABLED:-false}
       - GCP_PROJECT_ID=${GCP_PROJECT_ID:-}
       - GCP_REGION=${GCP_REGION:-us-central1}
     depends_on:

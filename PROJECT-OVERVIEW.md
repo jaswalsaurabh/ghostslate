@@ -145,7 +145,7 @@ pnpm `catalog:` and referenced by name, so two copies of the same technology can
 | TypeScript | **6.0.3**                   | See note below                                   |
 
 **On TypeScript 7:** 7.0.2 is published and is `latest` on npm — it's the native Go port. But it has
-exactly one stable patch release, and the surrounding toolchain (typed ESLint, Vite plugins, editor
+exactly one stable patch release, and the surrounding toolchain (Oxlint, Vite plugins, editor
 language service) is where a brand-new compiler rewrite bites. On a ten-day budget that is a bad
 trade, so this pins **6.0.3**. Moving to 7 later is a one-line change in the catalog.
 
@@ -179,7 +179,7 @@ which would type against APIs the runtime does not have.
 
 ### Tooling
 
-eslint 10.8.1 · typescript-eslint 8.67.0 · prettier 3.9.6
+oxlint 1.80.0 · oxfmt 0.65.0
 
 ### Python (`tools/generator/` only)
 

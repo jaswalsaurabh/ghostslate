@@ -13,6 +13,7 @@ export interface HealthStatus {
 
 export class HealthService {
   private readonly startTime = Date.now();
+  private mcpCheck: { checkedAt: number; connected: boolean; latencyMs?: number } | null = null;
 
   constructor(private readonly mcpService?: McpClientService) {}
 
@@ -20,16 +21,22 @@ export class HealthService {
     let mcpStatus: { connected: boolean; latencyMs?: number } | undefined = undefined;
 
     if (this.mcpService) {
-      const t0 = Date.now();
-      try {
-        await this.mcpService.listTools();
+      if (this.mcpCheck && Date.now() - this.mcpCheck.checkedAt < 15_000) {
         mcpStatus = {
-          connected: true,
-          latencyMs: Date.now() - t0,
+          connected: this.mcpCheck.connected,
+          ...(this.mcpCheck.latencyMs !== undefined ? { latencyMs: this.mcpCheck.latencyMs } : {}),
         };
-      } catch {
+      } else {
+        const t0 = Date.now();
+        try {
+          await this.mcpService.listTools();
+          this.mcpCheck = { checkedAt: Date.now(), connected: true, latencyMs: Date.now() - t0 };
+        } catch {
+          this.mcpCheck = { checkedAt: Date.now(), connected: false };
+        }
         mcpStatus = {
-          connected: false,
+          connected: this.mcpCheck.connected,
+          ...(this.mcpCheck.latencyMs !== undefined ? { latencyMs: this.mcpCheck.latencyMs } : {}),
         };
       }
     }

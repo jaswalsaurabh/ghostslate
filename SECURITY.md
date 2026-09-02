@@ -12,7 +12,8 @@ store browser credentials, or execute remediation against production ad infrastr
 - JSON bodies are capped at 16 KB. Prompts, investigation windows, channel IDs, run keys, media
   filenames, and timestamps have explicit schema bounds.
 - Unsafe browser requests require JSON and pass same-origin / allowlisted-origin and Fetch Metadata
-  checks. No cookies or ambient browser credentials are used.
+  checks. The API issues only a random, HttpOnly, SameSite session cookie used to scope anonymous
+  idempotency keys; no service credentials are present in the browser.
 - CSP, anti-framing, MIME-sniffing, referrer, permissions, HSTS, cross-origin isolation, and
   no-store API headers are applied centrally. React renders model and database text as escaped text;
   there is no raw HTML rendering sink.
@@ -22,7 +23,8 @@ store browser credentials, or execute remediation against production ad infrastr
 - Media access accepts only simple server-owned MP4 filenames and verifies the resolved path stays
   inside the media directory. Browser uploads and user-selected filesystem paths are unsupported.
 - Investigation and vision caches are bounded. Public error responses do not include upstream
-  service details. Tool traces are row- and size-limited before being retained or streamed.
+  service details. Tool traces are row- and size-limited before being retained or streamed. Active
+  investigations, subscribers, event counts, event sizes, and run duration are capped.
 - Secrets remain in server environment variables / Secret Manager. CI scans tracked files for
   credentials, CodeQL runs extended security queries, and dependency review blocks new high-severity
   advisories.

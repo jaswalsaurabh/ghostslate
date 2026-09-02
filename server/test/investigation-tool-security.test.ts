@@ -26,12 +26,29 @@ describe('InvestigationToolService security boundary', () => {
     "SELECT * FROM url('http://metadata.google.internal')",
     'SELECT * FROM system.users',
     "SELECT 1 INTO OUTFILE '/tmp/result'",
+    'SELECT * FROM numbers(1000000000000)',
+    'SELECT * FROM ghostslate_eval.injected_incidents',
+    'SELECT sleep(10) FROM ssai_stitch_attempts',
   ])('rejects unsafe exploratory SQL before MCP: %s', async (query) => {
     const { service, callTool } = createToolService();
     const outcome = await service.execute('run_query', { query }, context);
 
     expect(outcome.isError).toBe(true);
     expect(callTool).not.toHaveBeenCalled();
+  });
+
+  it('preserves approved queries for the read-only ClickHouse profile', async () => {
+    const { service, callTool } = createToolService();
+    const outcome = await service.execute(
+      'run_query',
+      { query: 'SELECT channel_id FROM ghostslate.ssai_stitch_attempts LIMIT 10' },
+      context,
+    );
+
+    expect(outcome.isError).toBe(false);
+    expect(callTool).toHaveBeenCalledWith('run_query', {
+      query: 'SELECT channel_id FROM ghostslate.ssai_stitch_attempts LIMIT 10',
+    });
   });
 
   it('pins schema discovery to the application database', async () => {

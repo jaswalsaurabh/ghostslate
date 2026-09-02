@@ -1,5 +1,6 @@
 import { BadgeCheck, RefreshCw } from 'lucide-react';
 import type { FrameClassificationData } from '../../types.js';
+import { formatClassificationLabel } from '../../utils/display-labels.js';
 import { Button, Tooltip } from '../ui/index.js';
 import { classificationStyles } from './classification-styles.js';
 
@@ -66,7 +67,7 @@ export function VisionClassificationCard({
     ? displayed.slate_type
       ? `Slate · ${displayed.slate_type.replaceAll('_', ' ')}`
       : 'Slate'
-    : displayed.classification;
+    : formatClassificationLabel(displayed.classification);
 
   return (
     <article className={`mx-5 mb-3 rounded-inset border p-4 ${styles.surface}`}>
@@ -95,9 +96,9 @@ export function VisionClassificationCard({
               <span>{confidence}</span>
             </span>
           </Tooltip>
-          <Tooltip content="Re-classify this frame" placement="top">
+          <Tooltip content="Reclassify this frame" placement="top">
             <Button
-              aria-label="Re-classify this frame"
+              aria-label="Reclassify this frame"
               variant="warning"
               size="sm"
               loading={classifying}

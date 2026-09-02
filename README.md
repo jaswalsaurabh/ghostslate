@@ -158,7 +158,7 @@ and attribution; the server renders the result into a grounded diagnosis.
 | Technology                                   | Role                                                                                                                       |
 | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | **Vitest**                                   | One test runner for both packages, version shared via catalog                                                              |
-| **ESLint + Prettier + Husky**                | Lint and format, enforced pre-commit via lint-staged                                                                       |
+| **Oxlint + Oxfmt + Husky**                   | Fast linting and formatting, enforced pre-commit via lint-staged                                                           |
 | **Docker Compose**                           | Local development — ClickHouse, MCP server and app in one command                                                          |
 | **Google Cloud Run**                         | Deployment target. One container serves the built UI _and_ the API                                                         |
 | **Python 3** (`clickhouse-connect`, `faker`) | Anomaly injection only. The bulk synthetic baseline is generated inside ClickHouse with `INSERT ... SELECT FROM numbers()` |
@@ -335,11 +335,12 @@ domain errors that the HTTP layer maps to status codes in one place.
 
 ### API surface
 
-| Endpoint                 | Method | Purpose                                                       |
-| ------------------------ | ------ | ------------------------------------------------------------- |
-| `/api/health`            | GET    | Service and dependency health                                 |
-| `/api/vision/classify`   | POST   | Classify a sampled frame via Gemini vision                    |
-| `/api/investigate/spike` | POST   | Run an investigation, streaming the agent trace back over SSE |
+| Endpoint                       | Method | Purpose                                                       |
+| ------------------------------ | ------ | ------------------------------------------------------------- |
+| `/api/health`                  | GET    | Service and dependency health                                 |
+| `/api/investigation-scenarios` | GET    | Return the server-owned six-case investigation catalog        |
+| `/api/vision/classify`         | POST   | Classify a scenario-authorized frame via Gemini vision        |
+| `/api/investigate/spike`       | POST   | Run an investigation, streaming the agent trace back over SSE |
 
 ### Data model
 
@@ -382,6 +383,7 @@ pnpm test           # vitest across the workspace
 pnpm typecheck
 pnpm lint           # pnpm lint:fix to autofix
 pnpm format
+pnpm format:check
 pnpm dedupe:check
 ```
 
@@ -401,8 +403,9 @@ Engineering conventions for contributors and coding agents live in [`AGENTS.md`]
 
 Built for the Agentic Cinema hackathon, ClickHouse track. The investigation path, MCP transport,
 Vertex AI vision and reasoning, evidence gates, remediation approval, synthetic data generator,
-evaluation harness, and war-room UI are implemented. The UI includes primary-incident,
-negative-control, and small-sample evidence-guard scenarios. See [`infra/README.md`](infra/README.md)
+evaluation harness, and war-room UI are implemented. A server-owned catalog drives six one-channel
+cases: primary incident, negative control, small-sample guard, latency-confounder isolation,
+set-top-box error rejection, and a black-screen timeout variant. See [`infra/README.md`](infra/README.md)
 for the Cloud Run deployment and smoke-test procedure.
 
 ## Contributing

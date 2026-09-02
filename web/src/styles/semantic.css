@@ -1,6 +1,7 @@
 @theme static {
   /* Surfaces */
   --color-surface-base: var(--gs-ocean-950);
+  --color-surface-header: var(--gs-neutral-950);
   --color-surface-panel: var(--gs-neutral-900);
   --color-surface-card: var(--gs-neutral-800);
   --color-surface-hover: var(--gs-neutral-750);

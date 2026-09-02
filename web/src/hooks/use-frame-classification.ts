@@ -3,7 +3,7 @@ import { decodeVisionResponse, getApiErrorMessage } from '../api/index.js';
 import type { FrameClassificationData } from '../types.js';
 
 export interface FrameClassificationInput {
-  video: string;
+  scenarioId: string;
   timestamp: number;
 }
 
@@ -39,7 +39,7 @@ export function useFrameClassification(): UseFrameClassificationResult {
     [],
   );
 
-  const classify = useCallback(async ({ video, timestamp }: FrameClassificationInput) => {
+  const classify = useCallback(async ({ scenarioId, timestamp }: FrameClassificationInput) => {
     requestRef.current?.abort();
     const controller = new AbortController();
     requestRef.current = controller;
@@ -50,7 +50,8 @@ export function useFrameClassification(): UseFrameClassificationResult {
       const response = await fetch('/api/vision/classify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ video, timestamp }),
+        credentials: 'include',
+        body: JSON.stringify({ scenarioId, timestamp }),
         signal: controller.signal,
       });
       if (!response.ok) {

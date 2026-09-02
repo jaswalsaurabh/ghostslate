@@ -2,22 +2,18 @@
   "name": "ghostslate",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@11.22.0",
-  "engines": {
-    "node": ">=24.19.0 <25",
-    "pnpm": ">=11.22.0"
-  },
   "scripts": {
     "dev": "pnpm --parallel --filter ./web --filter ./server dev",
     "build": "pnpm --filter ./server build && pnpm --filter ./web build",
     "start": "pnpm --filter ./server start",
     "typecheck": "tsc --noEmit && pnpm -r typecheck",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint . --fix",
     "check:lines": "tsx scripts/check-line-limits.ts",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "test": "pnpm -r test",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "test": "pnpm -r test && pnpm test:design-tokens",
+    "test:design-tokens": "vitest run scripts/design-token-plugin.test.ts",
     "dedupe:check": "pnpm dedupe --check",
     "deps:why": "pnpm why -r",
     "deps:outdated": "pnpm -r outdated",
@@ -25,21 +21,26 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "eslint": "catalog:",
     "husky": "catalog:",
     "lint-staged": "catalog:",
-    "prettier": "catalog:",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:",
-    "typescript-eslint": "catalog:"
+    "vitest": "catalog:"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx,mjs,cjs}": [
-      "eslint --fix",
-      "prettier --write"
+      "oxlint --fix",
+      "oxfmt --write"
     ],
     "*.{json,yaml,yml,md,css,html}": [
-      "prettier --write"
+      "oxfmt --write"
     ]
-  }
+  },
+  "engines": {
+    "node": ">=24.19.0 <25",
+    "pnpm": ">=11.22.0"
+  },
+  "packageManager": "pnpm@11.22.0"
 }

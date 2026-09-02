@@ -3,12 +3,13 @@ import { ForbiddenError, UnsupportedMediaTypeError } from '../errors/domain-erro
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
-function configuredOrigins(): Set<string> {
-  return new Set(
+function configuredOrigins(): Map<string, string> {
+  return new Map(
     (process.env.ALLOWED_ORIGINS ?? '')
       .split(',')
       .map((origin) => origin.trim())
-      .filter(Boolean),
+      .filter((origin) => origin && isValidWebOrigin(origin))
+      .map((origin) => [origin, origin]),
   );
 }
 
@@ -40,16 +41,17 @@ export function createOriginProtection(): RequestHandler {
     }
 
     if (origin) {
-      const allowed =
-        isValidWebOrigin(origin) && (origin === requestOrigin(req) || allowlist.has(origin));
-      if (!allowed) {
+      const sameOrigin = requestOrigin(req);
+      const allowedOrigin = origin === sameOrigin ? sameOrigin : allowlist.get(origin);
+      if (!isValidWebOrigin(origin) || !allowedOrigin) {
         next(new ForbiddenError('Request origin is not allowed'));
         return;
       }
 
-      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
       res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, POST, OPTIONS');
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
       res.setHeader('Access-Control-Max-Age', '600');
       res.vary('Origin');
     }

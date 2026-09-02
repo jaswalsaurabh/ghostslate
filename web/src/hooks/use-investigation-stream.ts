@@ -14,12 +14,7 @@ export interface UseInvestigationStreamResult {
   investigationTrace: InvestigationTraceEvent[];
   finalDiagnosis: string | null;
   groundingReport: GroundingReport | undefined;
-  startInvestigation: (input: {
-    prompt: string;
-    channel: string;
-    from: string;
-    to: string;
-  }) => Promise<void>;
+  startInvestigation: (input: { scenarioId: string; prompt: string }) => Promise<void>;
   resetInvestigation: () => void;
 }
 
@@ -64,7 +59,7 @@ export function useInvestigationStream(): UseInvestigationStreamResult {
   }, [closeStream]);
 
   const startInvestigation = useCallback(
-    async (input: { prompt: string; channel: string; from: string; to: string }) => {
+    async (input: { scenarioId: string; prompt: string }) => {
       closeStream();
       const controller = new AbortController();
       startAbortControllerRef.current = controller;
@@ -89,6 +84,7 @@ export function useInvestigationStream(): UseInvestigationStreamResult {
         const response = await fetch('/api/investigate/spike', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify(input),
           signal: controller.signal,
         });
@@ -108,6 +104,7 @@ export function useInvestigationStream(): UseInvestigationStreamResult {
 
         const es = new EventSource(
           `/api/investigate/runs/${encodeURIComponent(currentRunKey)}/stream`,
+          { withCredentials: true },
         );
         eventSourceRef.current = es;
 

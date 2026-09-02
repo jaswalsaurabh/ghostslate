@@ -12,6 +12,7 @@ import type { GroundingReport } from '../src/services/grounding.service.js';
 
 describe('InvestigationRunsService — Run Lifecycle, Generator Driving & Error Safety', () => {
   const baseInput: InvestigationInput = {
+    scenarioId: 'primary',
     prompt: 'Investigate ad stitch performance and latency metrics across SSPs for channel ch-01.',
     channel: 'ch-01',
     from: '2026-08-14T19:00:00.000Z',
@@ -217,6 +218,7 @@ describe('InvestigationRunsService — Run Lifecycle, Generator Driving & Error 
 
   it('6. Normalisation: whitespace, internal runs, and casing collapse to the same key; channel/window differ', () => {
     const dummyRunner: InvestigationRunner = async function* () {
+      yield* [];
       return {
         diagnosis: '',
         steps: [],
@@ -227,6 +229,7 @@ describe('InvestigationRunsService — Run Lifecycle, Generator Driving & Error 
     const service = new InvestigationRunsService(dummyRunner);
 
     const keyCanonical = service.computeRunKey({
+      scenarioId: 'primary',
       prompt: 'Vision classifier detected a SLATE BLEED on channel ch-01',
       channel: 'ch-01',
       from: '2026-08-18T00:00:00.000Z',
@@ -234,6 +237,7 @@ describe('InvestigationRunsService — Run Lifecycle, Generator Driving & Error 
     });
 
     const keyMessyWhitespaceAndCase = service.computeRunKey({
+      scenarioId: '  PRIMARY  ',
       prompt: '   vision   classifier   detected   a   slate   bleed   on   channel   ch-01   ',
       channel: '  CH-01  ',
       from: ' 2026-08-18T00:00:00.000Z ',
@@ -243,6 +247,7 @@ describe('InvestigationRunsService — Run Lifecycle, Generator Driving & Error 
     expect(keyMessyWhitespaceAndCase).toBe(keyCanonical);
 
     const keyDifferentChannel = service.computeRunKey({
+      scenarioId: 'primary',
       prompt: 'Vision classifier detected a SLATE BLEED on channel ch-01',
       channel: 'ch-02',
       from: '2026-08-18T00:00:00.000Z',
@@ -251,12 +256,26 @@ describe('InvestigationRunsService — Run Lifecycle, Generator Driving & Error 
     expect(keyDifferentChannel).not.toBe(keyCanonical);
 
     const keyDifferentWindow = service.computeRunKey({
+      scenarioId: 'primary',
       prompt: 'Vision classifier detected a SLATE BLEED on channel ch-01',
       channel: 'ch-01',
       from: '2026-08-17T00:00:00.000Z',
       to: '2026-08-17T02:00:00.000Z',
     });
     expect(keyDifferentWindow).not.toBe(keyCanonical);
+
+    const keyDifferentScenario = service.computeRunKey({
+      scenarioId: 'latency-confounder-isolation',
+      prompt: 'Vision classifier detected a SLATE BLEED on channel ch-01',
+      channel: 'ch-01',
+      from: '2026-08-18T00:00:00.000Z',
+      to: '2026-08-18T02:00:00.000Z',
+    });
+    expect(keyDifferentScenario).not.toBe(keyCanonical);
+
+    expect(service.computeRunKey(baseInput, 'anonymous-session-a')).not.toBe(
+      service.computeRunKey(baseInput, 'anonymous-session-b'),
+    );
   });
 
   it('7. Replay: subscribing to a completed run yields the full buffered event sequence in order and ends', async () => {

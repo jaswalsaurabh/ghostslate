@@ -7,7 +7,7 @@ import {
   type DiagnosisRow,
   type InvestigationContext,
 } from './evidence.helper.js';
-import { getPermittedMediaMapping, PRIMARY_INCIDENT_MEDIA_MAPPING } from './incident.constants.js';
+import { ScenarioService } from './scenario.service.js';
 
 export interface ToolOutcome {
   modelText: string;
@@ -18,13 +18,36 @@ export interface ToolOutcome {
   renderedSql?: string;
   rowsReturned?: number | undefined;
   rowsScanned?: number | undefined;
+  resolvedArgs?: Record<string, unknown> | undefined;
 }
 
 const MAX_MODEL_RESULT_ROWS = 50;
 const MAX_TRACE_RESULT_CHARS = 256 * 1_024;
 const MODEL_TRUNCATION_NOTE = `Output truncated to first ${MAX_MODEL_RESULT_ROWS} rows. Use GROUP BY aggregation for full dataset analysis.`;
 const BLOCKED_QUERY_PATTERN =
-  /\b(?:file|hdfs|jdbc|mongodb|mysql|odbc|postgresql|redis|remote|remoteSecure|s3|s3Cluster|url)\s*\(|\b(?:system|information_schema)\s*\.|\bINTO\s+OUTFILE\b/i;
+  /\b(?:file|hdfs|jdbc|mongodb|mysql|odbc|postgresql|redis|remote|remoteSecure|s3|s3Cluster|url|http|https|azureBlobStorage|gcs|iceberg|deltaLake|input|numbers|generateRandom|sleep)\s*\(|\b(?:system|information_schema)\s*\.|\bINTO\s+OUTFILE\b|\b(?:SETTINGS|FORMAT|INSERT|ALTER|TRUNCATE|DROP|CREATE|OPTIMIZE|SYSTEM)\b/i;
+
+const ALLOWED_TABLES = new Set([
+  'ghostslate.scte35_cue_events',
+  'ghostslate.ssai_stitch_attempts',
+  'ghostslate.slate_observations',
+  'ghostslate.advertiser_inventory',
+  'scte35_cue_events',
+  'ssai_stitch_attempts',
+  'slate_observations',
+  'advertiser_inventory',
+]);
+
+function validateTableReferences(query: string): string | undefined {
+  const references = [...query.matchAll(/\b(?:FROM|JOIN)\s+([a-zA-Z0-9_.]+)/gi)].map((match) =>
+    match[1]?.toLowerCase(),
+  );
+  if (references.length === 0) return 'Exploratory SQL must read an approved application table';
+  if (references.some((table) => !table || !ALLOWED_TABLES.has(table))) {
+    return 'Exploratory SQL references a table outside the application allowlist';
+  }
+  return undefined;
+}
 
 function validateExploratoryQuery(value: unknown): string | undefined {
   if (typeof value !== 'string') return 'run_query requires a SQL string';
@@ -39,7 +62,17 @@ function validateExploratoryQuery(value: unknown): string | undefined {
   if (BLOCKED_QUERY_PATTERN.test(query)) {
     return 'Query references a blocked external source or system namespace';
   }
+  if (/--|\/\*/.test(query)) return 'SQL comments are not allowed';
+  const tableError = validateTableReferences(query);
+  if (tableError) return tableError;
   return undefined;
+}
+
+function applyQueryLimits(query: string): string {
+  // The MCP ClickHouse user enforces resource limits in its read-only profile.
+  // Query-level SETTINGS are intentionally not appended: ClickHouse rejects
+  // attempts to override settings when readonly=1.
+  return query;
 }
 
 function traceResult(resultText: string): string {
@@ -47,13 +80,6 @@ function traceResult(resultText: string): string {
   if (rowLimited.length <= MAX_TRACE_RESULT_CHARS) return rowLimited;
   return `${rowLimited.slice(0, MAX_TRACE_RESULT_CHARS)}\n[trace output truncated]`;
 }
-
-export const INSPECTABLE_MEDIA_DURATIONS_SECONDS = {
-  [PRIMARY_INCIDENT_MEDIA_MAPPING.permittedMediaFile]:
-    PRIMARY_INCIDENT_MEDIA_MAPPING.maxTimestampSeconds,
-  'ad.mp4': 15,
-  'content.mp4': 10,
-} as const;
 
 function parseJson(resultText: string): unknown {
   try {
@@ -130,11 +156,15 @@ export function createInvestigationToolDeclarations(): FunctionDeclaration[] {
     {
       name: 'run_query',
       description:
-        'Execute a read-only SQL query against ClickHouse database for exploratory analysis.',
+        'Execute a validated, read-only SQL query against approved GhostSlate ClickHouse tables. ' +
+        'The server applies row, byte, memory, thread, and execution-time limits.',
       parameters: {
         type: Type.OBJECT,
         properties: {
-          query: { type: Type.STRING, description: 'The ClickHouse SQL query to execute.' },
+          query: {
+            type: Type.STRING,
+            description: 'A read-only query over approved GhostSlate tables.',
+          },
         },
         required: ['query'],
       },
@@ -153,23 +183,10 @@ export function createInvestigationToolDeclarations(): FunctionDeclaration[] {
     {
       name: 'classify_frame',
       description:
-        'Inspect the actual video frame at a given timestamp and classify what is on screen as ' +
-        '"slate", "ad", or "content". Use this to confirm visually whether an ad break bled filler ' +
-        'slate to air. Returns classification, confidence, slate type, detected text, and visual summary.',
-      parameters: {
-        type: Type.OBJECT,
-        properties: {
-          video_file: {
-            type: Type.STRING,
-            description: `The demo stream to inspect for this incident (e.g. ${PRIMARY_INCIDENT_MEDIA_MAPPING.permittedMediaFile}).`,
-          },
-          timestamp_seconds: {
-            type: Type.NUMBER,
-            description: `Offset into the synthetic demo stream, in seconds. Must be >= 0 and strictly less than media clip duration (${PRIMARY_INCIDENT_MEDIA_MAPPING.permittedMediaFile}: ${PRIMARY_INCIDENT_MEDIA_MAPPING.maxTimestampSeconds}s).`,
-          },
-        },
-        required: ['video_file', 'timestamp_seconds'],
-      },
+        'Classify the active scenario\'s server-selected video frame as "slate", "ad", or ' +
+        '"content". Accepts no arguments; the model cannot select a file or timestamp. Returns ' +
+        'classification, confidence, slate type, detected text, and visual summary.',
+      parameters: { type: Type.OBJECT, properties: {} },
     },
     {
       name: 'collect_diagnosis_evidence',
@@ -192,6 +209,7 @@ export class InvestigationToolService {
   constructor(
     private readonly mcpService: McpClientService,
     private readonly visionService: VisionService,
+    private readonly scenarioService: ScenarioService = new ScenarioService(),
   ) {}
 
   async execute(
@@ -216,6 +234,7 @@ export class InvestigationToolService {
     if (name === 'run_query') {
       const error = validateExploratoryQuery(args.query);
       if (error) return { modelText: error, resultText: error, isError: true };
+      args = { query: applyQueryLimits(String(args.query).trim()) };
     } else if (name === 'list_tables') {
       args = { database: 'ghostslate' };
     } else {
@@ -232,12 +251,15 @@ export class InvestigationToolService {
       isError: response.isError || false,
       rowsReturned: rowsReturnedFrom(parsed),
       rowsScanned: rowsScannedFrom(parsed) ?? rowsScannedFrom(response),
+      resolvedArgs: args,
     };
   }
 
   private async collectDiagnosisEvidence(context: InvestigationContext): Promise<ToolOutcome> {
     const renderedSql = renderLossAttributionQuery(context);
-    const response = await this.mcpService.callTool('run_query', { query: renderedSql });
+    const response = await this.mcpService.callTool('run_query', {
+      query: applyQueryLimits(renderedSql),
+    });
     const resultText = response.content?.[0]?.text || JSON.stringify(response);
     const parsed = parseJson(resultText);
     const rowsScanned = rowsScannedFrom(parsed) ?? rowsScannedFrom(response);
@@ -247,7 +269,7 @@ export class InvestigationToolService {
         modelText: resultText,
         resultText: traceResult(resultText),
         isError: true,
-        renderedSql,
+        renderedSql: applyQueryLimits(renderedSql),
         rowsScanned,
       };
     }
@@ -268,7 +290,7 @@ export class InvestigationToolService {
         resultText: traceResult(resultText),
         isError: false,
         evidenceRows,
-        renderedSql,
+        renderedSql: applyQueryLimits(renderedSql),
         rowsReturned: evidenceRows.length,
         rowsScanned,
       };
@@ -279,39 +301,28 @@ export class InvestigationToolService {
         modelText: errorText,
         resultText: errorText,
         isError: true,
-        renderedSql,
+        renderedSql: applyQueryLimits(renderedSql),
         rowsScanned,
       };
     }
   }
 
   private async classifyFrame(
-    args: Record<string, unknown>,
+    _args: Record<string, unknown>,
     context: InvestigationContext,
   ): Promise<ToolOutcome> {
-    const mapping = getPermittedMediaMapping(context);
-    if (!mapping) {
+    const scenario = this.scenarioService.findByContext(context);
+    if (!scenario) {
       const errorText = `No synthetic stream media is mapped to investigation window ${context.from} to ${context.to} for channel ${context.channel}. Visual confirmation is only available for mapped incident windows.`;
       return { modelText: errorText, resultText: errorText, isError: true };
     }
-
-    const videoFile = String(args.video_file ?? '');
-    if (videoFile !== mapping.permittedMediaFile) {
-      const errorText = `Media file "${videoFile}" is not mapped to the active incident context. Permitted media for this investigation is "${mapping.permittedMediaFile}".`;
+    if (scenario.visionMode === 'disabled' || scenario.agentSampleTimestampSeconds === null) {
+      const errorText = `Visual confirmation is disabled for scenario "${scenario.id}".`;
       return { modelText: errorText, resultText: errorText, isError: true };
     }
 
-    const timestamp = Number(args.timestamp_seconds);
-    if (
-      !Number.isFinite(timestamp) ||
-      timestamp < mapping.minTimestampSeconds ||
-      timestamp >= mapping.maxTimestampSeconds
-    ) {
-      const errorText = `Invalid timestamp_seconds "${String(args.timestamp_seconds)}" for ${mapping.permittedMediaFile}. Provide a number >= ${mapping.minTimestampSeconds} and strictly less than ${mapping.maxTimestampSeconds}.`;
-      return { modelText: errorText, resultText: errorText, isError: true };
-    }
-
-    const frame = await this.visionService.classifyVideoTimestamp(videoFile, timestamp);
+    const timestamp = scenario.agentSampleTimestampSeconds;
+    const frame = await this.visionService.classifyVideoTimestamp(scenario.videoFile, timestamp);
     if (
       !['slate', 'ad', 'content'].includes(frame.classification) ||
       (frame.slate_type !== null &&
@@ -326,6 +337,16 @@ export class InvestigationToolService {
     const normalizedFrame = { ...frame, timestampSeconds: timestamp };
     const { frameBase64: _frameBase64, ...modelFacing } = normalizedFrame;
     const modelText = JSON.stringify(modelFacing);
-    return { modelText, resultText: modelText, isError: false, frame: normalizedFrame };
+    return {
+      modelText,
+      resultText: modelText,
+      isError: false,
+      frame: normalizedFrame,
+      resolvedArgs: {
+        scenario_id: scenario.id,
+        video_file: scenario.videoFile,
+        timestamp_seconds: timestamp,
+      },
+    };
   }
 }

@@ -1,0 +1,10 @@
+{
+  "classification": "slate",
+  "confidence": 1,
+  "slate_type": "black_screen",
+  "text_detected": "",
+  "visual_summary": "The entire image is a black screen.",
+  "contentHash": "0c9804705dd43da3401cd2b008dec11199731d1c3f52887b81a686d9cc5fed7f",
+  "cached": false,
+  "timestampSeconds": 12.5
+}

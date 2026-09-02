@@ -39,19 +39,19 @@ export function Header({
           : 'idle';
   const mobileHealth = (() => {
     if (healthLoading || (!health && !healthError)) {
-      return { label: 'Checking...', tone: 'warning', loading: true } as const;
+      return { label: 'Checking…', tone: 'warning', loading: true } as const;
     }
     if (healthError) {
-      return { label: 'API Issue', tone: 'error', loading: false } as const;
+      return { label: 'API issue', tone: 'error', loading: false } as const;
     }
     if (!mcpConnected) {
-      return { label: 'MCP Error', tone: 'error', loading: false } as const;
+      return { label: 'MCP error', tone: 'error', loading: false } as const;
     }
     return { label: 'API + MCP', tone: 'ready', loading: false } as const;
   })() satisfies { label: string; tone: StatusTone; loading: boolean };
 
   return (
-    <header className="sticky top-0 z-sticky h-17 border-b border-border-subtle bg-surface-base/88 backdrop-blur-header">
+    <header className="sticky top-0 z-sticky h-17 border-b border-border-subtle bg-surface-header/88 backdrop-blur-header">
       <div className="war-room-shell flex h-full min-w-0 items-center justify-between gap-4 sm:gap-6">
         <div className="min-w-0 shrink-0">
           <img

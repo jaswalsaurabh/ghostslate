@@ -1,24 +1,20 @@
-import {
-  INVESTIGATION_CASES,
-  type InvestigationCaseConfig,
-} from '../config/investigation-cases.js';
+import type { InvestigationCaseConfig } from '../config/investigation-cases.js';
 import type { GroundedKpiMetrics } from '../hooks/use-clickhouse-metrics.js';
 import type { EvidenceGateReason } from '../types.js';
 import { CaseOverviewMetrics } from './CaseOverviewMetrics.js';
-import { Select } from './ui/index.js';
+import { Button, Select } from './ui/index.js';
+import { Play, RotateCw } from 'lucide-react';
 
 interface CaseOverviewProps {
   activeCase: InvestigationCaseConfig;
+  cases: readonly InvestigationCaseConfig[];
   metrics: GroundedKpiMetrics;
   investigating: boolean;
+  hasRun: boolean;
   visionConfirmed?: boolean;
   onSelectCase: (id: InvestigationCaseConfig['id']) => void;
+  onRun: () => void;
 }
-
-const CASE_OPTIONS = Object.values(INVESTIGATION_CASES).map((investigationCase) => ({
-  value: investigationCase.id,
-  label: investigationCase.label,
-}));
 
 function getOverviewTitle({
   activeCase,
@@ -135,11 +131,18 @@ function getOverviewSummary({
 
 export function CaseOverview({
   activeCase,
+  cases,
   metrics,
   investigating,
+  hasRun,
   visionConfirmed = false,
   onSelectCase,
+  onRun,
 }: CaseOverviewProps) {
+  const caseOptions = cases.map((investigationCase) => ({
+    value: investigationCase.id,
+    label: investigationCase.label,
+  }));
   const summaryData = metrics.evidenceSummary;
   const outcome = summaryData?.outcome;
   const candidate = summaryData?.candidate;
@@ -181,6 +184,9 @@ export function CaseOverview({
     thresholds,
     visionConfirmed,
   });
+  const eyebrowParts = activeCase.eyebrow.split(' · ');
+  const channelId = eyebrowParts.pop();
+
   return (
     <section
       aria-labelledby="incident-title"
@@ -189,18 +195,41 @@ export function CaseOverview({
       {/* Tier 1: Incident Hero Banner */}
       <div className={`p-5 sm:p-6 ${outcomeBannerBg}`}>
         <div className="flex flex-wrap items-center justify-between gap-3 max-sm:flex-col max-sm:items-start">
-          <div className="font-mono text-forensic-meta font-bold uppercase tracking-eyebrow text-text-muted break-keep whitespace-nowrap max-w-full truncate">
-            {activeCase.eyebrow}
+          <div className="font-mono text-forensic-meta font-bold tracking-eyebrow text-text-muted break-keep whitespace-nowrap max-w-full truncate">
+            <span className="uppercase">{eyebrowParts.join(' · ')}</span>
+            {channelId ? <> · {channelId}</> : null}
           </div>
-          <Select
-            label="Demo scenario"
-            options={CASE_OPTIONS}
-            value={activeCase.id}
-            onValueChange={onSelectCase}
-            className="font-mono uppercase"
-            layout="inline"
-            disabled={investigating}
-          />
+          <div className="flex flex-wrap items-center justify-end gap-2 max-sm:w-full max-sm:justify-start">
+            <Select
+              label="Demo scenario"
+              options={caseOptions}
+              value={activeCase.id}
+              onValueChange={onSelectCase}
+              className="font-mono"
+              layout="inline"
+              disabled={investigating}
+            />
+            <Button
+              onClick={onRun}
+              loading={investigating}
+              variant="primary"
+              size="sm"
+              className="h-8.5 shrink-0 font-sans tracking-wide max-sm:flex-1"
+              icon={
+                hasRun ? (
+                  <RotateCw aria-hidden="true" className="size-3.5" />
+                ) : (
+                  <Play aria-hidden="true" className="size-3.5 fill-current" />
+                )
+              }
+            >
+              {investigating
+                ? 'Running investigation'
+                : hasRun
+                  ? 'Replay investigation'
+                  : 'Run investigation'}
+            </Button>
+          </div>
         </div>
         <h1
           id="incident-title"

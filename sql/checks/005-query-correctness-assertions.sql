@@ -162,3 +162,36 @@ SELECT (
     count() = 0
 ) AS ok -- assertion_5_negative_control_silence
 FROM results;
+
+-- Assertion 6: Black-screen window isolates exactly the ssp-delta x mobile x h264 cohort
+WITH matched AS (
+    SELECT
+        s.channel_id, s.splice_event_id, s.ssp_id, s.device_class, s.codec, s.stitch_status
+    FROM ghostslate.ssai_stitch_attempts AS s
+    ASOF LEFT JOIN ghostslate.scte35_cue_events AS c
+      ON s.channel_id = c.channel_id
+     AND s.splice_event_id = c.splice_event_id
+     AND s.attempt_time >= c.cue_time
+    WHERE s.attempt_time >= toDateTime64('2026-08-16 10:00:00.000', 3, 'UTC')
+      AND s.attempt_time < toDateTime64('2026-08-16 12:00:00.000', 3, 'UTC')
+),
+results AS (
+    SELECT
+        channel_id, ssp_id, device_class, codec,
+        count(DISTINCT splice_event_id) AS cues,
+        round(100.0 * countIf(stitch_status IN ('SLATE_FALLBACK', 'TIMEOUT')) / count(), 2) AS unmonetized_pct
+    FROM matched
+    GROUP BY channel_id, ssp_id, device_class, codec
+    HAVING cues >= 20 AND unmonetized_pct > 5
+)
+SELECT (
+    count() = 1
+    AND countIf(
+        ssp_id = 'ssp-delta'
+        AND device_class = 'mobile'
+        AND codec = 'h264'
+        AND cues = 40
+        AND unmonetized_pct = 98.98
+    ) = 1
+) AS ok -- assertion_6_black_screen_variant_isolated
+FROM results;
