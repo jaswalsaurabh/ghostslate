@@ -35,14 +35,21 @@ resource "google_project_iam_member" "runtime_vertex_ai" {
 }
 
 resource "google_secret_manager_secret_iam_member" "runtime" {
-  # Secret IDs are known from configuration, so Terraform can resolve the
-  # instance addresses during import and plan before the secrets are created.
-  for_each = var.secret_ids
+  for_each = local.runtime_secret_keys
 
   project   = var.project_id
   secret_id = google_secret_manager_secret.application[each.key].secret_id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${local.runtime_email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "mcp_runtime" {
+  for_each = local.mcp_secret_keys
+
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.application[each.key].secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${local.mcp_runtime_email}"
 }
 
 resource "google_service_account_iam_member" "github_image_publisher" {
@@ -55,4 +62,10 @@ resource "google_service_account_iam_member" "github_deployer" {
   service_account_id = google_service_account.deployer.name
   role               = "roles/iam.workloadIdentityUser"
   member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.environment/${var.production_environment}"
+}
+
+resource "google_service_account_iam_member" "github_mcp_runtime_user" {
+  service_account_id = google_service_account.mcp_runtime.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${local.deployer_email}"
 }

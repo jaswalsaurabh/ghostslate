@@ -12,6 +12,20 @@ locals {
   image_publisher_email = google_service_account.image_publisher.email
   deployer_email        = google_service_account.deployer.email
   runtime_email         = google_service_account.runtime.email
+  mcp_runtime_email     = google_service_account.mcp_runtime.email
+
+  runtime_secret_keys = toset([
+    "mcp_auth_token",
+    "mcp_server_url",
+    "run_key",
+  ])
+
+  mcp_secret_keys = toset([
+    "clickhouse_host",
+    "clickhouse_user",
+    "clickhouse_password",
+    "mcp_auth_token",
+  ])
 }
 
 data "google_project" "current" {
@@ -75,6 +89,12 @@ resource "google_service_account" "runtime" {
   project      = var.project_id
   account_id   = "ghostslate-runtime"
   display_name = "ghostslate-runtime"
+}
+
+resource "google_service_account" "mcp_runtime" {
+  project      = var.project_id
+  account_id   = "ghostslate-mcp-runtime"
+  display_name = "GhostSlate MCP runtime"
 }
 
 resource "google_artifact_registry_repository" "ghostslate" {
