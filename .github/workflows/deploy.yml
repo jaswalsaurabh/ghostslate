@@ -1,6 +1,9 @@
 name: Deploy GhostSlate to Cloud Run
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 concurrency:
@@ -96,7 +99,7 @@ jobs:
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
         with:
-          version: '363.0.0'
+          version: '>= 416.0.0'
 
       - name: Deploy to Cloud Run
         env:
