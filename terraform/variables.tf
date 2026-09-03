@@ -45,7 +45,7 @@ variable "mcp_service_name" {
 variable "mcp_image" {
   description = "Pinned official ClickHouse MCP server image."
   type        = string
-  default     = "ghcr.io/clickhouse/mcp-clickhouse@sha256:f4d9f1502a14a98fd17f3ecf8654bd102ba5bde86e54a9579ed8871ef8d7"
+  default     = "ghcr.io/clickhouse/mcp-clickhouse@sha256:f4d9f1502a14a98fd17f3ecf8654bd102ba5b1a5bde86e54a9579ed8871ef8d7"
 }
 
 variable "secret_ids" {
