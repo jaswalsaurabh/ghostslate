@@ -31,6 +31,8 @@
     "from": "2026-08-14T20:00:00.000Z",
     "to": "2026-08-14T21:00:00.000Z",
     "canonicalEvidencePath": "eval/evidence/canonical-latency-confounder-2026-08-14.json",
+    "frameEvidencePath": "eval/evidence/frame-latency-confounder-2026-08-14.json",
+    "liveTranscriptPath": "eval/evidence/transcript-latency-confounder-2026-08-31.jsonl",
     "transcriptPath": null,
     "expected": {
       "selectedIncident": {
@@ -44,7 +46,36 @@
         "cpmUsd": 32.5,
         "expectedLoss": 555.43
       },
-      "requireVisionConfirmation": false
+      "requireVisionConfirmation": true,
+      "expectedSlateType": "looping_card"
+    }
+  },
+  {
+    "id": "black-screen-timeout",
+    "name": "Black-Screen Timeout Variant (ssp-delta mobile H.264)",
+    "kind": "positive_variant",
+    "channel": "ch-01",
+    "from": "2026-08-16T10:00:00.000Z",
+    "to": "2026-08-16T12:00:00.000Z",
+    "canonicalEvidencePath": "eval/evidence/canonical-black-screen-timeout-2026-08-16.json",
+    "frameEvidencePath": "eval/evidence/frame-black-screen-timeout-2026-08-16.json",
+    "liveTranscriptPath": "eval/evidence/transcript-black-screen-timeout-2026-08-31.jsonl",
+    "transcriptPath": null,
+    "expected": {
+      "selectedIncident": {
+        "sspId": "ssp-delta",
+        "deviceClass": "mobile",
+        "codec": "h264",
+        "cues": 40,
+        "totalAttempts": 7812,
+        "unmonetizedImpressions": 7732,
+        "unmonetizedPct": 98.98,
+        "p95AuctionMs": 1898.5023,
+        "cpmUsd": 18.75,
+        "expectedLoss": 144.98
+      },
+      "requireVisionConfirmation": true,
+      "expectedSlateType": "black_screen"
     }
   },
   {

@@ -1,0 +1,132 @@
+name: Deploy GhostSlate to Cloud Run
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ghostslate-production-deployment
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.GCP_ARTIFACT_REPOSITORY }}
+  IMAGE_NAME: ghostslate
+
+jobs:
+  build-and-publish:
+    name: Build and publish linux/amd64 image
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      image_digest: ${{ steps.digest.outputs.image_digest }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Authenticate to Google Cloud as image publisher
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_IMAGE_PUBLISHER_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+        with:
+          version: '363.0.0'
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker "${{ vars.GCP_REGION }}-docker.pkg.dev" --quiet
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+
+      - name: Build and publish image
+        run: |
+          docker buildx build \
+            --platform linux/amd64 \
+            --attest=type=provenance,mode=max \
+            --attest=type=sbom \
+            --file infra/Dockerfile \
+            --tag "$REGISTRY/$IMAGE_NAME:${GITHUB_SHA}" \
+            --metadata-file /tmp/ghostslate-metadata.json \
+            --push \
+            .
+
+      - name: Export immutable image digest
+        id: digest
+        run: |
+          digest="$(jq -r '."containerimage.digest"' /tmp/ghostslate-metadata.json)"
+          case "$digest" in
+            sha256:*) ;;
+            *) echo "Unexpected image digest: $digest" >&2; exit 1 ;;
+          esac
+          echo "image_digest=$digest" >> "$GITHUB_OUTPUT"
+          echo "Published $REGISTRY/$IMAGE_NAME@$digest"
+
+      - name: Verify published architecture
+        run: |
+          docker buildx imagetools inspect "$REGISTRY/$IMAGE_NAME:${GITHUB_SHA}" \
+            | grep -E 'linux/amd64|Platform[[:space:]]+linux/amd64'
+
+  deploy:
+    name: Deploy immutable image to Cloud Run
+    if: github.ref == 'refs/heads/main'
+    needs: build-and-publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Authenticate to Google Cloud as deployer
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+        with:
+          version: '363.0.0'
+
+      - name: Deploy to Cloud Run
+        env:
+          IMAGE_DIGEST: ${{ needs.build-and-publish.outputs.image_digest }}
+        run: |
+          gcloud run deploy ghostslate \
+            --project="${{ vars.GCP_PROJECT_ID }}" \
+            --region="${{ vars.GCP_REGION }}" \
+            --platform=managed \
+            --image="$REGISTRY/$IMAGE_NAME@$IMAGE_DIGEST" \
+            --service-account="${{ vars.CLOUD_RUN_RUNTIME_SERVICE_ACCOUNT }}" \
+            --port=8080 \
+            --timeout=300 \
+            --concurrency=20 \
+            --max-instances=3 \
+            --memory=1Gi \
+            --cpu=1 \
+            --ingress=internal-and-cloud-load-balancing \
+            --no-default-url \
+            --allow-unauthenticated \
+            --set-env-vars="NODE_ENV=production,TRUST_PROXY_HOPS=1,GCP_PROJECT_ID=${{ vars.GCP_PROJECT_ID }},GCP_REGION=${{ vars.GCP_REGION }},GEMINI_MODEL=gemini-2.5-flash,CLICKHOUSE_MCP_SERVER_TRANSPORT=sse,REMEDIATION_ENABLED=false,PORT=8080" \
+            --set-secrets="CLICKHOUSE_MCP_AUTH_TOKEN=${{ vars.CLICKHOUSE_MCP_AUTH_TOKEN_SECRET }}:latest,MCP_SERVER_URL=${{ vars.MCP_SERVER_URL_SECRET }}:latest,RUN_KEY_SECRET=${{ vars.RUN_KEY_SECRET }}:latest" \
+            --quiet
+
+      - name: Smoke test health endpoint
+        run: |
+          if [ -z "${{ vars.GCP_PUBLIC_URL }}" ]; then
+            echo 'GCP_PUBLIC_URL is not configured; skipping external load balancer smoke test.'
+            exit 0
+          fi
+          case "${{ vars.GCP_PUBLIC_URL }}" in https://*) ;; *)
+            echo 'GCP_PUBLIC_URL must be an HTTPS origin' >&2; exit 1 ;; esac
+          curl --fail --silent --show-error "${{ vars.GCP_PUBLIC_URL }}/api/health"

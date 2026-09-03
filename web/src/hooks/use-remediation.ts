@@ -36,6 +36,7 @@ export function useRemediation({ runKey, ready }: UseRemediationOptions): UseRem
     try {
       const response = await fetch(
         `/api/investigate/runs/${encodeURIComponent(targetRunKey)}/remediation`,
+        { credentials: 'include' },
       );
 
       if (activeRunKeyRef.current !== targetRunKey) {
@@ -95,6 +96,7 @@ export function useRemediation({ runKey, ready }: UseRemediationOptions): UseRem
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({}),
         },
       );

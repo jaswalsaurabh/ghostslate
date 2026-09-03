@@ -1,5 +1,10 @@
 import { ServiceUnavailableError } from '../errors/domain-error.js';
 
+const MAX_SSE_EVENT_BYTES = 1 * 1_024 * 1_024;
+const CLOUD_RUN_IDENTITY_TOKEN_URL =
+  'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity';
+const IDENTITY_TOKEN_CACHE_MS = 4 * 60 * 1_000;
+
 export interface McpToolDefinition {
   name: string;
   description?: string;
@@ -48,6 +53,8 @@ export class McpClientService {
   private connected = false;
   private connecting = false;
   private connectPromise: Promise<void> | null = null;
+  private cloudRunIdentityToken: string | null = null;
+  private cloudRunIdentityTokenExpiresAt = 0;
 
   constructor(config?: Partial<McpClientConfig>) {
     this.baseUrl = (
@@ -57,14 +64,74 @@ export class McpClientService {
     ).replace(/\/$/, '');
     this.authToken = config?.authToken ?? process.env.CLICKHOUSE_MCP_AUTH_TOKEN;
     this.timeoutMs = config?.timeoutMs || 30000;
+
+    if (process.env.NODE_ENV === 'production') {
+      const parsed = new URL(this.baseUrl);
+      if (parsed.protocol !== 'https:') {
+        throw new Error('MCP_SERVER_URL must use HTTPS in production');
+      }
+      if (!this.authToken || this.authToken.trim().length < 32) {
+        throw new Error('CLICKHOUSE_MCP_AUTH_TOKEN must be a strong secret in production');
+      }
+    }
   }
 
-  private getHeaders(): Record<string, string> {
+  private async getCloudRunIdentityToken(): Promise<string | null> {
+    if (process.env.NODE_ENV !== 'production') {
+      return null;
+    }
+
+    const now = Date.now();
+    if (this.cloudRunIdentityToken && now < this.cloudRunIdentityTokenExpiresAt) {
+      return this.cloudRunIdentityToken;
+    }
+
+    const audience = new URL(this.baseUrl).origin;
+    let response: Response;
+    try {
+      response = await fetch(
+        `${CLOUD_RUN_IDENTITY_TOKEN_URL}?audience=${encodeURIComponent(audience)}&format=full`,
+        {
+          headers: { 'Metadata-Flavor': 'Google' },
+          signal: AbortSignal.timeout(5_000),
+        },
+      );
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new ServiceUnavailableError(`Failed to obtain Cloud Run identity token: ${message}`);
+    }
+
+    if (!response.ok) {
+      throw new ServiceUnavailableError(
+        `Metadata server returned HTTP ${response.status} while obtaining Cloud Run identity token`,
+      );
+    }
+
+    const token = (await response.text()).trim();
+    if (!token) {
+      throw new ServiceUnavailableError(
+        'Metadata server returned an empty Cloud Run identity token',
+      );
+    }
+
+    this.cloudRunIdentityToken = token;
+    this.cloudRunIdentityTokenExpiresAt = now + IDENTITY_TOKEN_CACHE_MS;
+    return token;
+  }
+
+  private async getHeaders(contentType?: string): Promise<Record<string, string>> {
     const headers: Record<string, string> = {
       Accept: 'text/event-stream',
     };
+    if (contentType) {
+      headers['Content-Type'] = contentType;
+    }
     if (this.authToken && this.authToken.trim().length > 0) {
       headers['Authorization'] = `Bearer ${this.authToken}`;
+    }
+    const identityToken = await this.getCloudRunIdentityToken();
+    if (identityToken) {
+      headers['X-Serverless-Authorization'] = `Bearer ${identityToken}`;
     }
     return headers;
   }
@@ -87,7 +154,7 @@ export class McpClientService {
         try {
           response = await fetch(sseUrl, {
             method: 'GET',
-            headers: this.getHeaders(),
+            headers: await this.getHeaders(),
             signal: this.abortController.signal,
           });
         } catch (err: unknown) {
@@ -174,6 +241,9 @@ export class McpClientService {
         }
 
         buffer += decoder.decode(value, { stream: true });
+        if (Buffer.byteLength(buffer, 'utf8') > MAX_SSE_EVENT_BYTES) {
+          throw new ServiceUnavailableError('MCP event exceeds the safe response limit');
+        }
         const normalized = buffer.replace(/\r\n/g, '\n');
         const events = normalized.split('\n\n');
         buffer = events.pop() || '';
@@ -207,10 +277,11 @@ export class McpClientService {
 
     if (eventType === 'endpoint') {
       const endpointPath = data.trim();
-      this.postUrl = endpointPath.startsWith('http')
-        ? endpointPath
-        : `${this.baseUrl}${endpointPath.startsWith('/') ? '' : '/'}${endpointPath}`;
-      const url = new URL(this.postUrl);
+      const url = new URL(endpointPath, `${this.baseUrl}/`);
+      if (url.origin !== new URL(this.baseUrl).origin) {
+        throw new ServiceUnavailableError('MCP server returned a cross-origin session endpoint');
+      }
+      this.postUrl = url.toString();
       this.sessionId = url.searchParams.get('session_id');
       return;
     }
@@ -258,8 +329,10 @@ export class McpClientService {
     };
 
     return new Promise<T>((resolve, reject) => {
+      const requestAbort = new AbortController();
       const timer = setTimeout(() => {
         this.pendingRequests.delete(id);
+        requestAbort.abort();
         reject(
           new ServiceUnavailableError(
             `MCP request '${method}' timed out after ${this.timeoutMs}ms`,
@@ -268,27 +341,37 @@ export class McpClientService {
       }, this.timeoutMs);
 
       this.pendingRequests.set(id, {
-        resolve: resolve as (value: unknown) => void,
-        reject,
+        resolve: (value) => {
+          clearTimeout(timer);
+          resolve(value as T);
+        },
+        reject: (error) => {
+          clearTimeout(timer);
+          reject(error);
+        },
         timer,
       });
 
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      if (this.authToken && this.authToken.trim().length > 0) {
-        headers.Authorization = `Bearer ${this.authToken}`;
-      }
-
-      fetch(postUrl, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payload),
-      }).catch((err) => {
-        clearTimeout(timer);
-        this.pendingRequests.delete(id);
-        reject(err);
-      });
+      this.getHeaders('application/json')
+        .then((headers) =>
+          fetch(postUrl, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(payload),
+            signal: requestAbort.signal,
+          }),
+        )
+        .then((response) => {
+          if (!response.ok)
+            throw new ServiceUnavailableError(`MCP endpoint returned HTTP ${response.status}`);
+        })
+        .catch((err) => {
+          const pending = this.pendingRequests.get(id);
+          if (pending) {
+            this.pendingRequests.delete(id);
+            pending.reject(err instanceof Error ? err : new Error(String(err)));
+          }
+        });
     });
   }
 
@@ -302,18 +385,17 @@ export class McpClientService {
       params,
     };
 
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-    if (this.authToken && this.authToken.trim().length > 0) {
-      headers.Authorization = `Bearer ${this.authToken}`;
-    }
+    const headers = await this.getHeaders('application/json');
 
-    await fetch(postUrl, {
+    const response = await fetch(postUrl, {
       method: 'POST',
       headers,
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(this.timeoutMs),
     });
+    if (!response.ok) {
+      throw new ServiceUnavailableError(`MCP endpoint returned HTTP ${response.status}`);
+    }
   }
 
   async listTools(): Promise<McpToolDefinition[]> {

@@ -110,10 +110,18 @@ cat << 'EOF' > "$TMP_DIR/ad.svg"
 </svg>
 EOF
 
+# 4. Black-screen fallback slate
+cat << 'EOF' > "$TMP_DIR/black_screen.svg"
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <rect width="1280" height="720" fill="#000000"/>
+</svg>
+EOF
+
 echo "==> Rendering SVGs to PNG..."
 rsvg-convert -w 1280 -h 720 -o "$TMP_DIR/content.png" "$TMP_DIR/content.svg"
 rsvg-convert -w 1280 -h 720 -o "$TMP_DIR/slate.png" "$TMP_DIR/slate.svg"
 rsvg-convert -w 1280 -h 720 -o "$TMP_DIR/ad.png" "$TMP_DIR/ad.svg"
+rsvg-convert -w 1280 -h 720 -o "$TMP_DIR/black_screen.png" "$TMP_DIR/black_screen.svg"
 
 echo "==> Encoding Video Segments with ffmpeg..."
 
@@ -132,6 +140,11 @@ ffmpeg -y -loop 1 -i "$TMP_DIR/ad.png" -f lavfi -i sine=frequency=660:duration=1
   -vf "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1" \
   -c:v libx264 -t 15 -pix_fmt yuv420p -r 30 -c:a aac -b:a 128k -shortest "$OUT_DIR/ad.mp4"
 
+# 4. Black-screen fallback (15s)
+ffmpeg -y -loop 1 -i "$TMP_DIR/black_screen.png" -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 \
+  -vf "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1" \
+  -c:v libx264 -t 15 -pix_fmt yuv420p -r 30 -c:a aac -b:a 128k -shortest "$OUT_DIR/black_screen.mp4"
+
 echo "==> Stitching Full Test Streams (35s each)..."
 cat << EOF > "$TMP_DIR/concat_slate.txt"
 file '$OUT_DIR/content.mp4'
@@ -147,10 +160,18 @@ file '$OUT_DIR/content.mp4'
 EOF
 ffmpeg -y -f concat -safe 0 -i "$TMP_DIR/concat_ad.txt" -c copy "$OUT_DIR/test_stream_ad.mp4"
 
+cat << EOF > "$TMP_DIR/concat_black_screen.txt"
+file '$OUT_DIR/content.mp4'
+file '$OUT_DIR/black_screen.mp4'
+file '$OUT_DIR/content.mp4'
+EOF
+ffmpeg -y -f concat -safe 0 -i "$TMP_DIR/concat_black_screen.txt" -c copy "$OUT_DIR/test_stream_black_screen.mp4"
+
 # Copy reference thumbnail frames for quick evaluation
 cp "$TMP_DIR/content.png" "$OUT_DIR/content_frame.png"
 cp "$TMP_DIR/slate.png" "$OUT_DIR/slate_frame.png"
 cp "$TMP_DIR/ad.png" "$OUT_DIR/ad_frame.png"
+cp "$TMP_DIR/black_screen.png" "$OUT_DIR/black_screen_frame.png"
 
 echo "==> Video Generation Complete! Available in $OUT_DIR:"
 ls -lh "$OUT_DIR"

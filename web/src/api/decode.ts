@@ -12,9 +12,11 @@ import {
   getRemediationResponseSchema,
   healthResponseSchema,
   investigationStartResponseSchema,
+  scenarioCatalogSchema,
   visionResponseSchema,
 } from './schemas.js';
 import { investigationEventSchema } from './event-schemas.js';
+import type { InvestigationScenarioCatalog } from '../config/investigation-cases.js';
 
 export interface VisionClassificationResponse {
   success: true;
@@ -45,6 +47,10 @@ export function decodeVisionResponse(value: unknown): VisionClassificationRespon
 
 export function decodeInvestigationStartResponse(value: unknown): InvestigationRunResponse {
   return decode(investigationStartResponseSchema, value, 'investigation response');
+}
+
+export function decodeScenarioCatalog(value: unknown): InvestigationScenarioCatalog {
+  return decode(scenarioCatalogSchema, value, 'scenario catalog');
 }
 
 export function decodeInvestigationEvent(value: unknown): InvestigationTraceEvent {

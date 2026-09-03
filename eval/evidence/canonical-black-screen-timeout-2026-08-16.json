@@ -1,0 +1,25 @@
+{
+  "columns": [
+    "channel_id",
+    "ssp_id",
+    "device_class",
+    "codec",
+    "daypart",
+    "cues",
+    "total_attempts",
+    "unmonetized_impressions",
+    "unmonetized_pct",
+    "p95_auction_ms",
+    "cpm_usd"
+  ],
+  "rows": [
+    ["ch-01", "ssp-delta", "mobile", "h264", "daytime", 40, 7812, 7732, 98.98, 1898.5023, 18.75],
+    ["ch-01", "ssp-beta", "connected_tv", "hevc", "daytime", 40, 17106, 410, 2.4, 332.921, 18.75],
+    ["ch-01", "ssp-delta", "connected_tv", "h264", "daytime", 40, 7662, 198, 2.58, 345.19025, 18.75]
+  ],
+  "statistics": {
+    "elapsed": 0.050322042,
+    "rows_read": 284740,
+    "bytes_read": 7003224
+  }
+}

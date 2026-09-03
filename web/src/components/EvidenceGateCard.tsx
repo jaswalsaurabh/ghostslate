@@ -240,7 +240,7 @@ export function EvidenceGateCard({
       )}
 
       <div className="mt-3 border-t border-border-subtle pt-3 font-mono text-forensic-meta text-text-secondary">
-        <strong className="text-status-success">Evidence gate held</strong> · no agent Vision
+        <strong className="text-status-success">Evidence gate held</strong> · no agent vision
         evidence admitted · no remediation
       </div>
     </section>

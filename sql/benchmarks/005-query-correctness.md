@@ -180,6 +180,25 @@ Expression ((Project names + (Before ORDER BY + Projection) [lifted up part]))
                 ReadFromMergeTree (ghostslate.advertiser_inventory)
 ```
 
+### D. Black-Screen Timeout Variant (2 Hours: 2026-08-16 10:00:00 to 12:00:00 UTC)
+
+The same canonical loss-attribution query was measured after applying all five deterministic
+mutations once. The injector skipped every mutation on its second run.
+
+| channel_id | ssp_id      | device_class | codec  | daypart   | cues | total_attempts | unmonetized_impressions | unmonetized_pct | p95_auction_ms | cpm_usd | Grounded Loss |
+| ---------- | ----------- | ------------ | ------ | --------- | ---- | -------------- | ----------------------- | --------------- | -------------- | ------- | ------------- |
+| `ch-01`    | `ssp-delta` | `mobile`     | `h264` | `daytime` | 40   | 7,812          | 7,732                   | **98.98%**      | 1898.50 ms     | $18.75  | **$144.98**   |
+
+| Metric         | Measured Value |
+| -------------- | -------------- |
+| Query Duration | **50.32 ms**   |
+| Rows Read      | 284,740        |
+| Bytes Read     | 7,003,224      |
+
+Healthy sibling cohorts remained below the qualifying threshold, and the target cohort was healthy
+outside the incident window. The exact selected row and measured peers are preserved in
+`eval/evidence/canonical-black-screen-timeout-2026-08-16.json`.
+
 ---
 
 ## 3. Engineering Decisions & Minimalism Justification

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Copy, Check, Database } from 'lucide-react';
 import type { McpQueryData } from '../types.js';
 import { IconButton, SegmentedControl } from './ui/index.js';
@@ -10,6 +10,12 @@ interface ClickHouseResultViewerProps {
   rowsScanned?: number | undefined;
 }
 
+const TABLE_ROW_HEIGHT_PX = 36;
+const TABLE_VIEWPORT_HEIGHT_PX = 205;
+const TABLE_OVERSCAN_ROWS = 8;
+const TABLE_RENDER_WINDOW =
+  Math.ceil(TABLE_VIEWPORT_HEIGHT_PX / TABLE_ROW_HEIGHT_PX) + TABLE_OVERSCAN_ROWS * 2;
+
 export const ClickHouseResultViewer: React.FC<ClickHouseResultViewerProps> = ({
   rawResult,
   durationMs,
@@ -18,10 +24,15 @@ export const ClickHouseResultViewer: React.FC<ClickHouseResultViewerProps> = ({
 }) => {
   const [copied, setCopied] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'json'>('table');
+  const [tableScrollTop, setTableScrollTop] = useState(0);
+
+  useEffect(() => {
+    setTableScrollTop(0);
+  }, [rawResult]);
 
   const parsedData = useMemo<{
     queryData: McpQueryData | null;
-    prettyJson: string;
+    parsedValue: unknown;
     isStructured: boolean;
   }>(() => {
     try {
@@ -38,26 +49,41 @@ export const ClickHouseResultViewer: React.FC<ClickHouseResultViewerProps> = ({
         queryData = parsed.result as McpQueryData;
       }
 
-      const prettyJson = JSON.stringify(parsed, null, 2);
       return {
         queryData,
-        prettyJson,
+        parsedValue: parsed,
         isStructured: true,
       };
     } catch {
       return {
         queryData: null,
-        prettyJson: rawResult,
+        parsedValue: rawResult,
         isStructured: false,
       };
     }
   }, [rawResult]);
 
+  const prettyJson = useMemo(() => {
+    if (viewMode !== 'json') return '';
+    if (!parsedData.isStructured) return rawResult;
+    return JSON.stringify(parsedData.parsedValue, null, 2);
+  }, [parsedData.isStructured, parsedData.parsedValue, rawResult, viewMode]);
+
+  const getCopyText = useCallback(() => {
+    if (!parsedData.isStructured) return rawResult;
+    return JSON.stringify(parsedData.parsedValue, null, 2);
+  }, [parsedData.isStructured, parsedData.parsedValue, rawResult]);
+
   const handleCopy = () => {
-    navigator.clipboard.writeText(parsedData.prettyJson);
+    void navigator.clipboard.writeText(getCopyText());
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  const handleTableScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
+    const nextScrollTop = Math.floor(event.currentTarget.scrollTop);
+    setTableScrollTop((previous) => (previous === nextScrollTop ? previous : nextScrollTop));
+  }, []);
 
   const rowsCount =
     typeof rowsReturned === 'number'
@@ -66,6 +92,15 @@ export const ClickHouseResultViewer: React.FC<ClickHouseResultViewerProps> = ({
         ? parsedData.queryData.rows.length
         : undefined;
   const colsCount = parsedData.queryData?.columns.length ?? 0;
+  const tableRows = parsedData.queryData?.rows ?? [];
+  const firstVisibleRow = Math.max(
+    0,
+    Math.floor(tableScrollTop / TABLE_ROW_HEIGHT_PX) - TABLE_OVERSCAN_ROWS,
+  );
+  const lastVisibleRow = Math.min(tableRows.length, firstVisibleRow + TABLE_RENDER_WINDOW);
+  const visibleRows = tableRows.slice(firstVisibleRow, lastVisibleRow);
+  const topSpacerHeight = firstVisibleRow * TABLE_ROW_HEIGHT_PX;
+  const bottomSpacerHeight = (tableRows.length - lastVisibleRow) * TABLE_ROW_HEIGHT_PX;
 
   return (
     <section
@@ -129,8 +164,16 @@ export const ClickHouseResultViewer: React.FC<ClickHouseResultViewerProps> = ({
       </div>
 
       {parsedData.queryData && viewMode === 'table' ? (
-        <div className="max-h-51.25 overflow-auto">
-          <table className="w-full min-w-190 border-collapse text-left font-mono text-forensic-code">
+        <div
+          className="max-h-51.25 overflow-auto"
+          onScroll={handleTableScroll}
+          role="region"
+          aria-label={`Query result table with ${rowsCount ?? 0} rows`}
+        >
+          <table
+            className="w-full min-w-190 border-collapse text-left font-mono text-forensic-code"
+            aria-rowcount={tableRows.length}
+          >
             <thead>
               <tr className="bg-surface-card text-status-success">
                 {parsedData.queryData.columns.map((col, idx) => (
@@ -144,7 +187,7 @@ export const ClickHouseResultViewer: React.FC<ClickHouseResultViewerProps> = ({
               </tr>
             </thead>
             <tbody>
-              {parsedData.queryData.rows.length === 0 ? (
+              {tableRows.length === 0 ? (
                 <tr>
                   <td
                     colSpan={parsedData.queryData.columns.length}
@@ -154,29 +197,44 @@ export const ClickHouseResultViewer: React.FC<ClickHouseResultViewerProps> = ({
                   </td>
                 </tr>
               ) : (
-                parsedData.queryData.rows.map((row, rIdx) => (
-                  <tr key={rIdx} className="transition-colors duration-fast hover:bg-surface-hover">
-                    {row.map((cell, cIdx) => (
-                      <td
-                        key={cIdx}
-                        className="whitespace-nowrap border-b border-border-subtle px-2.5 py-2 text-text-secondary"
-                      >
-                        {cell === null || cell === undefined ? (
-                          <span className="text-text-muted italic">null</span>
-                        ) : (
-                          String(cell)
-                        )}
-                      </td>
-                    ))}
+                <>
+                  <tr aria-hidden="true">
+                    <td colSpan={colsCount} style={{ height: topSpacerHeight, padding: 0 }} />
                   </tr>
-                ))
+                  {visibleRows.map((row, visibleIndex) => {
+                    const rowIndex = firstVisibleRow + visibleIndex;
+                    return (
+                      <tr
+                        key={rowIndex}
+                        aria-rowindex={rowIndex + 2}
+                        className="h-9 transition-colors duration-fast hover:bg-surface-hover"
+                      >
+                        {row.map((cell, cIdx) => (
+                          <td
+                            key={cIdx}
+                            className="whitespace-nowrap border-b border-border-subtle px-2.5 py-2 text-text-secondary"
+                          >
+                            {cell === null || cell === undefined ? (
+                              <span className="text-text-muted italic">null</span>
+                            ) : (
+                              String(cell)
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })}
+                  <tr aria-hidden="true">
+                    <td colSpan={colsCount} style={{ height: bottomSpacerHeight, padding: 0 }} />
+                  </tr>
+                </>
               )}
             </tbody>
           </table>
         </div>
       ) : (
         <pre className="m-0 max-h-51.25 overflow-auto whitespace-pre p-3 font-mono text-forensic-code leading-relaxed text-status-success bg-surface-card/60">
-          {parsedData.prettyJson}
+          {prettyJson}
         </pre>
       )}
     </section>

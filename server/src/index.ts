@@ -11,6 +11,11 @@ const app = createApp({ logger });
 const server = app.listen(port, () => {
   logger.info({ port }, 'GhostSlate server started');
 });
+// Bound request parsing and idle connection time; streamed investigation
+// responses remain governed by their own run deadline.
+server.requestTimeout = 30_000;
+server.headersTimeout = 15_000;
+server.keepAliveTimeout = 65_000;
 
 const shutdown = (signal: string) => {
   logger.info({ signal }, 'Gracefully shutting down server');

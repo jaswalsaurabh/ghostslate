@@ -1,20 +1,6 @@
 import type { InvestigationCaseConfig } from '../../config/investigation-cases.js';
 import { classificationStyles } from './classification-styles.js';
 
-export const incidentSamples = [
-  { time: 9.8, image: '/media/content_frame.png', label: 'Content', type: 'content' },
-  { time: 7.5, image: '/media/slate_frame.png', label: 'Slate', type: 'slate' },
-  { time: 17.2, image: '/media/slate_frame.png', label: 'Slate persists', type: 'slate' },
-  { time: 25.4, image: '/media/ad_frame.png', label: 'Advertisement', type: 'ad' },
-] as const;
-
-export const controlSamples = [
-  { time: 5.2, image: '/media/content_frame.png', label: 'Content', type: 'content' },
-  { time: 12.4, image: '/media/ad_frame.png', label: 'Advertisement', type: 'ad' },
-  { time: 17.2, image: '/media/ad_frame.png', label: 'Advertisement', type: 'ad' },
-  { time: 25.4, image: '/media/content_frame.png', label: 'Content', type: 'content' },
-] as const;
-
 export function formatTimecode(seconds: number) {
   const mins = Math.floor(seconds / 60);
   const secs = (seconds % 60).toFixed(1);
@@ -36,10 +22,14 @@ export function BroadcastSampleStrip({
   selectedTime,
   onSeek,
 }: BroadcastSampleStripProps) {
-  const samples = activeCase.id === 'primary' ? incidentSamples : controlSamples;
+  const samples = activeCase.samples;
 
   return (
-    <div className="grid grid-cols-4 gap-2 mt-2 mx-5 mb-3" aria-label="Sampled broadcast frames">
+    <div
+      className="mx-5 mb-3 mt-2 grid grid-cols-4 gap-2"
+      aria-label="Sampled broadcast frames"
+      role="group"
+    >
       {samples.map((sample) => {
         const isSelected = Math.abs(selectedTime - sample.time) < 0.8;
         const styles = classificationStyles[sample.type];
@@ -50,7 +40,7 @@ export function BroadcastSampleStrip({
             onClick={() => onSeek(sample.time)}
             aria-label={`${sample.label} frame at ${sample.time} seconds`}
             aria-pressed={isSelected}
-            className={`broadcast-thumbnail group relative cursor-pointer overflow-hidden rounded-md border bg-surface-card p-0 transition-all duration-fast focus-visible:outline-2 focus-visible:outline-interactive ${
+            className={`broadcast-thumbnail group relative min-h-10 cursor-pointer overflow-hidden rounded-md border bg-surface-card p-0 transition-all duration-fast focus-visible:outline-2 focus-visible:outline-interactive ${
               isSelected ? styles.selected : 'border-border-subtle hover:border-border-strong'
             }`}
           >

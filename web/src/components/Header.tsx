@@ -1,5 +1,5 @@
 import { Moon, Sun } from 'lucide-react';
-import { useTheme } from '../hooks/use-theme.js';
+import type { Theme } from '../hooks/use-theme.js';
 import type { SystemHealth } from '../types.js';
 import { IconButton, StatusIndicator, type StatusTone } from './ui/index.js';
 
@@ -10,10 +10,18 @@ interface HeaderProps {
   healthLoading: boolean;
   healthError: string | null;
   vertexState: VertexRuntimeState;
+  theme: Theme;
+  onToggleTheme: () => void;
 }
 
-export function Header({ health, healthLoading, healthError, vertexState }: HeaderProps) {
-  const { theme, toggleTheme } = useTheme();
+export function Header({
+  health,
+  healthLoading,
+  healthError,
+  vertexState,
+  theme,
+  onToggleTheme,
+}: HeaderProps) {
   const mcpConnected = Boolean(health?.mcp?.connected);
   const vertexCopy = {
     idle: 'Vertex AI idle',
@@ -31,19 +39,19 @@ export function Header({ health, healthLoading, healthError, vertexState }: Head
           : 'idle';
   const mobileHealth = (() => {
     if (healthLoading || (!health && !healthError)) {
-      return { label: 'Checking...', tone: 'warning', loading: true } as const;
+      return { label: 'Checking…', tone: 'warning', loading: true } as const;
     }
     if (healthError) {
-      return { label: 'API Issue', tone: 'error', loading: false } as const;
+      return { label: 'API issue', tone: 'error', loading: false } as const;
     }
     if (!mcpConnected) {
-      return { label: 'MCP Error', tone: 'error', loading: false } as const;
+      return { label: 'MCP error', tone: 'error', loading: false } as const;
     }
     return { label: 'API + MCP', tone: 'ready', loading: false } as const;
   })() satisfies { label: string; tone: StatusTone; loading: boolean };
 
   return (
-    <header className="sticky top-0 z-sticky h-17 border-b border-border-subtle bg-surface-base/88 backdrop-blur-header">
+    <header className="sticky top-0 z-sticky h-17 border-b border-border-subtle bg-surface-header/88 backdrop-blur-header">
       <div className="war-room-shell flex h-full min-w-0 items-center justify-between gap-4 sm:gap-6">
         <div className="min-w-0 shrink-0">
           <img
@@ -88,7 +96,7 @@ export function Header({ health, healthLoading, healthError, vertexState }: Head
 
           <IconButton
             label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
-            onClick={toggleTheme}
+            onClick={onToggleTheme}
             variant="secondary"
             className="h-8.5 w-8.5 shrink-0"
             icon={

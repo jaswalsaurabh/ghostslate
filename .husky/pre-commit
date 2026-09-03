@@ -1,2 +1,3 @@
 ./scripts/scan-secrets.sh
 pnpm exec lint-staged
+pnpm check:lines

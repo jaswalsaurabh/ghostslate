@@ -1,6 +1,7 @@
 import React from 'react';
 import { Eye, FileText } from 'lucide-react';
 import type { ClassificationType, SlateType } from '../types.js';
+import { formatClassificationLabel } from '../utils/display-labels.js';
 import { classificationStyles } from './vision/classification-styles.js';
 
 interface FrameEvidenceCardProps {
@@ -35,7 +36,7 @@ export const FrameEvidenceCard: React.FC<FrameEvidenceCardProps> = ({
       </span>
       <div className="min-w-0">
         <div className="mb-1.5 flex items-center justify-between gap-2 font-sans text-forensic-heading font-bold text-text-primary">
-          <span>Vision frame classified · {classification.toUpperCase()}</span>
+          <span>Vision frame classified · {formatClassificationLabel(classification)}</span>
           <span className="font-mono text-forensic-meta font-normal text-text-muted">
             {timestampSeconds !== undefined ? (
               <>
@@ -64,7 +65,7 @@ export const FrameEvidenceCard: React.FC<FrameEvidenceCardProps> = ({
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 font-sans text-forensic-meta font-bold uppercase">
                 <span className={`rounded border px-1.5 py-0.5 ${styles.label}`}>
-                  {classification}
+                  {formatClassificationLabel(classification)}
                 </span>
                 {slateType && (
                   <span className="text-text-muted font-normal">

@@ -16,6 +16,7 @@ Deterministic anomaly injector for SSAI telemetry and SCTE-35 cue markers.
 | `confounder-ssp-gamma-slow-but-inside-deadline` | Confounder       | `2026-08-14 20:00–21:00` | `ssp-gamma`                          | +120ms latency rise capped at 430ms (`if(lat > 430, lat, least(lat + 120, 430))`). p95 reaches 430ms with **0 status changes** (evaluates agent's ability to reject non-breaching latency spikes). |
 | `confounder-set-top-box-errors`                 | Confounder       | `2026-08-12 08:00–12:00` | `device_class = 'set_top_box'`       | 3% hard error flip (`stitch_status = 'ERROR'`), latency untouched. Tests distinguishing slate from auction transport errors.                                                                       |
 | `negative-control-diffuse-primetime`            | Negative Control | `2026-08-09 19:00–23:00` | Window-wide (all cohorts)            | Uniform mild latency addition (+40ms to +70ms). Slate rate rises mildly to 2.91% across all slices without cohort concentration. Expected conclusion: silence.                                     |
+| `variant-ssp-delta-mobile-h264-black-screen`    | Positive Variant | `2026-08-16 10:00–12:00` | `ssp-delta` × `mobile` × `h264`      | Deterministic latency ramp produces 98.98% unmonetized traffic across 40 cues and is represented by the synthetic black-screen stream.                                                             |
 
 ## Important: One-Way Mutation & Reset
 
@@ -50,7 +51,7 @@ tools/generator/.venv/bin/python tools/generator/inject.py --repair-ledger
 
 ## SQL Integrity Checks
 
-Verify the 10 incident integrity assertions using ClickHouse client:
+Verify the 13 incident integrity assertions using ClickHouse client:
 
 ```bash
 docker exec -i ghostslate-clickhouse clickhouse-client \

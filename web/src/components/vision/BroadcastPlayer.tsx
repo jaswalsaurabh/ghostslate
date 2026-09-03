@@ -3,6 +3,7 @@ import { Pause, Play, Sparkles } from 'lucide-react';
 import type { InvestigationCaseConfig } from '../../config/investigation-cases.js';
 import type { FrameClassificationData } from '../../types.js';
 import { Button, IconButton } from '../ui/index.js';
+import { formatClassificationLabel } from '../../utils/display-labels.js';
 import { formatTime, formatTimecode } from './BroadcastSampleStrip.js';
 import { classificationStyles } from './classification-styles.js';
 
@@ -22,6 +23,7 @@ interface BroadcastPlayerProps {
   confidence: string;
   classifying?: boolean | undefined;
   onClassify?: (() => void) | undefined;
+  classifyDisabled?: boolean | undefined;
 }
 
 export function BroadcastPlayer({
@@ -40,10 +42,11 @@ export function BroadcastPlayer({
   confidence,
   classifying = false,
   onClassify,
+  classifyDisabled = false,
 }: BroadcastPlayerProps) {
   const isSlate = displayed?.classification === 'slate';
   const styles = displayed ? classificationStyles[displayed.classification] : null;
-  const maximum = duration || 35;
+  const maximum = duration || activeCase.durationSeconds;
   const timelineValue = Math.min(currentTime, maximum);
 
   return (
@@ -52,7 +55,7 @@ export function BroadcastPlayer({
         ref={videoRef}
         key={activeCase.mediaSource}
         src={activeCase.mediaSource}
-        poster={activeCase.id === 'primary' ? '/media/content_frame.png' : '/media/ad_frame.png'}
+        poster={activeCase.poster}
         className="broadcast-player-media h-full w-full object-cover"
         preload="metadata"
         onLoadedMetadata={onLoadedMetadata}
@@ -95,7 +98,7 @@ export function BroadcastPlayer({
           </b>
           {displayed && (
             <span className="block truncate font-mono text-micro text-media-text-primary sm:text-section">
-              Frame classification: {displayed.classification.toUpperCase()}
+              Frame classification: {formatClassificationLabel(displayed.classification)}
               {isSlate && displayed.slate_type ? ` (${displayed.slate_type})` : ''}
             </span>
           )}
@@ -114,12 +117,12 @@ export function BroadcastPlayer({
                 )
               }
               variant="outline"
-              className="size-7! shrink-0 rounded-full! border-media-border! bg-media-overlay! p-1! text-media-text-primary! hover:bg-media-overlay/80! sm:size-7.5! sm:p-1.5!"
+              className="size-10! shrink-0 rounded-full! border-media-border! bg-media-overlay! p-2! text-media-text-primary! hover:bg-media-overlay/80! sm:size-8! sm:p-1.5!"
             />
             <span className="shrink-0 text-micro sm:text-forensic-meta">
               {formatTime(currentTime)}
             </span>
-            <div className="relative h-5 flex-1 min-w-10">
+            <div className="relative h-10 flex-1 min-w-10 sm:h-5">
               <input
                 type="range"
                 min={0}
@@ -135,7 +138,7 @@ export function BroadcastPlayer({
                 aria-hidden="true"
                 className="pointer-events-none absolute top-1/2 left-0 z-content h-1 w-full -translate-y-1/2 rounded-full bg-media-track peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-interactive forced-colors:hidden"
               >
-                {activeCase.id === 'primary' && (
+                {activeCase.expectedOutcome === 'incident' && (
                   <span className="broadcast-cue-zone absolute h-full bg-status-critical/80" />
                 )}
                 <span
@@ -147,16 +150,26 @@ export function BroadcastPlayer({
             <span className="shrink-0 text-micro sm:text-forensic-meta">{formatTime(maximum)}</span>
           </div>
 
-          {onClassify ? (
+          {onClassify || classifyDisabled ? (
             <Button
               variant="primary"
               size="sm"
               loading={classifying}
+              disabled={classifyDisabled}
               onClick={onClassify}
               icon={<Sparkles className="size-3 sm:size-3.5" />}
-              className="h-7 shrink-0 px-2 font-sans font-semibold tracking-wide shadow-glow-interactive text-micro sm:h-7.5 sm:px-3 sm:text-xs"
+              title={
+                classifyDisabled
+                  ? 'This guardrail scenario intentionally skips Vision classification'
+                  : undefined
+              }
+              className="h-10 shrink-0 px-3 font-sans font-semibold tracking-wide shadow-glow-interactive text-micro sm:h-8 sm:px-3 sm:text-xs"
             >
-              {classifying ? 'Analyzing…' : `Classify ${formatTime(currentTime)}`}
+              {classifyDisabled
+                ? 'Vision disabled'
+                : classifying
+                  ? 'Analyzing…'
+                  : `Classify ${formatTime(currentTime)}`}
             </Button>
           ) : null}
         </div>

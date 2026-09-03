@@ -1,21 +1,20 @@
-import { Activity, Database, DollarSign, Percent, Zap } from 'lucide-react';
 import type { InvestigationCaseConfig } from '../config/investigation-cases.js';
 import type { GroundedKpiMetrics } from '../hooks/use-clickhouse-metrics.js';
 import type { EvidenceGateReason } from '../types.js';
-import { Metric, SegmentedControl } from './ui/index.js';
+import { CaseOverviewMetrics } from './CaseOverviewMetrics.js';
+import { Button, Select } from './ui/index.js';
+import { Play, RotateCw } from 'lucide-react';
 
 interface CaseOverviewProps {
   activeCase: InvestigationCaseConfig;
+  cases: readonly InvestigationCaseConfig[];
   metrics: GroundedKpiMetrics;
   investigating: boolean;
+  hasRun: boolean;
   visionConfirmed?: boolean;
   onSelectCase: (id: InvestigationCaseConfig['id']) => void;
+  onRun: () => void;
 }
-
-const CASE_OPTIONS = [
-  { value: 'primary', label: 'Primary incident' },
-  { value: 'negative-control', label: 'Negative control' },
-] as const;
 
 function getOverviewTitle({
   activeCase,
@@ -132,11 +131,18 @@ function getOverviewSummary({
 
 export function CaseOverview({
   activeCase,
+  cases,
   metrics,
-  investigating: _investigating,
+  investigating,
+  hasRun,
   visionConfirmed = false,
   onSelectCase,
+  onRun,
 }: CaseOverviewProps) {
+  const caseOptions = cases.map((investigationCase) => ({
+    value: investigationCase.id,
+    label: investigationCase.label,
+  }));
   const summaryData = metrics.evidenceSummary;
   const outcome = summaryData?.outcome;
   const candidate = summaryData?.candidate;
@@ -178,6 +184,8 @@ export function CaseOverview({
     thresholds,
     visionConfirmed,
   });
+  const eyebrowParts = activeCase.eyebrow.split(' · ');
+  const channelId = eyebrowParts.pop();
 
   return (
     <section
@@ -187,17 +195,41 @@ export function CaseOverview({
       {/* Tier 1: Incident Hero Banner */}
       <div className={`p-5 sm:p-6 ${outcomeBannerBg}`}>
         <div className="flex flex-wrap items-center justify-between gap-3 max-sm:flex-col max-sm:items-start">
-          <div className="font-mono text-forensic-meta font-bold uppercase tracking-eyebrow text-text-muted break-keep whitespace-nowrap max-w-full truncate">
-            {activeCase.eyebrow}
+          <div className="font-mono text-forensic-meta font-bold tracking-eyebrow text-text-muted break-keep whitespace-nowrap max-w-full truncate">
+            <span className="uppercase">{eyebrowParts.join(' · ')}</span>
+            {channelId ? <> · {channelId}</> : null}
           </div>
-          <SegmentedControl
-            label="Investigation case"
-            options={CASE_OPTIONS}
-            value={activeCase.id}
-            onValueChange={onSelectCase}
-            size="sm"
-            className="font-mono uppercase"
-          />
+          <div className="flex flex-wrap items-center justify-end gap-2 max-sm:w-full max-sm:justify-start">
+            <Select
+              label="Demo scenario"
+              options={caseOptions}
+              value={activeCase.id}
+              onValueChange={onSelectCase}
+              className="font-mono"
+              layout="inline"
+              disabled={investigating}
+            />
+            <Button
+              onClick={onRun}
+              loading={investigating}
+              variant="primary"
+              size="sm"
+              className="h-8.5 shrink-0 font-sans tracking-wide max-sm:flex-1"
+              icon={
+                hasRun ? (
+                  <RotateCw aria-hidden="true" className="size-3.5" />
+                ) : (
+                  <Play aria-hidden="true" className="size-3.5 fill-current" />
+                )
+              }
+            >
+              {investigating
+                ? 'Running investigation'
+                : hasRun
+                  ? 'Replay investigation'
+                  : 'Run investigation'}
+            </Button>
+          </div>
         </div>
         <h1
           id="incident-title"
@@ -221,55 +253,7 @@ export function CaseOverview({
         </p>
       </div>
 
-      {/* Tier 2: Cockpit KPI Stat Row */}
-      <div className="grid grid-cols-1 gap-px border-t border-border-subtle bg-border-subtle sm:grid-cols-2 lg:grid-cols-4">
-        <Metric
-          label="Revenue at risk"
-          value={metrics.revenueLoss}
-          detail={metrics.revenueLossSubtext}
-          tag={metrics.revenueLossTag}
-          tone={metrics.revenueLossVariant}
-          icon={<DollarSign className="size-3.5" />}
-          variant="column"
-          className="bg-surface-panel"
-        />
-        <Metric
-          label="Slate bleed"
-          value={metrics.slateBleedRate}
-          detail={metrics.slateBleedSubtext}
-          tag={metrics.slateBleedTag}
-          tone={metrics.slateBleedVariant}
-          icon={<Percent className="size-3.5" />}
-          variant="column"
-          className="bg-surface-panel"
-        />
-        <Metric
-          label="Offending SSP"
-          value={metrics.offendingSsp}
-          detail={metrics.sspSubtext}
-          tag={metrics.sspLatency}
-          tone={metrics.sspVariant}
-          icon={
-            outcome === 'no_incident' ? (
-              <Activity className="size-3.5" />
-            ) : (
-              <Zap className="size-3.5" />
-            )
-          }
-          variant="column"
-          className="bg-surface-panel"
-        />
-        <Metric
-          label="Telemetry scanned"
-          value={metrics.scannedLogs}
-          detail={metrics.scannedLogsSubtext}
-          tag={metrics.scannedLogsTag}
-          tone={metrics.isGroundedFromMcp ? 'interactive' : 'neutral'}
-          icon={<Database className="size-3.5" />}
-          variant="column"
-          className="bg-surface-panel"
-        />
-      </div>
+      <CaseOverviewMetrics metrics={metrics} investigating={investigating} outcome={outcome} />
     </section>
   );
 }

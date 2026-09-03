@@ -1,0 +1,10 @@
+{
+  "classification": "slate",
+  "confidence": 0.99,
+  "slate_type": "looping_card",
+  "text_detected": "COMMERCIAL BREAK IN PROGRESS We'll be right back Coverage will resume shortly GhostSlate Network Feed - FAST-01",
+  "visual_summary": "A dark blue commercial-break card confirms the looping slate on air.",
+  "contentHash": "2ca4feed383dfa639f5d3d5df058563936fcece0ac79e9ce829e3200d251c25b",
+  "cached": false,
+  "timestampSeconds": 12.5
+}

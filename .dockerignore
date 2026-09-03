@@ -12,6 +12,7 @@
 *-sa-key*.json
 gcp-key*.json
 application_default_credentials.json
+gha-creds-*.json
 .gcloud/
 secrets/
 clickhouse-*.crt

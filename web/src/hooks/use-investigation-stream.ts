@@ -8,22 +8,19 @@ import type { InvestigationTraceEvent, GroundingReport } from '../types.js';
 
 export interface UseInvestigationStreamResult {
   runKey: string | null;
+  executionMode: 'live' | 'cached_replay' | null;
   investigating: boolean;
   reconnecting: boolean;
   investigationTrace: InvestigationTraceEvent[];
   finalDiagnosis: string | null;
   groundingReport: GroundingReport | undefined;
-  startInvestigation: (input: {
-    prompt: string;
-    channel: string;
-    from: string;
-    to: string;
-  }) => Promise<void>;
+  startInvestigation: (input: { scenarioId: string; prompt: string }) => Promise<void>;
   resetInvestigation: () => void;
 }
 
 export function useInvestigationStream(): UseInvestigationStreamResult {
   const [runKey, setRunKey] = useState<string | null>(null);
+  const [executionMode, setExecutionMode] = useState<'live' | 'cached_replay' | null>(null);
   const [investigating, setInvestigating] = useState<boolean>(false);
   const [reconnecting, setReconnecting] = useState<boolean>(false);
   const [investigationTrace, setInvestigationTrace] = useState<InvestigationTraceEvent[]>([]);
@@ -53,6 +50,7 @@ export function useInvestigationStream(): UseInvestigationStreamResult {
   const resetInvestigation = useCallback(() => {
     closeStream();
     setRunKey(null);
+    setExecutionMode(null);
     setInvestigating(false);
     setReconnecting(false);
     setInvestigationTrace([]);
@@ -61,12 +59,13 @@ export function useInvestigationStream(): UseInvestigationStreamResult {
   }, [closeStream]);
 
   const startInvestigation = useCallback(
-    async (input: { prompt: string; channel: string; from: string; to: string }) => {
+    async (input: { scenarioId: string; prompt: string }) => {
       closeStream();
       const controller = new AbortController();
       startAbortControllerRef.current = controller;
 
       setRunKey(null);
+      setExecutionMode(null);
       setInvestigating(true);
       setReconnecting(false);
       setInvestigationTrace([]);
@@ -85,6 +84,7 @@ export function useInvestigationStream(): UseInvestigationStreamResult {
         const response = await fetch('/api/investigate/spike', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify(input),
           signal: controller.signal,
         });
@@ -100,9 +100,11 @@ export function useInvestigationStream(): UseInvestigationStreamResult {
 
         const { runKey: currentRunKey } = runResponse;
         setRunKey(currentRunKey);
+        setExecutionMode(runResponse.created ? 'live' : 'cached_replay');
 
         const es = new EventSource(
           `/api/investigate/runs/${encodeURIComponent(currentRunKey)}/stream`,
+          { withCredentials: true },
         );
         eventSourceRef.current = es;
 
@@ -178,6 +180,7 @@ export function useInvestigationStream(): UseInvestigationStreamResult {
 
   return {
     runKey,
+    executionMode,
     investigating,
     reconnecting,
     investigationTrace,

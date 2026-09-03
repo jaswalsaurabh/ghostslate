@@ -4,6 +4,15 @@
 # no credentials in git either.
 # ---------------------------------------------------------------------------
 .env
+
+# Terraform local state, plans, variables, and provider cache.
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/*.tfplan
+terraform/*.tfvars
+!terraform/terraform.tfvars.example
+terraform/crash.log
 .env.*
 !.env.example
 *.pem
@@ -15,6 +24,7 @@
 *-sa-key*.json
 gcp-key*.json
 application_default_credentials.json
+gha-creds-*.json
 .gcloud/
 secrets/
 # ClickHouse Cloud connection material
@@ -82,6 +92,7 @@ frames/
 !server/**/*.ts
 !web/**/*.ts
 !tools/**/*.ts
+!scripts/**/*.ts
 .cache/
 .frame-cache/
 
@@ -131,3 +142,28 @@ CLAUDE.md
 .agent/logo-archive/
 # Local design explorations are reference material, not shipped application code.
 web/design/
+
+mock-*.html
+
+# Markdown is publish-by-exception. Add a specific exception before committing
+# a new public Markdown document.
+*.md
+!AGENTS.md
+!GEMINI.md
+!PROJECT-OVERVIEW.md
+!README.md
+!SECURITY.md
+!.agent/
+!.agent/design-system.md
+!.agent/text-casing-standard.md
+!eval/
+!eval/README.md
+!infra/
+!infra/*.md
+!sql/
+!sql/README.md
+!sql/benchmarks/
+!sql/benchmarks/*.md
+!tools/
+!tools/generator/
+!tools/generator/README.md

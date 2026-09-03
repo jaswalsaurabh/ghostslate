@@ -109,7 +109,7 @@ describe('InvestigationService — Vision Tool & Media Boundary Contracts', () =
     ]);
   });
 
-  it('validates context-mapped media and timestamp bounds (§10)', async () => {
+  it('resolves agent Vision media and timestamp only from the active context', async () => {
     const service = createServiceWithMockedAI();
     const execute = (name: string, args: Record<string, unknown>, ctx = defaultContext) =>
       (
@@ -118,69 +118,63 @@ describe('InvestigationService — Vision Tool & Media Boundary Contracts', () =
             name: string,
             args: Record<string, unknown>,
             context: typeof defaultContext,
-          ) => Promise<{ resultText: string; isError: boolean }>;
+          ) => Promise<{
+            resultText: string;
+            isError: boolean;
+            resolvedArgs?: Record<string, unknown>;
+          }>;
         }
       ).executeTool(name, args, ctx);
 
-    // 1. Correct primary context + mapped media (slate.mp4) + valid timestamp -> succeeds
     const slateValid = await execute('classify_frame', {
-      video_file: 'slate.mp4',
-      timestamp_seconds: 14.5,
-    });
-    expect(slateValid.isError).toBe(false);
-    expect(mockVisionService.classifyVideoTimestamp).toHaveBeenCalledWith('slate.mp4', 14.5);
-
-    // 2. Correct primary context + unrelated media (content.mp4) -> fails without calling vision
-    vi.clearAllMocks();
-    const contentUnrelated = await execute('classify_frame', {
-      video_file: 'content.mp4',
-      timestamp_seconds: 5,
-    });
-    expect(contentUnrelated.isError).toBe(true);
-    expect(contentUnrelated.resultText).toContain('not mapped to the active incident context');
-    expect(mockVisionService.classifyVideoTimestamp).not.toHaveBeenCalled();
-
-    // 3. Correct primary context + unknown media -> fails without calling vision
-    const unknownFile = await execute('classify_frame', {
-      video_file: 'unknown.mp4',
-      timestamp_seconds: 5,
-    });
-    expect(unknownFile.isError).toBe(true);
-    expect(unknownFile.resultText).toContain('not mapped to the active incident context');
-    expect(mockVisionService.classifyVideoTimestamp).not.toHaveBeenCalled();
-
-    // 4. Correct primary context + out-of-range timestamp (exclusive upper bound: 15) -> fails
-    const slateAtBound = await execute('classify_frame', {
-      video_file: 'slate.mp4',
-      timestamp_seconds: 15,
-    });
-    expect(slateAtBound.isError).toBe(true);
-    expect(slateAtBound.resultText).toContain('strictly less than 15');
-    expect(mockVisionService.classifyVideoTimestamp).not.toHaveBeenCalled();
-
-    // 5. Correct primary context + negative timestamp -> fails
-    const negativeTs = await execute('classify_frame', {
-      video_file: 'slate.mp4',
+      video_file: 'attacker-controlled.mp4',
       timestamp_seconds: -1,
     });
-    expect(negativeTs.isError).toBe(true);
-    expect(negativeTs.resultText).toContain('Invalid timestamp_seconds');
-    expect(mockVisionService.classifyVideoTimestamp).not.toHaveBeenCalled();
+    expect(slateValid.isError).toBe(false);
+    expect(mockVisionService.classifyVideoTimestamp).toHaveBeenCalledWith(
+      'test_stream_slate.mp4',
+      12.5,
+    );
+    expect(slateValid.resolvedArgs).toEqual({
+      scenario_id: 'primary',
+      video_file: 'test_stream_slate.mp4',
+      timestamp_seconds: 12.5,
+    });
 
-    // 6. Negative control context + primary slate -> fails without calling vision
+    vi.clearAllMocks();
     const negativeControlContext = {
       channel: 'ch-01',
       from: '2026-08-09T19:00:00.000Z',
       to: '2026-08-09T23:00:00.000Z',
     };
-    const negativeMediaAttempt = await execute(
-      'classify_frame',
-      { video_file: 'slate.mp4', timestamp_seconds: 5 },
-      negativeControlContext,
-    );
+    const negativeMediaAttempt = await execute('classify_frame', {}, negativeControlContext);
     expect(negativeMediaAttempt.isError).toBe(true);
-    expect(negativeMediaAttempt.resultText).toContain('No synthetic stream media is mapped');
+    expect(negativeMediaAttempt.resultText).toContain('Visual confirmation is disabled');
     expect(mockVisionService.classifyVideoTimestamp).not.toHaveBeenCalled();
+
+    const blackScreenContext = {
+      channel: 'ch-01',
+      from: '2026-08-16T10:00:00.000Z',
+      to: '2026-08-16T12:00:00.000Z',
+    };
+    const blackScreen = await execute('classify_frame', {}, blackScreenContext);
+    expect(blackScreen.isError).toBe(false);
+    expect(mockVisionService.classifyVideoTimestamp).toHaveBeenCalledWith(
+      'test_stream_black_screen.mp4',
+      12.5,
+    );
+
+    const unmapped = await execute(
+      'classify_frame',
+      {},
+      {
+        channel: 'ch-01',
+        from: '2026-08-16T10:00:00.001Z',
+        to: '2026-08-16T12:00:00.000Z',
+      },
+    );
+    expect(unmapped.isError).toBe(true);
+    expect(unmapped.resultText).toContain('No synthetic stream media is mapped');
   });
 
   it('enforces positive incident finalization requires visual confirmation, while negative control succeeds without vision', async () => {

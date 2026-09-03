@@ -6,6 +6,6 @@ export * from './IconButton.js';
 export * from './MarkdownText.js';
 export * from './Metric.js';
 export * from './SegmentedControl.js';
+export * from './Select.js';
 export * from './StatusIndicator.js';
-export * from './Toast.js';
 export * from './Tooltip.js';

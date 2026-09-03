@@ -23,7 +23,7 @@ CHANNEL = "ch-01"
 @dataclass(frozen=True)
 class Incident:
     incident_id: str
-    kind: str  # 'primary' | 'confounder' | 'negative_control'
+    kind: str  # 'primary' | 'positive_variant' | 'confounder' | 'negative_control'
     window_start: str
     window_end: str
     # SQL fragment producing the new latency in ms. May reference the existing
@@ -172,5 +172,24 @@ INCIDENTS: list[Incident] = [
             "answer is to say so."
         ),
         expected_root_cause="",
+    ),
+    Incident(
+        incident_id="variant-ssp-delta-mobile-h264-black-screen",
+        kind="positive_variant",
+        window_start="2026-08-16 10:00:00.000",
+        window_end="2026-08-16 12:00:00.000",
+        ssp_id="ssp-delta",
+        device_class="mobile",
+        codec="h264",
+        latency_expr=_clamped(
+            "ad_response_latency_ms + 1250 * "
+            f"{severity_ramp('2026-08-16 10:00:00.000', '2026-08-16 12:00:00.000')} "
+            f"* (0.55 + 1.0 * {uniform(7005)})"
+        ),
+        description=(
+            "ssp-delta auction latency breaches the stitcher deadline for mobile "
+            "H.264 daytime inventory and manifests as a black-screen fallback slate."
+        ),
+        expected_root_cause="ssp-delta auction latency on mobile/h264",
     ),
 ]
