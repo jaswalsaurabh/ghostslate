@@ -106,6 +106,8 @@ GitHub repository variable `GCP_PUBLIC_URL` to `https://app.example.com`.
 - ClickHouse credentials are runtime secrets on the `mcp-clickhouse` service only; the GhostSlate
   API receives only the MCP endpoint and bearer token.
 - `MCP_SERVER_URL` points to the official SSE `mcp-clickhouse` service.
+- The MCP service connects to ClickHouse Cloud over HTTPS port `8443`; native
+  `clickhouse-client` maintenance commands use port `9440`.
 - `CLICKHOUSE_MCP_AUTH_TOKEN` is supplied when the deployed MCP server requires authentication.
 - `GCP_PROJECT_ID`, `GCP_REGION`, and `GEMINI_MODEL` select Vertex AI at runtime.
 - `PORT` remains `8080`; Cloud Run provides the externally visible HTTPS endpoint.

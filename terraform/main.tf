@@ -154,7 +154,7 @@ resource "google_cloud_run_v2_service" "mcp" {
 
       env {
         name  = "CLICKHOUSE_PORT"
-        value = "9440"
+        value = "8443"
       }
 
       env {

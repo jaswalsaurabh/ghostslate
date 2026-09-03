@@ -256,6 +256,9 @@ You should see `advertiser_inventory` (4 rows), `scte35_cue_events` (14,400 rows
 
 The Docker Compose init hook runs locally only. For ClickHouse Cloud (the production target), create the read-only `ghostslate_agent` user and grant `SELECT ON ghostslate.* TO ghostslate_agent` via the Cloud console, then apply the three files in order using `clickhouse-client`:
 
+The native `clickhouse-client` commands below use secure native port `9440`. The official
+`mcp-clickhouse` HTTP driver uses secure HTTPS port `8443`, as shown in the injector command.
+
 ```bash
 # Apply schema, rate cards, and baseline telemetry to ClickHouse Cloud
 clickhouse-client --host "$CLICKHOUSE_HOST" --port 9440 --secure \
