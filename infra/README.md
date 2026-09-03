@@ -7,6 +7,10 @@ This directory holds infrastructure configuration for local development and prod
 - **Production:** Google Cloud Run (single container serving API + built web SPA).
 - **Local:** `docker compose -f infra/docker-compose.yml up --build`.
 
+The local Compose stack runs `incident-injector` after ClickHouse finishes seeding. This is
+required: the baseline is intentionally nominal, while the primary, confounder, and negative
+control cases are created by the idempotent injector. The app waits for that job to complete.
+
 ## Required Services
 
 1. **ClickHouse Cloud** (or local instance) reachable by `mcp-clickhouse`.
@@ -49,6 +53,11 @@ server reachable from the Cloud Run network; the agent must continue to use MCP 
 direct ClickHouse client.
 
 ## Deployment smoke test
+
+Before deploying the app to Cloud Run, apply `tools/generator/inject.py` once against the seeded
+ClickHouse Cloud database as the admin user. The Cloud Run agent user is read-only and cannot apply
+these mutations. Verify the injector ledger and run `sql/checks/004-incident-assertions.sql`
+before capturing a demo.
 
 After deployment, capture the service URL and verify the health endpoint before running a full
 investigation:

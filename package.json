@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm --parallel --filter ./web --filter ./server dev",
+    "dev:clickhouse-cloud": "tsx scripts/dev-clickhouse-cloud.ts",
     "build": "pnpm --filter ./server build && pnpm --filter ./web build",
     "start": "pnpm --filter ./server start",
     "typecheck": "tsc --noEmit && pnpm -r typecheck",

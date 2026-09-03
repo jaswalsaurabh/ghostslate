@@ -228,12 +228,14 @@ gcloud config set project YOUR_PROJECT_ID
 ### 3. Start the infrastructure
 
 ```bash
-docker compose -f infra/docker-compose.yml up -d clickhouse mcp-clickhouse
+docker compose -f infra/docker-compose.yml up -d clickhouse mcp-clickhouse incident-injector
 ```
 
 This brings up ClickHouse (`:8123`) and the MCP server (`:8000`), both bound to localhost only. On
-first start, the container automatically applies the schema, provisions the read-only
-`ghostslate_agent` user, seeds the rate cards, and generates the **101.4M-row baseline telemetry**.
+first start, the containers automatically apply the schema, provision the read-only
+`ghostslate_agent` user, seed the rate cards, generate the **101.4M-row baseline telemetry**, and
+apply the deterministic incident mutations. The incident injector is a one-shot idempotent job;
+it exits after the mutations are recorded in `ghostslate_eval.injected_incidents`.
 Initial seeding takes about 1–2 minutes. Subsequent starts are instant because the dataset is
 persisted in a named Docker volume (`clickhouse_data`). To re-seed from scratch after editing seed
 files, run `docker compose -f infra/docker-compose.yml down -v` first.
@@ -244,7 +246,7 @@ Check that all four tables are present and populated:
 
 ```bash
 docker exec ghostslate-clickhouse clickhouse-client \
-  --user default --password "${CLICKHOUSE_ADMIN_PASSWORD:-ghostslate_admin_local_dev}" \
+  --user default --password "$CLICKHOUSE_ADMIN_PASSWORD" \
   --query "SELECT table, total_rows FROM system.tables WHERE database = 'ghostslate'"
 ```
 
@@ -267,6 +269,12 @@ clickhouse-client --host "$CLICKHOUSE_HOST" --port 9440 --secure \
 clickhouse-client --host "$CLICKHOUSE_HOST" --port 9440 --secure \
   --user default --password "$CLICKHOUSE_ADMIN_PASSWORD" \
   --multiquery < sql/seed/003-baseline-telemetry.sql
+
+# Apply the deterministic incident mutations (run once after the baseline)
+tools/generator/.venv/bin/pip install -r tools/generator/requirements.txt
+CLICKHOUSE_HOST="$CLICKHOUSE_HOST" CLICKHOUSE_PORT=8443 CLICKHOUSE_SECURE=true \
+export CLICKHOUSE_ADMIN_USER=default CLICKHOUSE_ADMIN_PASSWORD
+tools/generator/.venv/bin/python tools/generator/inject.py
 ```
 
 Seeding 101.4M rows over network to Cloud takes longer than local Docker; execute it once ahead of deployment. Run `sql/checks/baseline-assertions.sql` against the Cloud instance to verify all 16 assertions and confirm the determinism fingerprint matches local exactly.
@@ -378,6 +386,7 @@ theme switching and no hardcoded colours in components. The full reference is in
 
 ```bash
 pnpm dev            # web + API in watch mode
+pnpm dev:clickhouse-cloud # local web + API with MCP connected to ClickHouse Cloud
 pnpm build          # build both packages
 pnpm test           # vitest across the workspace
 pnpm typecheck
@@ -386,6 +395,13 @@ pnpm format
 pnpm format:check
 pnpm dedupe:check
 ```
+
+To run the local UI and API against ClickHouse Cloud through the official local
+`mcp-clickhouse` container, export `CLICKHOUSE_CLOUD_HOST`,
+`CLICKHOUSE_CLOUD_USER`, `CLICKHOUSE_CLOUD_PASSWORD`, and
+`CLICKHOUSE_MCP_AUTH_TOKEN`, then run `pnpm dev:clickhouse-cloud`. The command
+uses port `18000` for the temporary MCP container and leaves the existing
+`pnpm dev` path unchanged. The Cloud user must be read-only.
 
 **Dependency discipline.** One version of any technology, repo-wide. Shared versions are declared
 once in `pnpm-workspace.yaml` under `catalog:` and referenced as `"catalog:"`, never as a literal

@@ -53,6 +53,22 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  incident-injector:
+    build:
+      context: ..
+      dockerfile: infra/injector.Dockerfile
+    container_name: ghostslate-incident-injector
+    environment:
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: 8123
+      CLICKHOUSE_ADMIN_USER: default
+      CLICKHOUSE_ADMIN_PASSWORD: ${CLICKHOUSE_ADMIN_PASSWORD:-ghostslate_admin_local_dev}
+      CLICKHOUSE_SECURE: 'false'
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    restart: 'no'
+
   app:
     build:
       context: ..
@@ -75,6 +91,8 @@ services:
         condition: service_healthy
       mcp-clickhouse:
         condition: service_started
+      incident-injector:
+        condition: service_completed_successfully
     restart: unless-stopped
 
 volumes:
