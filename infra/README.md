@@ -38,7 +38,7 @@ gcloud run deploy ghostslate \
   --ingress internal-and-cloud-load-balancing \
   --no-default-url \
   --allow-unauthenticated \
-  --set-env-vars NODE_ENV=production,TRUST_PROXY_HOPS=1,GCP_PROJECT_ID=PROJECT_ID,GCP_REGION=REGION,GEMINI_MODEL=gemini-2.5-flash,CLICKHOUSE_MCP_SERVER_TRANSPORT=sse,REMEDIATION_ENABLED=false,PORT=8080 \
+  --set-env-vars NODE_ENV=production,TRUST_PROXY_HOPS=1,GCP_PROJECT_ID=PROJECT_ID,GCP_REGION=REGION,GEMINI_MODEL=gemini-2.5-flash,CLICKHOUSE_MCP_SERVER_TRANSPORT=sse,REMEDIATION_ENABLED=false \
   --set-secrets CLICKHOUSE_MCP_AUTH_TOKEN=${CLICKHOUSE_MCP_AUTH_TOKEN_SECRET_NAME}:latest,MCP_SERVER_URL=${MCP_SERVER_URL_SECRET_NAME}:latest,RUN_KEY_SECRET=${RUN_KEY_SECRET_NAME}:latest
 ```
 
@@ -62,6 +62,35 @@ run all six scenarios from the UI. Confirm that the primary, latency-isolation, 
 cases select their measured cohorts and that the clean-control, set-top-box confounder, and
 small-sample cases produce no root cause, loss, or remediation. Both positive visual variants must
 classify the server-mapped frame before finalization.
+
+## Public HTTPS edge with Terraform
+
+Terraform provisions the external HTTPS load balancer, Cloud Run serverless NEG, Google-managed
+certificate, reserved global IP, and a DNS record for `app.example.com`. The checked-in Terraform
+configuration uses Cloudflare as its DNS provider; another provider can use the same hostname and
+load-balancer IP with an equivalent `A` record. Cloudflare authentication is read from
+`CLOUDFLARE_API_TOKEN`; never put the token in a `.tfvars` file or commit it.
+
+```bash
+export CLOUDFLARE_API_TOKEN='your-dns-edit-token'
+terraform -chdir=terraform init
+terraform -chdir=terraform plan \
+  -var='project_id=PROJECT_ID' \
+  -var='region=us-central1' \
+  -var='github_repository=jaswalsaurabh/ghostslate' \
+  -var='production_environment=production' \
+  -var='cloudflare_zone_id=CLOUDFLARE_ZONE_ID'
+terraform -chdir=terraform apply \
+  -var='project_id=PROJECT_ID' \
+  -var='region=us-central1' \
+  -var='github_repository=jaswalsaurabh/ghostslate' \
+  -var='production_environment=production' \
+  -var='cloudflare_zone_id=CLOUDFLARE_ZONE_ID'
+```
+
+The DNS record is initially DNS-only so the Google-managed certificate can validate the hostname.
+Wait for the certificate output by `managed_certificate_name` to become `ACTIVE`, then set the
+GitHub repository variable `GCP_PUBLIC_URL` to `https://app.example.com`.
 
 ## Required production settings
 

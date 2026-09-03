@@ -2,6 +2,7 @@ locals {
   required_services = toset([
     "aiplatform.googleapis.com",
     "artifactregistry.googleapis.com",
+    "compute.googleapis.com",
     "iamcredentials.googleapis.com",
     "run.googleapis.com",
     "secretmanager.googleapis.com",
@@ -232,4 +233,88 @@ resource "google_cloud_run_v2_service" "mcp" {
     google_project_service.required["run.googleapis.com"],
     google_secret_manager_secret_iam_member.mcp_runtime,
   ]
+}
+
+resource "google_compute_global_address" "ghostslate" {
+  project = var.project_id
+  name    = "ghostslate-public-ip"
+
+  depends_on = [google_project_service.required["compute.googleapis.com"]]
+}
+
+resource "google_compute_region_network_endpoint_group" "ghostslate" {
+  project               = var.project_id
+  name                  = "ghostslate-cloud-run-neg"
+  region                = var.region
+  network_endpoint_type = "SERVERLESS"
+
+  cloud_run {
+    service = var.application_service_name
+  }
+
+  depends_on = [google_project_service.required["compute.googleapis.com"]]
+}
+
+resource "google_compute_backend_service" "ghostslate" {
+  project               = var.project_id
+  name                  = "ghostslate-backend"
+  protocol              = "HTTP"
+  load_balancing_scheme = "EXTERNAL_MANAGED"
+
+  backend {
+    group = google_compute_region_network_endpoint_group.ghostslate.id
+  }
+
+  depends_on = [google_project_service.required["compute.googleapis.com"]]
+}
+
+resource "google_compute_url_map" "ghostslate" {
+  project         = var.project_id
+  name            = "ghostslate-url-map"
+  default_service = google_compute_backend_service.ghostslate.id
+
+  depends_on = [google_project_service.required["compute.googleapis.com"]]
+}
+
+resource "cloudflare_dns_record" "ghostslate" {
+  zone_id = var.cloudflare_zone_id
+  name    = var.public_hostname
+  type    = "A"
+  content = google_compute_global_address.ghostslate.address
+  ttl     = 300
+  proxied = false
+}
+
+resource "google_compute_managed_ssl_certificate" "ghostslate" {
+  project = var.project_id
+  name    = "ghostslate-managed-cert"
+
+  managed {
+    domains = [var.public_hostname]
+  }
+
+  depends_on = [
+    cloudflare_dns_record.ghostslate,
+    google_project_service.required["compute.googleapis.com"],
+  ]
+}
+
+resource "google_compute_target_https_proxy" "ghostslate" {
+  project          = var.project_id
+  name             = "ghostslate-https-proxy"
+  url_map          = google_compute_url_map.ghostslate.id
+  ssl_certificates = [google_compute_managed_ssl_certificate.ghostslate.id]
+
+  depends_on = [google_project_service.required["compute.googleapis.com"]]
+}
+
+resource "google_compute_global_forwarding_rule" "ghostslate" {
+  project               = var.project_id
+  name                  = "ghostslate-https-forwarding-rule"
+  target                = google_compute_target_https_proxy.ghostslate.id
+  ip_address            = google_compute_global_address.ghostslate.id
+  port_range            = "443"
+  load_balancing_scheme = "EXTERNAL_MANAGED"
+
+  depends_on = [google_project_service.required["compute.googleapis.com"]]
 }

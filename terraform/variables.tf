@@ -8,6 +8,23 @@ variable "region" {
   type        = string
 }
 
+variable "application_service_name" {
+  description = "Existing public Cloud Run service receiving application traffic."
+  type        = string
+  default     = "ghostslate"
+}
+
+variable "public_hostname" {
+  description = "HTTPS hostname served by the external load balancer."
+  type        = string
+  default     = "app.example.com"
+}
+
+variable "cloudflare_zone_id" {
+  description = "Cloudflare zone ID for the public hostname."
+  type        = string
+}
+
 variable "github_repository" {
   description = "GitHub repository allowed to federate into deployment identities."
   type        = string

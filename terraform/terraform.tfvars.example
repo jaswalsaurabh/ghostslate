@@ -3,3 +3,5 @@ region     = "example-region"
 
 github_repository      = "example-owner/example-repository"
 production_environment = "example-production"
+cloudflare_zone_id     = "replace-with-cloudflare-zone-id"
+public_hostname        = "app.example.com"

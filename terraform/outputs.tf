@@ -42,3 +42,18 @@ output "secret_ids" {
   description = "Secret Manager secret IDs; values are intentionally never output."
   value       = { for key, secret in google_secret_manager_secret.application : key => secret.secret_id }
 }
+
+output "public_hostname" {
+  description = "Public HTTPS hostname for the GhostSlate application."
+  value       = "https://${var.public_hostname}"
+}
+
+output "public_load_balancer_ip" {
+  description = "Global IPv4 address serving the GhostSlate HTTPS load balancer."
+  value       = google_compute_global_address.ghostslate.address
+}
+
+output "managed_certificate_name" {
+  description = "Google-managed certificate to monitor until it becomes ACTIVE."
+  value       = google_compute_managed_ssl_certificate.ghostslate.name
+}

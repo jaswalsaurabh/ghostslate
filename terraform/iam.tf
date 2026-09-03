@@ -77,3 +77,11 @@ resource "google_cloud_run_v2_service_iam_member" "mcp_invoker" {
   role     = "roles/run.invoker"
   member   = "serviceAccount:${local.runtime_email}"
 }
+
+resource "google_cloud_run_v2_service_iam_member" "application_public_invoker" {
+  project  = var.project_id
+  location = var.region
+  name     = var.application_service_name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
