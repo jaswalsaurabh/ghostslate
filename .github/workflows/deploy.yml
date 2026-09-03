@@ -120,7 +120,7 @@ jobs:
             --ingress=internal-and-cloud-load-balancing \
             --no-default-url \
             --allow-unauthenticated \
-            --set-env-vars="NODE_ENV=production,TRUST_PROXY_HOPS=1,GCP_PROJECT_ID=${{ vars.GCP_PROJECT_ID }},GCP_REGION=${{ vars.GCP_REGION }},GEMINI_MODEL=gemini-2.5-flash,CLICKHOUSE_MCP_SERVER_TRANSPORT=sse,REMEDIATION_ENABLED=false,PORT=8080" \
+            --set-env-vars="NODE_ENV=production,TRUST_PROXY_HOPS=1,GCP_PROJECT_ID=${{ vars.GCP_PROJECT_ID }},GCP_REGION=${{ vars.GCP_REGION }},GEMINI_MODEL=gemini-2.5-flash,CLICKHOUSE_MCP_SERVER_TRANSPORT=sse,REMEDIATION_ENABLED=false" \
             --set-secrets="CLICKHOUSE_MCP_AUTH_TOKEN=${{ vars.CLICKHOUSE_MCP_AUTH_TOKEN_SECRET }}:latest,MCP_SERVER_URL=${{ vars.MCP_SERVER_URL_SECRET }}:latest,RUN_KEY_SECRET=${{ vars.RUN_KEY_SECRET }}:latest" \
             --quiet
 
