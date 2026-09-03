@@ -88,7 +88,12 @@ while IFS= read -r -d '' file; do
     && report "$file" "hardcoded bearer token"
   echo "$content" | grep -E 'clickhouse\.cloud' | grep -qE '://[^:/[:space:]]+:[^@[:space:]]{8,}@' && report "$file" "ClickHouse connection string with password"
   # Assignment of a real-looking literal. Placeholders and env lookups are allowed.
-  echo "$content" | grep -iE '(password|passwd|secret|api[_-]?key|access[_-]?token|private[_-]?key)[[:space:]]*[:=][[:space:]]*.{0,3}[A-Za-z0-9/+_-]{12,}' \
+  # Terraform's `secret = ...secret_id` is metadata that points at Secret
+  # Manager; it is not credential material and must remain representable in
+  # public infrastructure code.
+  echo "$content" \
+    | grep -vE '^[+]?[[:space:]]*secret[[:space:]]*=[[:space:]]*google_secret_manager_secret\..*\.secret_id[[:space:]]*$' \
+    | grep -iE '(password|passwd|secret|api[_-]?key|access[_-]?token|private[_-]?key)[[:space:]]*[:=][[:space:]]*.{0,3}[A-Za-z0-9/+_-]{12,}' \
     | grep -qviE 'process\.env|os\.environ|import\.meta\.env|\$\{|<[a-z-]+>|your[_-]|example|placeholder|xxx|changeme|redacted' \
     && report "$file" "hardcoded credential literal"
 done < <(

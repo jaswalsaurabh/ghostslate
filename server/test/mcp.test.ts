@@ -11,6 +11,7 @@ describe('McpClientService', () => {
 
   afterEach(() => {
     globalThis.fetch = originalFetch;
+    vi.unstubAllEnvs();
   });
 
   it('initializes with default configuration', () => {
@@ -19,6 +20,34 @@ describe('McpClientService', () => {
     });
 
     expect(service).toBeInstanceOf(McpClientService);
+  });
+
+  it('adds a cached Cloud Run identity token without replacing the MCP token', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      expect(String(input)).toContain(
+        'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity',
+      );
+      expect(init?.headers).toEqual({ 'Metadata-Flavor': 'Google' });
+      return new Response('cloud-run-identity-token', { status: 200 });
+    });
+    globalThis.fetch = fetchMock;
+
+    const service = new McpClientService({
+      baseUrl: 'https://mcp.example.test',
+      authToken: `mcp-token-${'x'.repeat(32)}`,
+    });
+    const getHeaders = (
+      service as unknown as { getHeaders: () => Promise<Record<string, string>> }
+    ).getHeaders.bind(service);
+
+    const firstHeaders = await getHeaders();
+    const secondHeaders = await getHeaders();
+
+    expect(firstHeaders.Authorization).toBe(`Bearer mcp-token-${'x'.repeat(32)}`);
+    expect(firstHeaders['X-Serverless-Authorization']).toBe('Bearer cloud-run-identity-token');
+    expect(secondHeaders['X-Serverless-Authorization']).toBe('Bearer cloud-run-identity-token');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('cleans up state and rejects pending requests on disconnect', () => {

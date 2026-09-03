@@ -119,3 +119,117 @@ resource "google_secret_manager_secret" "application" {
 
   depends_on = [google_project_service.required["secretmanager.googleapis.com"]]
 }
+
+resource "google_cloud_run_v2_service" "mcp" {
+  project             = var.project_id
+  name                = var.mcp_service_name
+  location            = var.region
+  ingress             = "INGRESS_TRAFFIC_INTERNAL_ONLY"
+  deletion_protection = true
+
+  template {
+    service_account = google_service_account.mcp_runtime.email
+
+    scaling {
+      max_instance_count = 1
+    }
+
+    containers {
+      image = var.mcp_image
+
+      ports {
+        container_port = 8000
+      }
+
+      env {
+        name = "CLICKHOUSE_HOST"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.application["clickhouse_host"].secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name  = "CLICKHOUSE_PORT"
+        value = "9440"
+      }
+
+      env {
+        name  = "CLICKHOUSE_SECURE"
+        value = "true"
+      }
+
+      env {
+        name  = "CLICKHOUSE_VERIFY"
+        value = "true"
+      }
+
+      env {
+        name = "CLICKHOUSE_USER"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.application["clickhouse_user"].secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name = "CLICKHOUSE_PASSWORD"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.application["clickhouse_password"].secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name  = "CLICKHOUSE_DATABASE"
+        value = "ghostslate"
+      }
+
+      env {
+        name  = "CLICKHOUSE_MCP_SERVER_TRANSPORT"
+        value = "sse"
+      }
+
+      env {
+        name  = "CLICKHOUSE_MCP_BIND_HOST"
+        value = "0.0.0.0"
+      }
+
+      env {
+        name  = "CLICKHOUSE_MCP_BIND_PORT"
+        value = "8000"
+      }
+
+      env {
+        name = "CLICKHOUSE_MCP_AUTH_TOKEN"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.application["mcp_auth_token"].secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name  = "CLICKHOUSE_MCP_AUTH_DISABLED"
+        value = "false"
+      }
+
+      env {
+        name  = "CLICKHOUSE_ALLOW_WRITE_ACCESS"
+        value = "false"
+      }
+    }
+  }
+
+  depends_on = [
+    google_project_service.required["run.googleapis.com"],
+    google_secret_manager_secret_iam_member.mcp_runtime,
+  ]
+}

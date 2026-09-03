@@ -23,6 +23,16 @@ output "runtime_service_account" {
   value       = google_service_account.runtime.email
 }
 
+output "mcp_runtime_service_account" {
+  description = "Cloud Run runtime service-account email for the MCP service."
+  value       = google_service_account.mcp_runtime.email
+}
+
+output "mcp_service_url" {
+  description = "Private Cloud Run URL for the MCP service."
+  value       = google_cloud_run_v2_service.mcp.uri
+}
+
 output "artifact_registry_repository" {
   description = "Artifact Registry repository path."
   value       = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.ghostslate.repository_id}"

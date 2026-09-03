@@ -36,12 +36,27 @@ variable "artifact_repository_id" {
   default     = "ghostslate"
 }
 
+variable "mcp_service_name" {
+  description = "Private Cloud Run service name for the official ClickHouse MCP server."
+  type        = string
+  default     = "ghostslate-mcp-clickhouse"
+}
+
+variable "mcp_image" {
+  description = "Pinned official ClickHouse MCP server image."
+  type        = string
+  default     = "ghcr.io/clickhouse/mcp-clickhouse@sha256:f4d9f1502a14a98fd17f3ecf8654bd102ba5bde86e54a9579ed8871ef8d7"
+}
+
 variable "secret_ids" {
-  description = "Secret Manager containers consumed by the GhostSlate runtime."
+  description = "Secret Manager containers consumed by the GhostSlate runtime or MCP service."
   type        = map(string)
   default = {
-    mcp_auth_token = "ghostslate-clickhouse-mcp-auth-token"
-    mcp_server_url = "ghostslate-mcp-server-url"
-    run_key        = "ghostslate-run-key"
+    mcp_auth_token      = "example-mcp-auth-token"
+    mcp_server_url      = "example-mcp-server-url"
+    run_key             = "example-run-key"
+    clickhouse_host     = "example-clickhouse-host"
+    clickhouse_user     = "example-clickhouse-user"
+    clickhouse_password = "example-clickhouse-password"
   }
 }

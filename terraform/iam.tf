@@ -69,3 +69,11 @@ resource "google_service_account_iam_member" "github_mcp_runtime_user" {
   role               = "roles/iam.serviceAccountUser"
   member             = "serviceAccount:${local.deployer_email}"
 }
+
+resource "google_cloud_run_v2_service_iam_member" "mcp_invoker" {
+  project  = var.project_id
+  location = var.region
+  name     = google_cloud_run_v2_service.mcp.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${local.runtime_email}"
+}
