@@ -1,6 +1,9 @@
 import { ServiceUnavailableError } from '../errors/domain-error.js';
 
 const MAX_SSE_EVENT_BYTES = 1 * 1_024 * 1_024;
+const CLOUD_RUN_IDENTITY_TOKEN_URL =
+  'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity';
+const IDENTITY_TOKEN_CACHE_MS = 4 * 60 * 1_000;
 
 export interface McpToolDefinition {
   name: string;
@@ -50,6 +53,8 @@ export class McpClientService {
   private connected = false;
   private connecting = false;
   private connectPromise: Promise<void> | null = null;
+  private cloudRunIdentityToken: string | null = null;
+  private cloudRunIdentityTokenExpiresAt = 0;
 
   constructor(config?: Partial<McpClientConfig>) {
     this.baseUrl = (
@@ -71,12 +76,62 @@ export class McpClientService {
     }
   }
 
-  private getHeaders(): Record<string, string> {
+  private async getCloudRunIdentityToken(): Promise<string | null> {
+    if (process.env.NODE_ENV !== 'production') {
+      return null;
+    }
+
+    const now = Date.now();
+    if (this.cloudRunIdentityToken && now < this.cloudRunIdentityTokenExpiresAt) {
+      return this.cloudRunIdentityToken;
+    }
+
+    const audience = new URL(this.baseUrl).origin;
+    let response: Response;
+    try {
+      response = await fetch(
+        `${CLOUD_RUN_IDENTITY_TOKEN_URL}?audience=${encodeURIComponent(audience)}&format=full`,
+        {
+          headers: { 'Metadata-Flavor': 'Google' },
+          signal: AbortSignal.timeout(5_000),
+        },
+      );
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new ServiceUnavailableError(`Failed to obtain Cloud Run identity token: ${message}`);
+    }
+
+    if (!response.ok) {
+      throw new ServiceUnavailableError(
+        `Metadata server returned HTTP ${response.status} while obtaining Cloud Run identity token`,
+      );
+    }
+
+    const token = (await response.text()).trim();
+    if (!token) {
+      throw new ServiceUnavailableError(
+        'Metadata server returned an empty Cloud Run identity token',
+      );
+    }
+
+    this.cloudRunIdentityToken = token;
+    this.cloudRunIdentityTokenExpiresAt = now + IDENTITY_TOKEN_CACHE_MS;
+    return token;
+  }
+
+  private async getHeaders(contentType?: string): Promise<Record<string, string>> {
     const headers: Record<string, string> = {
       Accept: 'text/event-stream',
     };
+    if (contentType) {
+      headers['Content-Type'] = contentType;
+    }
     if (this.authToken && this.authToken.trim().length > 0) {
       headers['Authorization'] = `Bearer ${this.authToken}`;
+    }
+    const identityToken = await this.getCloudRunIdentityToken();
+    if (identityToken) {
+      headers['X-Serverless-Authorization'] = `Bearer ${identityToken}`;
     }
     return headers;
   }
@@ -99,7 +154,7 @@ export class McpClientService {
         try {
           response = await fetch(sseUrl, {
             method: 'GET',
-            headers: this.getHeaders(),
+            headers: await this.getHeaders(),
             signal: this.abortController.signal,
           });
         } catch (err: unknown) {
@@ -297,19 +352,15 @@ export class McpClientService {
         timer,
       });
 
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      if (this.authToken && this.authToken.trim().length > 0) {
-        headers.Authorization = `Bearer ${this.authToken}`;
-      }
-
-      fetch(postUrl, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payload),
-        signal: requestAbort.signal,
-      })
+      this.getHeaders('application/json')
+        .then((headers) =>
+          fetch(postUrl, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(payload),
+            signal: requestAbort.signal,
+          }),
+        )
         .then((response) => {
           if (!response.ok)
             throw new ServiceUnavailableError(`MCP endpoint returned HTTP ${response.status}`);
@@ -334,12 +385,7 @@ export class McpClientService {
       params,
     };
 
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-    if (this.authToken && this.authToken.trim().length > 0) {
-      headers.Authorization = `Bearer ${this.authToken}`;
-    }
+    const headers = await this.getHeaders('application/json');
 
     const response = await fetch(postUrl, {
       method: 'POST',

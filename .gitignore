@@ -4,6 +4,15 @@
 # no credentials in git either.
 # ---------------------------------------------------------------------------
 .env
+
+# Terraform local state, plans, variables, and provider cache.
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/*.tfplan
+terraform/*.tfvars
+!terraform/terraform.tfvars.example
+terraform/crash.log
 .env.*
 !.env.example
 *.pem
@@ -15,6 +24,7 @@
 *-sa-key*.json
 gcp-key*.json
 application_default_credentials.json
+gha-creds-*.json
 .gcloud/
 secrets/
 # ClickHouse Cloud connection material

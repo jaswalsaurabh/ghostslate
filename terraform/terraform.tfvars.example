@@ -1,0 +1,5 @@
+project_id = "example-project-id"
+region     = "example-region"
+
+github_repository      = "example-owner/example-repository"
+production_environment = "example-production"

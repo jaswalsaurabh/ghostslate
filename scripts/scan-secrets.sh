@@ -28,12 +28,13 @@ while IFS= read -r -d '' file; do
   [ -z "$file" ] && continue
 
   case "$file" in
-    scripts/scan-secrets.sh|.env.example|pnpm-lock.yaml) continue ;;
+    scripts/scan-secrets.sh|pnpm-lock.yaml) continue ;;
   esac
 
   # A filename alone can be disqualifying, whatever the contents.
   case "$file" in
-    .env|.env.*|*.pem|*.key|*.p12|*.pfx|*service-account*.json|*sa-key*.json|gcp-key*.json)
+    .env.example) ;;
+    .env|*/.env|.env.*|*/.env.*|*.pem|*.key|*.p12|*.pfx|*service-account*.json|*sa-key*.json|*gcp-key*.json|*application_default_credentials.json|*gha-creds-*.json)
       if [ "$mode" = "staged" ]; then
         report "$file" "credential file staged for commit"
       else
@@ -58,6 +59,15 @@ while IFS= read -r -d '' file; do
 
   [ -z "$content" ] && continue
 
+  # The example file is public and must still be scanned. Remove only the exact,
+  # documented local-development defaults so a newly added real value cannot hide
+  # behind a blanket file exemption. The optional '+' covers staged diff lines.
+  if [ "$file" = ".env.example" ]; then
+    content=$(printf '%s\n' "$content" | grep -vE '^\+?(CLICKHOUSE_ADMIN_PASSWORD=ghostslate_admin_local_dev|CLICKHOUSE_AGENT_PASSWORD=ghostslate_agent_local_dev|CLICKHOUSE_MCP_AUTH_TOKEN=ghostslate_mcp_local_dev_only|RUN_KEY_SECRET=local_run_key_secret_change_me)$' || true)
+  fi
+
+  [ -z "$content" ] && continue
+
   echo "$content" | grep -qE 'BEGIN [A-Z ]*PRIVATE KEY' && report "$file" "private key block"
   echo "$content" | grep -qE '"type"[[:space:]]*:[[:space:]]*"service_account"' && report "$file" "GCP service-account key"
   echo "$content" | grep -qE 'AIza[0-9A-Za-z_-]{35}' && report "$file" "Google API key"
@@ -67,10 +77,23 @@ while IFS= read -r -d '' file; do
   echo "$content" \
     | grep -qE '(github_pat_[0-9A-Za-z_]{20,}|ghs_[0-9A-Za-z._-]{36,}|gh[pour]_[0-9A-Za-z_]{36,})' \
     && report "$file" "GitHub token"
+  echo "$content" | grep -qE 'glpat-[0-9A-Za-z_-]{20,}' && report "$file" "GitLab token"
   echo "$content" | grep -qE '(AKIA|ASIA)[0-9A-Z]{16}' && report "$file" "AWS access key id"
+  echo "$content" | grep -qE 'xox[baprs]-[0-9A-Za-z-]{20,}' && report "$file" "Slack token"
+  echo "$content" | grep -qE '(sk|rk)_live_[0-9A-Za-z]{16,}' && report "$file" "Stripe live key"
+  echo "$content" | grep -qE '(npm_[0-9A-Za-z]{20,}|pypi-[0-9A-Za-z_-]{20,}|hf_[0-9A-Za-z]{20,})' && report "$file" "package or model registry token"
+  echo "$content" | grep -qE 'eyJ[0-9A-Za-z_-]{8,}\.[0-9A-Za-z_-]{8,}\.[0-9A-Za-z_-]{8,}' && report "$file" "JWT"
+  echo "$content" | grep -iE "authorization[[:space:]\"']*:[[:space:]\"']*bearer[[:space:]]+[0-9A-Za-z._~+/-]{20,}" \
+    | grep -qviE 'example|placeholder|redacted|<[^>]+>|\$\{' \
+    && report "$file" "hardcoded bearer token"
   echo "$content" | grep -E 'clickhouse\.cloud' | grep -qE '://[^:/[:space:]]+:[^@[:space:]]{8,}@' && report "$file" "ClickHouse connection string with password"
   # Assignment of a real-looking literal. Placeholders and env lookups are allowed.
-  echo "$content" | grep -iE '(password|passwd|secret|api[_-]?key|access[_-]?token|private[_-]?key)[[:space:]]*[:=][[:space:]]*.{0,3}[A-Za-z0-9/+_-]{12,}' \
+  # Terraform's `secret = ...secret_id` is metadata that points at Secret
+  # Manager; it is not credential material and must remain representable in
+  # public infrastructure code.
+  echo "$content" \
+    | grep -vE '^[+]?[[:space:]]*secret[[:space:]]*=[[:space:]]*google_secret_manager_secret\..*\.secret_id[[:space:]]*$' \
+    | grep -iE '(password|passwd|secret|api[_-]?key|access[_-]?token|private[_-]?key)[[:space:]]*[:=][[:space:]]*.{0,3}[A-Za-z0-9/+_-]{12,}' \
     | grep -qviE 'process\.env|os\.environ|import\.meta\.env|\$\{|<[a-z-]+>|your[_-]|example|placeholder|xxx|changeme|redacted' \
     && report "$file" "hardcoded credential literal"
 done < <(
