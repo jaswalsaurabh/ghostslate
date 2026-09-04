@@ -1,8 +1,7 @@
 # GhostSlate — Engineering Rules
 
-**This file is canonical.** `CLAUDE.md` and `GEMINI.md` are one-line pointers that import it, and
-Codex reads `AGENTS.md` natively. Never copy rules into a pointer file and never let the pointers
-disagree — edit this file only.
+**This file is canonical.** Any repository instruction pointers import it. Never copy rules into a
+pointer file and never let the pointers disagree — edit this file only.
 
 Hackathon submission for the Agentic Cinema ClickHouse track. This repo is **public and
 OSI-licensed**. Nothing proprietary, nothing carried over from another codebase.
@@ -21,13 +20,29 @@ OSI-licensed**. Nothing proprietary, nothing carried over from another codebase.
 - **No real broadcast footage.** Demo media is synthetic or openly licensed.
 - Keep `LICENSE` (OSI-approved, commercial use permitted) present and visible.
 
+These include project-specific constraints, not just verbatim contest rules. The current
+[official rules](https://agentic-cinema.devpost.com/rules) govern eligibility; the ClickHouse track
+permits Cloud or self-hosted ClickHouse through official MCP. This project chooses Cloud Run and
+a synthetic demo. Do not describe configured infrastructure as a verified deployment.
+
+## Documentation
+
+- The README opens with the operator's problem, outcome, and a short walkthrough in plain language.
+  Preserve SSAI, FAST, SCTE-35, stitcher, and other useful technical terms, explaining them before
+  relying on them. Keep implementation detail after the introductory story.
+- Claims describe current implementation, distinguishing synthetic examples, measured evidence,
+  historical captures, intended requirements, and unverified release work.
+- Link canonical code/query definitions instead of duplicating executable examples or version tables.
+- Never invent hosted links, video links, customer savings, runtime measurements, or completed checks.
+- Preserve historical evidence; add dated context instead of rewriting a capture to match new code.
+
 ## Dependency discipline
 
 One version of any technology, repo-wide. This is enforced, not aspirational:
 
 - Shared versions are declared once in `pnpm-workspace.yaml` under `catalog:`. Packages reference
   them as `"catalog:"` and never as a literal range.
-- `pnpm.overrides` in the root `package.json` collapses transitive duplicates.
+- `overrides` in `pnpm-workspace.yaml` collapses the selected transitive dependency versions.
 - `engines` + `.nvmrc` pin Node 24.19.0 LTS; `engine-strict=true` makes a mismatch fail loudly.
 - Run `pnpm dedupe --check` before any commit that touches dependencies.
 - Adding a dependency is a deliberate decision. Prefer the standard library or a few lines of code
@@ -62,9 +77,11 @@ place. Never select a status code inline. An unexpected throw becomes an opaque 
 The financial loss figure, the slate-bleed percentage, and the confidence thresholds each have one
 definition. If the UI and the agent disagree about a number, the architecture is wrong.
 
-**Grounding rule.** Every figure the agent states in its final answer must trace to a value returned
-by ClickHouse or computed from one. The model never estimates a number it could have queried. This
-is the project's core credibility property — treat a violation as a bug, not a nuance.
+**Grounding rule.** Business counts, rates, latency, and financial figures in the final answer must
+trace to ClickHouse values or computations from them. Visual confidence comes from the vision
+result, sample time from the server-owned mapping, and decision thresholds from named constants;
+keep those evidence sources explicit. The model never estimates a business number it could have
+queried. The server owns the final diagnosis. Treat a violation as a bug, not a nuance.
 
 ## SQL
 
@@ -109,9 +126,10 @@ that nothing checks is not an answer key.
 - Component files PascalCase and matching their export; everything else kebab-case; hooks camelCase
   beginning with `use`.
 - No `any` for domain or API types. Shapes are decoded once at the API boundary with zod.
-- The war-room view must surface, live: the prompt, each MCP tool call with its actual SQL, rows
-  scanned and execution time, the agent's narrowing hypotheses, classified frames, and the final
-  grounded diagnosis. Showing real SQL and real timings is the cheapest proof of runtime use.
+- The war-room view must surface the prompt, actual MCP SQL, returned rows, tool-call wall time,
+  narrowing hypotheses, classified frames, and the final grounded diagnosis. Show rows scanned
+  only when returned by MCP; otherwise omit or mark unavailable. Never substitute returned-row
+  counts or historical benchmarks. Distinguish tool-call wall time from database execution time.
 - **Text casing is canonical in `.agent/text-casing-standard.md`.** Read it before adding or
   changing user-visible UI copy, labels, statuses, tooltips, accessibility names, or display values.
 
@@ -161,8 +179,9 @@ can never drift apart.
 - **The ASOF JOIN aggregation.** The highest-risk logic in the repo. Test against a fixture with a
   known slate-bleed ratio, including the denominator-of-one trap that made the original query
   meaningless.
-- **The grounding rule.** Every numeric claim in an agent answer must trace to a queried value. This
-  is a correctness property of the product, so it is asserted, not hoped for.
+- **The grounding rule.** Published business figures must trace to queried values; visual evidence
+  and threshold constants retain their explicit sources. Test the deterministic final diagnosis,
+  not a claim that every exploratory model sentence has been validated.
 - **Loss attribution.** Known impressions plus a known rate card must produce an exact figure.
 - **The negative control.** Given a window with no real root cause, the agent declines to assert
   one. Restraint is business logic and is tested as explicitly as the positive cases.
@@ -180,7 +199,8 @@ it with options rather than introducing a second toolchain unilaterally.
 
 Every piece of infrastructure is something a judge must install and something that can fail on
 recording day. The required set is fixed: ClickHouse Cloud, the `mcp-clickhouse` server, Vertex AI,
-Cloud Run, ffmpeg. Local development is one `docker-compose up`.
+Cloud Run, ffmpeg. Compose runs the local services after configuration; a containerized app also
+needs its Google ADC credential mount. Do not promise an unqualified one-command startup.
 
 Before adding anything beyond that, it must clear all three bars:
 
@@ -207,10 +227,12 @@ Apply it exactly where a repeat causes real harm:
 - **Investigation runs.** An investigation is expensive — multiple Gemini turns, several ClickHouse
   queries, frame classification. A double-click, an impatient retry or an SSE reconnect must attach
   to the run already in flight, never start a second one. Key a run by a hash of its normalised
-  inputs (channel, time window, prompt); an identical key returns the existing run's stream or its
-  completed result.
+  inputs and anonymous session scope; while retained in the same process, an identical key returns
+  the existing run's stream or completed result. Expired, evicted, or failed runs may start anew.
 - **Frame classification.** Cache by content hash of the frame. The same frame is never sent to
-  Gemini twice, across runs or across restarts within a session.
+  Gemini again while its completed classification remains cached in the same process. The bounded
+  in-memory cache does not survive restart or eviction and is not a distributed cache or an
+  in-flight classification deduplication guarantee.
 - **Remediation emission.** The operator-approved payload is a one-shot side effect. A repeated
   approval for the same investigation is a no-op returning the original result, not a second emission.
 
@@ -221,6 +243,11 @@ should stay plain.
 container is sufficient for the demo, and satisfies the minimalism rule above. Redis becomes
 justified only if runs must survive a container restart or be shared across instances — neither is
 in scope. Do not reach for it first.
+
+The intended demo deployment uses one active application instance and no overlapping serving
+revisions. The current GitHub deployment workflow permits three instances; that mismatch is a
+release gate, not evidence of distributed idempotency. Container restarts still discard run state.
+Production remediation emission is disabled; local approvals only emit mock in-memory/log events.
 
 A practical benefit worth protecting: replaying a completed investigation from its cached result
 makes the demo deterministic and instant. That is what lets you re-record the video without
