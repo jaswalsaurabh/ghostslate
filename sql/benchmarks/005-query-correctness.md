@@ -1,5 +1,9 @@
 # Query Correctness Performance Benchmarks
 
+> Historical measured queries and results. The executable sources in [`../queries/`](../queries/)
+> are authoritative for the current implementation. SQL timings below exclude the complete
+> multi-turn Gemini investigation; direct database metrics are distinct from live MCP metrics.
+
 Measured against the canonical 101.4M-row dataset running on ClickHouse Server 24.8.
 All direct benchmark timings, rows scanned, and byte metrics are extracted from ClickHouse `system.query_log` and `system.parts`. Live end-to-end latencies are measured via the official `mcp-clickhouse` 0.4.1 server.
 

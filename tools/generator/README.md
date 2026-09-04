@@ -1,6 +1,9 @@
 # GhostSlate Data Generator & Anomaly Injector
 
-Deterministic anomaly injector for SSAI telemetry and SCTE-35 cue markers.
+Creates repeatable failures in synthetic ad-delivery records so GhostSlate can demonstrate both
+finding an incident and rejecting misleading clues. It mutates SSAI telemetry associated with
+SCTE-35 cue markers. See the [main glossary](../../README.md#the-technical-terms-in-plain-language)
+for those terms. This is an admin/setup tool, not the agent's database access path.
 
 ## Architecture
 
@@ -20,10 +23,14 @@ Deterministic anomaly injector for SSAI telemetry and SCTE-35 cue markers.
 
 ## Important: One-Way Mutation & Reset
 
-Injection mutates rows in-place within their respective daily partition (`IN PARTITION 'YYYYMMDD'`). Because baseline seed scripts are guarded against running on populated tables, **the only supported reset procedure is dropping the Docker volume**:
+Injection mutates rows in-place within their respective daily partition (`IN PARTITION 'YYYYMMDD'`).
+For the local Compose dataset, resetting the volume is the supported full reset. **This permanently
+deletes the stack's stored database and ledger.** Back up anything needed first; do not use this as
+routine troubleshooting. It is not a reset procedure for ClickHouse Cloud.
 
 ```bash
-docker compose -f infra/docker-compose.yml down -v && docker compose -f infra/docker-compose.yml up -d
+docker compose -f infra/docker-compose.yml down -v
+docker compose -f infra/docker-compose.yml up -d clickhouse mcp-clickhouse incident-injector
 ```
 
 > [!WARNING]
@@ -31,9 +38,14 @@ docker compose -f infra/docker-compose.yml down -v && docker compose -f infra/do
 
 ## Usage
 
+Run from the repository root with the database already seeded. Export `CLICKHOUSE_HOST`,
+`CLICKHOUSE_PORT`, `CLICKHOUSE_ADMIN_USER`, `CLICKHOUSE_ADMIN_PASSWORD`, and `CLICKHOUSE_SECURE`
+for the target. The script does not load `.env` itself. Use the [Cloud setup guide](../../infra/README.md#seed-clickhouse-cloud)
+for secure ports and ordering. The Compose injector receives its environment automatically.
+
 ```bash
-# Set up venv (Python 3.13 pinned in .python-version)
-python3 -m venv tools/generator/.venv
+# Set up the virtual environment with Python 3.13 installed
+python3.13 -m venv tools/generator/.venv
 tools/generator/.venv/bin/pip install -r tools/generator/requirements.txt
 
 # Inspect the generated ALTER UPDATE statements (runs offline without connecting)
@@ -51,10 +63,12 @@ tools/generator/.venv/bin/python tools/generator/inject.py --repair-ledger
 
 ## SQL Integrity Checks
 
-Verify the 13 incident integrity assertions using ClickHouse client:
+Verify incident integrity using the canonical assertion file (after injection). Baseline assertions
+must run before mutation; their healthy-data expectations do not describe the injected dataset.
+Use the configured local admin password rather than assuming an unchanged default:
 
 ```bash
 docker exec -i ghostslate-clickhouse clickhouse-client \
-  --password ghostslate_admin_local_dev \
+  --password "$CLICKHOUSE_ADMIN_PASSWORD" \
   --multiquery < sql/checks/004-incident-assertions.sql
 ```

@@ -1,6 +1,8 @@
 # GhostSlate SQL
 
-This directory holds the canonical ClickHouse schema DDL, seed scripts, assertion checks, benchmarked analytical queries, and performance reports. Per `AGENTS.md`, the schema and canonical business metrics live here, not in application code.
+This directory defines the synthetic ad-delivery data and the queries used to investigate it.
+The schema and telemetry aggregation live here; `MetricsService` owns financial arithmetic and
+incident selection. For SSAI, SCTE-35, and other domain terms, see the [main glossary](../README.md#the-technical-terms-in-plain-language).
 
 ## Layout
 
@@ -12,7 +14,9 @@ This directory holds the canonical ClickHouse schema DDL, seed scripts, assertio
 
 ## Canonical Constants
 
-Per `AGENTS.md`, all derived values and system thresholds have a single definition across the repository:
+The table below documents the dataset contract. Seed definitions live in `seed/`; runtime decision
+thresholds live in [`incident.constants.ts`](../server/src/services/incident.constants.ts).
+This table is a reference, not a second runtime configuration source.
 
 | Constant                 | Value                         | Description / Unit                                     |
 | ------------------------ | ----------------------------- | ------------------------------------------------------ |
@@ -28,9 +32,25 @@ Per `AGENTS.md`, all derived values and system thresholds have a single definiti
 
 ### Daypart UTC Boundaries
 
-| Daypart         | UTC Range             | CPM (USD) | Target Fill % |
-| --------------- | --------------------- | --------- | ------------- |
-| `early_morning` | `02:00:00 – 09:59:59` | $6.40     | 80.0%         |
-| `daytime`       | `10:00:00 – 17:59:59` | $18.75    | 92.0%         |
-| `primetime`     | `18:00:00 – 22:59:59` | $32.50    | 95.0%         |
-| `late_night`    | `23:00:00 – 01:59:59` | $9.25     | 85.0%         |
+| Daypart         | UTC Range                             | CPM (USD) | Target Fill % |
+| --------------- | ------------------------------------- | --------- | ------------- |
+| `early_morning` | `[06:00, 09:00)`                      | $6.40     | 80.0%         |
+| `daytime`       | `[09:00, 19:00)`                      | $18.75    | 92.0%         |
+| `primetime`     | `[19:00, 23:00)`                      | $32.50    | 95.0%         |
+| `late_night`    | `[23:00, 24:00)` and `[00:00, 06:00)` | $9.25     | 85.0%         |
+
+Ranges include their start and exclude their end. These boundaries match
+[`loss_attribution.sql`](queries/loss_attribution.sql); prices are synthetic values from
+[`002-advertiser-inventory.sql`](seed/002-advertiser-inventory.sql). Fill targets are stored data,
+not an extra multiplier in the current loss calculation.
+
+## Reading the results correctly
+
+The ASOF join preserves each viewer's stitch attempt on the left and matches its preceding cue.
+`cues` counts distinct breaks; the failure percentage uses attempts as its denominator and counts
+`SLATE_FALLBACK` plus `TIMEOUT`, not hard `ERROR` outcomes. The final incident decision applies
+server-owned guards beyond the exploratory SQL filter.
+
+`slate_observations` exists in the schema but remains unpopulated by the current application.
+Vision evidence is returned separately and cached in memory. Benchmark reports are historical
+measurements: direct query-log scan counts and database timings are not live MCP metrics.

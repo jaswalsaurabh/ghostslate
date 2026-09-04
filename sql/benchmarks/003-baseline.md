@@ -1,5 +1,9 @@
 # Baseline Telemetry Performance Benchmarks
 
+> Historical benchmark. These figures describe the measured database workload below, not a current
+> hosted service or the total duration of a Gemini investigation. See the
+> [current architecture](../../README.md#how-it-works) for runtime metric limitations.
+
 Measured against the canonical 101.4M-row dataset running on ClickHouse Server 24.8.
 All timings, rows scanned, and byte metrics are extracted directly from `system.query_log` and `system.parts`.
 
@@ -147,6 +151,11 @@ corrected query and measured results are documented in `005-query-correctness.md
 
 These measured execution timings and scanned row counts provide direct runtime evidence of GhostSlate's high-performance columnar telemetry foundation:
 
-1. **War Room Telemetry Trace**: The Express API streams real SQL execution metrics (duration in ms, rows scanned, and bytes processed) over SSE to the war room UI badges.
-2. **Sub-Second Agent Loop**: The investigator agent executes multi-turn queries over 101.4M rows without timing out or lagging the operator console.
-3. **Partition Pruning**: The 30 daily partitions enable 32 ms incident-window lookups during forensic drill-downs.
+1. **Database evidence:** Direct benchmarks record server duration, rows scanned, and bytes read.
+   Live MCP traces instead show tool-call wall time and returned rows; scan counts appear only if
+   MCP supplies them. The pinned MCP capture does not include those scan statistics.
+2. **Subsecond SQL, not a subsecond agent:** The measured queries complete below one second.
+   A multi-turn investigation includes model inference, MCP transport, and vision; these benchmarks
+   do not measure its total duration.
+3. **Partition pruning:** The single-day query above measured 32 ms across one daily partition.
+   This is historical workload evidence, not a latency guarantee for every environment or query.

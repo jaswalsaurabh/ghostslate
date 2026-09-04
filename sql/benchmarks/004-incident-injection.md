@@ -1,5 +1,9 @@
 # Incident Mutation Benchmarks & Ground Truth Ledger
 
+> Historical four-mutation benchmark. The current generator also includes the black-screen
+> positive variant; see the [generator guide](../../tools/generator/README.md) and
+> [six-case evaluation matrix](../../eval/README.md). Original measurements below are preserved.
+
 Measured against the canonical 101.4M-row dataset running on ClickHouse Server 24.8.
 All mutations execute with `IN PARTITION 'YYYYMMDD'` and `mutations_sync = 2` (synchronous partition mutation).
 

@@ -2,6 +2,11 @@
 
 This directory contains six narrow evaluation cases for the diagnosis decisions that matter to the submission. The Vitest harness replays captured evidence offline; it does not call Gemini, MCP, or ClickHouse during the test suite.
 
+In plain language, these cases check whether GhostSlate blames the right ad supplier, calculates
+the amount from data, and declines to blame anyone when the evidence is weak. All financial amounts
+below use synthetic telemetry and seeded prices, not customer revenue or measured savings.
+For an interactive introduction, follow the [demo walkthrough](../README.md#demo-walkthrough).
+
 ## Case Matrix
 
 The machine-readable matrix is [`cases.json`](./cases.json).
@@ -64,7 +69,7 @@ The harness does not police model prose, impose synthetic tool ordering, compare
 ## Run
 
 ```bash
-pnpm --filter server test test/eval-harness.test.ts
+pnpm --filter @ghostslate/server test test/eval-harness.test.ts
 ```
 
 The full repository suite remains:
@@ -72,3 +77,13 @@ The full repository suite remains:
 ```bash
 pnpm test
 ```
+
+## Current-runtime verification
+
+Historical captures demonstrate behaviour at their recorded dates; replay passing today is not a
+new live Gemini call or proof of a deployed Cloud Run service. Re-run the six scenarios on the
+submitted revision and retain a new evidence export for hosted verification. See the
+[deployment gates](../infra/README.md#hosted-verification-and-demo-gates).
+
+Local approval emits a mock event only. Production must reject approval; a staged remediation
+proposal in a captured transcript is not evidence of a real reroute or successful production approval.

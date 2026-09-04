@@ -1,235 +1,196 @@
-# GhostSlate AI
+# GhostSlate — project overview
 
-**Autonomous SSAI "Silent Bleed" Forensics — Agentic Cinema Hackathon, ClickHouse Track**
+GhostSlate helps broadcast and advertising operations teams investigate ad breaks where viewers
+see filler instead of paid advertisements. Playback can remain healthy while ad delivery fails.
+The product connects delivery records, visual confirmation, and calculated financial exposure so
+an operator can review a targeted response.
 
----
+For the nontechnical introduction and terminology, start with the [README](README.md).
+This document records the current engineering scope, not a promise of a deployed production system.
 
-## 1. The Problem
+## 1. Problem and audience
 
-In live sports and FAST channels, ads are stitched into the stream server-side (SSAI), triggered by
-SCTE-35 cue markers. When an ad auction times out or a cue drifts, the stitcher does not crash — it
-falls back to a looping "We'll Be Right Back" slate.
+The primary user is an ad-operations or broadcast analyst investigating suspected lost ad revenue
+on a FAST channel (free ad-supported streaming television). Server-side ad insertion (SSAI) uses
+SCTE-35 cues to mark breaks; a stitcher inserts the chosen ad. When a supplier responds too late,
+the stream can fall back to a slate while playback-availability checks remain healthy.
 
-Every monitoring layer reports **HTTP 200 OK**. Video is playing. Nothing alerts. Meanwhile paid ad
-inventory has been silently replaced with zero-revenue filler.
+The logs contain useful clues, but do not by themselves show the viewer's screen. GhostSlate asks
+which supplier/device/codec group failed, checks a scenario-mapped frame, and values the missed
+opportunities using queried rate cards. The operator receives evidence and a proposal, not an
+automatic change to an advertising system.
 
-This is the core insight: **the failure is invisible to logs but obvious to the eye.** That gap is
-exactly what a multimodal agent closes, and it is why this project needs Gemini rather than any
-text-to-SQL model.
+## 2. Demonstrated outcome
 
-## 2. What GhostSlate Does
+The primary **synthetic** incident selects `ssp-beta × connected_tv × hevc` over
+`2026-08-14T19:00:00.000Z` to `2026-08-14T23:00:00.000Z`. Captured evidence contains 80 distinct
+cues, 60,862 attempts, and 59,482 unmonetized opportunities (97.73%). The queried CPM of $32.50
+produces $1,933.17 exposure, rounded to cents.
 
-A forensic agent that:
+These are demo measurements, not customer losses or recovered revenue. The negative control
+produces no isolated cause or dollar claim. The sparse window preserves observed traffic while
+declining attribution. See [evaluation evidence](eval/README.md) for all six cases and capture dates.
 
-1. **Sees** the slate — Gemini vision classifies sampled player frames, detecting filler cards that
-   status codes hide.
-2. **Explains** it — correlates each visual detection against SCTE-35 cue events and SSAI stitcher
-   logs in ClickHouse using ASOF JOIN temporal matching.
-3. **Prices** it — computes unmonetized impressions against a real rate-card table, so the financial
-   figure is derived from data, not invented by the model.
-4. **Proposes** a fix — emits a remediation payload (auction timeout override, fallback DSP pod) for
-   **human approval**. It does not auto-execute against ad infrastructure.
+## 3. Scope
 
-## 3. Scope (deliberately narrow)
+| Implemented                                         | Outside the current demo                                |
+| --------------------------------------------------- | ------------------------------------------------------- |
+| One channel and six server-owned scenarios          | Arbitrary live channels or uploaded footage             |
+| One primary failure mechanism: late ad responses    | Encoder cue-drift diagnosis                             |
+| Holding-card and black-screen positive variants     | Continuous visual anomaly discovery                     |
+| Supplier/device/codec isolation with evidence gates | A general observability platform                        |
+| Scenario-bound visual confirmation                  | Exact telemetry-event-to-frame synchronization          |
+| Rate-card-based financial exposure                  | Billing reconciliation or measured savings              |
+| Local mock approval; proposal review in production  | Real ad rerouting or authenticated production approvals |
+| In-memory replay and evidence export                | Durable or cross-instance investigation storage         |
 
-| In scope                                      | Out of scope                     |
-| --------------------------------------------- | -------------------------------- |
-| One FAST channel                              | Multi-tenant / multi-channel ops |
-| One primary failure mode: SSP auction timeout | Encoder cue drift                |
-| Vision + log correlation + loss attribution   | Auto-remediation execution       |
-| One polished war-room screen                  | Full observability platform      |
+The six scenarios exercise the same narrow diagnosis path, including misleading latency, hard
+errors, clean traffic, and insufficient evidence. They do not introduce six unrelated failure modes.
 
-The deliberately narrow scope keeps the implementation coherent: one channel, one failure mode and
-one complete investigation path.
+## 4. Investigation flow and ownership
 
-## 4. Flow
+1. The operator selects a scenario and submits its prompt. The server owns the channel, UTC window,
+   media mapping, and permitted frame timestamp.
+2. Gemini reasoning on Vertex AI calls `list_tables` and `run_query` through official
+   `mcp-clickhouse` for schema discovery and exploratory SQL.
+3. `collect_diagnosis_evidence` runs the server-rendered canonical SQL through the same MCP server.
+4. For a qualifying incident, `classify_frame` extracts the mapped sample with ffmpeg and calls
+   Gemini vision. The returned pixels and classification appear in the trace; no observation row
+   is written to ClickHouse.
+5. Gemini requests finalization. The server checks canonical evidence and visual confirmation,
+   selects the incident, computes financial exposure, and renders the final answer.
+6. The UI receives results through SSE and offers evidence export and proposal review. Local
+   approval emits an in-memory/log mock event; production rejects approval emission.
 
-```mermaid
-flowchart TD
-    A[Synthetic broadcast stream<br/>+ player telemetry] --> B[Frame sampler ffmpeg]
-    B --> C[Gemini vision<br/>slate / content / ad classification]
-    C --> D[(ClickHouse<br/>slate_observations)]
-    A --> E[(ClickHouse<br/>scte35_cue_events<br/>ssai_stitch_attempts<br/>advertiser_inventory)]
-    F[Operator prompt] --> G[Gemini on Vertex AI<br/>via @google/genai]
-    G -->|describe_table| H[mcp-clickhouse]
-    G -->|run_select_query| H
-    H --> D
-    H --> E
-    G --> I[Root cause + grounded loss figure]
-    I --> J[War-room UI<br/>live SQL trace, timings, remediation proposal]
-    J --> K{Operator approves?}
-    K -->|yes| L[Remediation payload emitted]
-```
+Exploratory tool order can vary. The server's finalization gates, not a fixed model script, protect
+the published diagnosis. Dashboard figures use the same evidence events, not direct database reads.
 
-**Agent loop:** schema discovery → visual anomaly window identification → ASOF JOIN correlation →
-dimension isolation (SSP × device × codec × VAST version) → loss computation → remediation proposal.
-Every number in the final answer must cite a value returned by ClickHouse.
+Business figures derive from queried telemetry and rate cards. Visual confidence and sample time
+come from the vision result and scenario mapping; decision thresholds come from server constants.
+Those sources must remain distinguishable. The offline harness checks deterministic decisions and
+captured evidence; it does not certify every sentence of exploratory model prose.
 
-## 5. Data Model
+## 5. Data model and query correctness
 
-- `scte35_cue_events` — channel_id, splice_event_id, cue_time (DateTime64(3)), avail_num,
-  segmentation_type_id, expected_duration_ms
-- `ssai_stitch_attempts` — channel_id, splice_event_id, attempt_time, stitch_status, ssp_id,
-  ad_response_latency_ms, device_class, codec, vast_version
-- `slate_observations` — session_id, channel_id, observed_at, frame_class, confidence _(written by
-  Gemini vision)_
-- `advertiser_inventory` — channel_id, daypart, cpm_usd, fill_target_pct _(grounds the loss figure)_
+The canonical schema lives in [sql/schema](sql/schema/), with these application tables:
 
-`LowCardinality` is used on ssp_id / device_class / codec / stitch_status. Auction-latency quantiles
-are computed directly with `quantileTDigest`; measured incident-window queries are fast enough that
-a rollup table would add complexity without improving the investigation path.
+| Table                  | Current purpose                                                             |
+| ---------------------- | --------------------------------------------------------------------------- |
+| `scte35_cue_events`    | Ad-break markers and expected duration.                                     |
+| `ssai_stitch_attempts` | Per-viewer delivery attempts, supplier, device, codec, status, and latency. |
+| `advertiser_inventory` | Seeded CPM and fill-target values by UTC pricing period.                    |
+| `slate_observations`   | Schema present; not populated by the current vision service.                |
 
-### Corrected ASOF JOIN
+`ghostslate_eval.injected_incidents` holds the injector ledger in a separate database outside the
+agent's read permission. All stored timestamps and investigation comparisons are UTC.
 
-ASOF returns exactly **one** matched row per left row. Aggregating a percentage per
-`splice_event_id` therefore yields only 0% or 100%. Aggregate _across_ cues instead:
+### ASOF JOIN direction and the denominator
 
-```sql
-WITH matched AS (
-    SELECT
-        c.channel_id             AS channel_id,
-        c.splice_event_id        AS splice_event_id,
-        s.ssp_id                 AS ssp_id,
-        s.device_class           AS device_class,
-        s.stitch_status          AS stitch_status,
-        s.ad_response_latency_ms AS latency_ms
-    FROM scte35_cue_events AS c
-    ASOF LEFT JOIN ssai_stitch_attempts AS s
-      ON c.channel_id = s.channel_id
-     AND c.splice_event_id = s.splice_event_id
-     AND s.attempt_time >= c.cue_time
-    WHERE c.cue_time BETWEEN {from:DateTime64(3)} AND {to:DateTime64(3)}
-)
-SELECT
-    channel_id,
-    ssp_id,
-    device_class,
-    count()                                                        AS cues,
-    countIf(stitch_status = 'SLATE_FALLBACK')                      AS slate_cues,
-    round(100.0 * countIf(stitch_status = 'SLATE_FALLBACK') / count(), 2) AS slate_bleed_pct,
-    quantileTDigest(0.95)(latency_ms)                              AS p95_auction_ms
-FROM matched
-GROUP BY channel_id, ssp_id, device_class
-HAVING cues >= 20 AND slate_bleed_pct > 5
-ORDER BY slate_bleed_pct DESC;
-```
+The production query puts **stitch attempts on the left** and matches each to its preceding cue by
+channel, splice event, and time. That preserves viewer attempts. Putting cues on the left selects
+only one attempt per cue and can hide failures among other viewers.
 
-The `cues >= 20` guard suppresses small-sample false positives.
+Count distinct splice events for the minimum-cue guard, but calculate the unmonetized percentage
+across attempts. `SLATE_FALLBACK` and `TIMEOUT` contribute to that numerator; hard `ERROR` rows do
+not. Use half-open windows (`>= from`, `< to`) to avoid counting a boundary cue twice.
 
-## 6. Synthetic Data
+The runnable definitions are [loss_attribution.sql](sql/queries/loss_attribution.sql) and
+[slate_bleed_correlation.sql](sql/queries/slate_bleed_correlation.sql). Do not copy another executable
+version here. The exploratory correlation threshold is not the final incident decision; that
+decision belongs to [MetricsService](server/src/services/metrics.service.ts) and
+[incident constants](server/src/services/incident.constants.ts).
 
-The dataset must require genuine isolation rather than making the injected anomaly trivially
-obvious:
+Financial exposure is unmonetized impressions × queried CPM ÷ 1,000, rounded to cents by
+`MetricsService`. Pricing-period boundaries are implemented in the loss query and documented in
+the [SQL guide](sql/README.md).
 
-- **Scale:** 100M+ rows exercise the same analytical path used by the investigation.
-- **Generate the baseline in-database** with `INSERT ... SELECT ... FROM numbers()` — orders of
-  magnitude faster than pushing rows from Python. Use Python only to inject anomalies.
-- **Confounders:** include benign latency spikes, one unrelated regional CDN blip, and diurnal
-  traffic patterns, so the true cause must actually be isolated rather than spotted.
-- **Negative control:** include a window with _no_ real root cause and show the agent correctly
-  reporting that none was found. An agent that declines to hallucinate is more convincing than one
-  that always succeeds.
+## 6. Synthetic data and evidence
 
-## 7. Technology Stack
+The baseline contains 101.4M delivery attempts over 30 days, generated inside ClickHouse. Python
+applies deterministic incident mutations and records them in the ledger. The data includes benign
+latency variation, unrelated hard errors, diffuse noise, and the two positive visual variants.
+The bundled video clips are synthetic broadcast cards; no real broadcast footage is used.
 
-**All versions verified against the npm registry on 18 Aug 2026.** Single-version enforcement is
-described in `AGENTS.md`; the short version is that every shared dependency is declared once in the
-pnpm `catalog:` and referenced by name, so two copies of the same technology cannot drift apart.
+The [generator guide](tools/generator/README.md) explains resets and the mutation/ledger crash
+window. The [evaluation guide](eval/README.md) distinguishes immutable historical transcripts,
+later recaptures, canonical fixtures, and offline replay tests.
 
-### Runtime
+The UI reports tool-call wall time and returned rows. Rows scanned appear only if MCP returns that
+statistic. The pinned version's captures omit it; separate direct ClickHouse benchmarks must not be
+presented as live MCP scan metrics. SQL benchmarks are not end-to-end investigation benchmarks.
 
-|            | Version                     | Note                                             |
-| ---------- | --------------------------- | ------------------------------------------------ |
-| Node       | **24.19.0 LTS ("Krypton")** | Current LTS line. Node 26 is newer but _not_ LTS |
-| pnpm       | **11.22.0**                 | Pinned via `packageManager`                      |
-| TypeScript | **6.0.3**                   | See note below                                   |
+## 7. Technology and infrastructure decisions
 
-**On TypeScript 7:** 7.0.2 is published and is `latest` on npm — it's the native Go port. But it has
-exactly one stable patch release, and the surrounding toolchain (Oxlint, Vite plugins, editor
-language service) is where a brand-new compiler rewrite bites. On a ten-day budget that is a bad
-trade, so this pins **6.0.3**. Moving to 7 later is a one-line change in the catalog.
+The application uses Node, TypeScript, Express, React, Vite, Tailwind, Zod, and Pino. Exact versions
+belong to the package manifests and [workspace catalog](pnpm-workspace.yaml). Gemini reasoning and
+vision use `@google/genai` with Vertex AI authentication. Official `mcp-clickhouse` is the agent's
+only database path. No direct ClickHouse JavaScript client or Recharts dependency is currently used.
 
-### Server (`server/`)
+The runtime components are ClickHouse, official MCP, Vertex AI, Cloud Run, and ffmpeg. Local
+development uses Compose for the database, MCP, and injector; a containerized app additionally needs
+an ADC mount. Cloud Run hosts the API and built UI in one application container, with MCP separate.
 
-| Package            | Version         |
-| ------------------ | --------------- |
-| express            | 5.2.1           |
-| @types/express     | 5.0.6           |
-| @clickhouse/client | 1.23.1          |
-| @google/genai      | 2.17.1          |
-| zod                | 4.4.3           |
-| pino / pino-http   | 10.3.1 / 11.0.0 |
-| tsx                | 4.23.12         |
-| vitest             | 4.1.11          |
-| @types/node        | 24.13.3         |
+For the public deployment described in [SECURITY.md](SECURITY.md), supporting resources have these
+specific purposes:
 
-`@types/node` is pinned to the **24.x** line to match the Node 24 runtime — not the newer 26.x,
-which would type against APIs the runtime does not have.
+| Resource                              | Reason within this scope                                                                          |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Artifact Registry                     | Stores the application image that Cloud Run deploys.                                              |
+| Secret Manager and service accounts   | Keep runtime credentials out of the browser, repository, and image.                               |
+| Workload Identity Federation          | Lets GitHub deploy without a stored service-account key.                                          |
+| HTTPS load balancer, certificate, DNS | Provide the public HTTPS edge while restricting direct Cloud Run access.                          |
+| Cloud Armor                           | Required public-edge protection in the security policy; not provisioned by the current Terraform. |
+| Terraform and its state bucket        | Reproduce and track the supporting cloud resources; not an application runtime service.           |
 
-### Web (`web/`)
+The checked-in DNS implementation uses Cloudflare; an equivalent DNS record can use another
+provider. This complexity is confined to production provisioning, not required for local judging.
+The deployment guide records bootstrap/networking gaps instead of claiming one-command cloud setup.
 
-| Package                         | Version          |
-| ------------------------------- | ---------------- |
-| react / react-dom               | 19.2.8           |
-| vite                            | 8.2.1            |
-| @vitejs/plugin-react            | 6.0.5            |
-| tailwindcss / @tailwindcss/vite | 4.3.3            |
-| recharts                        | 3.10.1           |
-| @types/react / @types/react-dom | 19.2.18 / 19.2.4 |
+**One active application instance is the intended demo topology.** In-memory run state cannot
+support transparent cross-instance replay. The current deployment workflow still permits three
+instances; reconcile that before relying on hosted reconnect/deduplication guarantees. A
+single-instance cap also does not make state durable across restarts or overlapping revisions.
 
-### Tooling
+No Redis or rollup table is justified by the demonstrated workload. Measured incident-window SQL
+is already interactive; adding infrastructure merely to showcase it would increase setup risk.
 
-oxlint 1.80.0 · oxfmt 0.65.0
+## 8. Lessons learned
 
-### Python (`tools/generator/` only)
+- Join direction matters: choosing one attempt per cue masked failures across viewer sessions.
+- A slow supplier is not necessarily the culprit: compare failed delivery and healthy peer groups,
+  not latency alone.
+- An empty eligible result is not zero traffic: the small-sample case must decline attribution.
+- Visible filler confirms the symptom, not the financial amount; telemetry and rate cards own that.
+- Evidence provenance matters: model exploration, canonical queries, vision output, and historical
+  benchmarks have different roles and must not be presented interchangeably.
 
-clickhouse-connect 0.9.6 · faker 38.2.0 — anomaly injection only. The 100M-row baseline is generated
-inside ClickHouse with `INSERT ... SELECT FROM numbers()`.
+## 9. Submission readiness
 
-### Infrastructure
+The [official rules](https://agentic-cinema.devpost.com/rules) govern submission; `AGENTS.md` also
+contains stricter project-specific choices, including Cloud Run deployment and synthetic media.
+The checklist below is not a claim that external submission work has been completed.
 
-ClickHouse Cloud · official `mcp-clickhouse` server, containerised · Gemini 2.5 Flash on Vertex AI
-via `@google/genai` · Google Cloud Run · ffmpeg · docker-compose for local setup.
+- [x] MIT license present and linked prominently.
+- [x] Official MCP calls and Vertex AI reasoning/vision call sites present in the implementation.
+- [x] Historical live-run evidence and six-case offline evaluation documented.
+- [x] Synthetic data, media, limitations, technical choices, and lessons explained.
+- [ ] Publish and verify the hosted project URL; add it to the README and submission form.
+- [ ] Rehearse the cold-clone setup and all six hosted scenarios against the submitted revision.
+- [ ] Resolve the deployment gates in the infrastructure guide and capture hosted runtime evidence.
+- [ ] Publish an English demonstration video of at most three minutes on YouTube or Vimeo and link it.
+- [ ] Confirm repository visibility, contest-period originality, and all required Devpost fields.
 
-### Express + SSE gotcha
+## 10. Three-minute demonstration outline
 
-The war-room trace streams over SSE. Do **not** add `compression` middleware to the SSE route — it
-buffers events into clumps. Set `Content-Type: text/event-stream`, `Cache-Control: no-cache`,
-`Connection: keep-alive`, and call `res.flushHeaders()` before the first write. Give the Cloud Run
-service a generous request timeout, since an agent run can span tens of seconds.
+1. **0:00** — Explain the operator's problem: playback can succeed while ads fail. Show the
+   synthetic primary scenario; do not present a simulated indicator as a measured external monitor.
+2. **0:25** — Start the investigation using the scenario prompt. Avoid an unsupported percentage
+   revenue-drop claim.
+3. **0:40** — Show actual MCP SQL and returned evidence, then the classified holding-screen frame.
+4. **1:35** — Explain the affected group and the calculated demo exposure in everyday language.
+5. **2:10** — Show the negative control declining to assert a cause or loss.
+6. **2:40** — Review the proposed response and evidence export. Explain that production approval
+   is blocked; if showing local mock approval, label the environment and simulation explicitly.
 
-### Why plain React rather than Next.js
-
-A React SPA cannot hold Google Cloud or ClickHouse credentials, so an explicit Express server is
-required. One container serves the built static assets _and_ the API, keeping local setup to a
-single `docker-compose up`.
-
-## 8. Evaluation Harness
-
-A ground-truth matrix (`eval/`) asserts, per scripted incident: the expected root-cause dimension,
-minimum MCP tool calls, grounding of final-answer figures in ClickHouse values and, for the negative
-control, that no cause is asserted.
-
-## 9. Hackathon Compliance
-
-- The repository uses the OSI-approved MIT license, including commercial use.
-- Demo media is synthetic; no real broadcast footage is included.
-- Gemini reasoning and vision run on Vertex AI at runtime.
-- The agent reaches ClickHouse through the official `mcp-clickhouse` server; the calls and executed
-  SQL are observable in the investigation trace.
-- The implementation is original work produced during the contest period.
-
-## 10. Demo Script (3 min)
-
-1. **0:00** — Choose the primary incident from the scenario selector. Stream plays. Slate appears. Every dashboard shows green, HTTP 200. _"Nothing is alerting. This channel is losing money right now."_
-2. **0:25** — Prompt: _"Sponsorship revenue dropped 18% during the Q3 break. Audit cue markers and stitcher logs for unmonetized slate bleed."_
-3. **0:40** — Gemini vision flags the slate frames; UI shows classified thumbnails.
-4. **1:00** — Live MCP trace: schema discovery → ASOF JOIN correlation → dimension isolation. Real SQL, real timings, rows scanned.
-5. **1:50** — Diagnosis: SSP auction latency breaching the stitcher deadline for one device/codec cohort. Loss figure computed from the rate-card table.
-6. **2:20** — Negative control: a second window where the agent correctly reports no root cause.
-7. **2:40** — Remediation proposal, operator approves, close.
-
-The UI also includes an insufficient-evidence scenario (a sub-20-cue window) that demonstrates the
-agent refusing to attribute a cause, calculate loss, or propose remediation when the evidence gate
-cannot be satisfied. Completed runs can be replayed from the in-memory idempotency cache and
-exported as a grounded evidence bundle for review.
+These are editing targets, not measured investigation durations. Record real runs and clearly label
+cuts or cached replay. Keep historical transcripts unchanged; capture a new run for current behaviour.

@@ -6,243 +6,207 @@
   <img alt="GhostSlate" src="web/public/brand/ghostslate-lockup.png" width="400">
 </picture>
 
-<br />
-<br />
+**Find out why viewers are seeing a holding screen instead of paid ads—even when the video keeps playing.**
 
-**Autonomous forensics for SSAI "silent bleed" — the ad failure every dashboard reports as healthy.**
+AI-assisted investigation of SSAI ad failures for broadcast and advertising operations teams.
 
-[Problem](#the-problem) · [How it works](#how-it-works) · [Tech stack](#tech-stack) · [Local setup](#local-setup) · [Development](#development)
+[Problem](#the-problem) · [Demo walkthrough](#demo-walkthrough) · [Terminology](#the-technical-terms-in-plain-language) · [Architecture](#how-it-works) · [Local setup](#local-setup)
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Node](https://img.shields.io/badge/node-24.19.0%20LTS-339933.svg?logo=node.js&logoColor=white)](.nvmrc)
-[![TypeScript](https://img.shields.io/badge/typescript-6.0-3178C6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![ClickHouse](https://img.shields.io/badge/ClickHouse-via%20MCP-FFCC01.svg)](https://github.com/ClickHouse/mcp-clickhouse)
-[![Vertex AI](https://img.shields.io/badge/Gemini-Vertex%20AI-4285F4.svg?logo=googlecloud&logoColor=white)](https://cloud.google.com/vertex-ai)
+[![Vertex AI](https://img.shields.io/badge/Gemini-Vertex%20AI-4285F4.svg)](https://cloud.google.com/vertex-ai)
 
 </div>
 
----
+## The problem
 
-## The Problem
+A live channel reaches an ad break. An ad supplier responds too late, so viewers see a
+“We'll be right back” card—or a black screen—instead of an advertisement. The video still plays,
+so a playback-availability check can look healthy while advertising opportunities are lost.
 
-In live sports and FAST channels, ads are stitched into the stream server-side (SSAI), triggered by
-SCTE-35 cue markers embedded in the transport stream. When an ad auction times out or a cue drifts,
-the stitcher does not crash — it falls back to a looping "We'll Be Right Back" slate.
+The clues exist in delivery logs, but an operator must connect them: what viewers saw, which ads
+failed, which viewers were affected, and how much revenue was at risk. GhostSlate brings those
+checks into one investigation screen.
 
-Every monitoring layer reports **HTTP 200 OK**. Video is playing. Bitrate is nominal. Nothing
-alerts. Meanwhile paid ad inventory has been silently replaced with zero-revenue filler, and the
-first person to notice is an advertiser asking why their impressions never landed.
+## What GhostSlate does
 
-**The failure is invisible to logs but obvious to the eye.** That is the entire premise: closing the
-gap needs something that can _look_ at the stream and _reason_ over telemetry at the same time — a
-multimodal agent, not a text-to-SQL model and not a dashboard.
+For a broadcast or ad-operations analyst investigating a suspected ad-delivery failure, GhostSlate:
 
-## What It Does
+1. **Finds the affected group.** Compares ad-delivery records to isolate an ad supplier, device
+   category, and video format with unusually high failures.
+2. **Checks what viewers would see.** Uses Gemini vision to inspect the synthetic video frame
+   assigned to that demo scenario and confirm a holding screen.
+3. **Calculates the financial exposure.** Combines failed ad opportunities with the stored price
+   per thousand impressions. The server calculates the amount; the model does not invent it.
+4. **Shows the evidence and a proposed response.** The operator can inspect database queries,
+   results, visual evidence, and the final diagnosis before considering a targeted reroute.
 
-GhostSlate investigates a suspected revenue drop the way a broadcast analyst would, and shows its
-work while doing it:
+When evidence is weak or the failure is not isolated, it reports that limitation instead of blaming
+a supplier. It never changes real advertising infrastructure. Local development supports a mock
+approval event; production blocks approval emission.
 
-1. **Sees the slate.** Gemini vision classifies sampled player frames as slate, ad, or content —
-   detecting filler cards that status codes hide.
-2. **Explains it.** Correlates each visual detection against SCTE-35 cue events and SSAI stitcher
-   logs in ClickHouse, using `ASOF JOIN` temporal matching to pair a cue with the stitch attempt
-   that answered it.
-3. **Isolates the cause.** Narrows across SSP × device class × codec until one cohort explains the
-   anomaly, rather than reporting a channel-wide average.
-4. **Prices it.** Computes unmonetized impressions against a rate-card table, so the financial
-   figure is derived from data rather than estimated by the model.
-5. **Proposes a fix.** Emits a remediation payload for **human approval**. It does not execute
-   anything against ad infrastructure.
+### A concrete example
 
-Two properties are treated as correctness requirements rather than nice-to-haves:
+In the **synthetic primary incident**, the affected group is `ssp-beta` serving connected TVs using
+HEVC video. During the four-hour window, 59,482 of its 60,862 ad-delivery attempts were unmonetized
+(97.73%). At the seeded rate of $32.50 per thousand impressions, the calculated exposure is
+**$1,933.17**. A sampled frame confirms a holding card.
 
-- **Grounding.** Every figure in the agent's answer traces to a value returned by ClickHouse. The
-  model never estimates a number it could have queried.
-- **Restraint.** Given a window with no real root cause, the agent reports that none was found.
-  Small samples (`cues < 20`) are suppressed rather than surfaced as findings.
+These are reproducible demo results, **not customer revenue, measured savings, or money recovered**.
+See the [captured evaluation evidence](eval/README.md) and
+[query benchmarks](sql/benchmarks/005-query-correctness.md) for provenance.
 
-## How It Works
+## Demo walkthrough
+
+**Hosted demo and video:** verified public links have not yet been added to this repository.
+Until they are published, use the [local setup](#local-setup) below. Deployment configuration and
+historical captures are not proof that a hosted instance is currently available.
+
+Once the app is running:
+
+1. Select **Primary incident** and start its investigation using the supplied prompt.
+2. Watch the query trace and classified frame. Inspect the final affected group and financial
+   exposure against the example above.
+3. Select **Negative control** and investigate again. Expect no isolated root cause or dollar loss.
+4. Select **Insufficient evidence**. Expect the app to decline attribution because too few distinct
+   ad breaks were observed—even though delivery attempts exist.
+5. Review the remediation proposal on a positive case. In local development only, approval emits
+   a mock event. On production, stop at reviewing the proposal: approval is disabled.
+
+The selector also includes **Latency confounder**, **Set-top-box errors**, and **Black-screen timeout**
+cases. See the [six-case evaluation matrix](eval/README.md) for exact expected outcomes. Evidence can
+be exported from the UI. Cached replay works only while the run remains in the same server process;
+a restart, eviction, or another instance can make it unavailable.
+
+## The technical terms, in plain language
+
+| Term                                              | Meaning in GhostSlate                                                                                            |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **SSAI** — server-side ad insertion               | Adding advertisements to a video stream on the server before it reaches the viewer.                              |
+| **FAST** — free ad-supported streaming television | Scheduled streaming channels funded by advertising rather than a subscription.                                   |
+| **SCTE-35 cue**                                   | A signal in the broadcast stream marking an opportunity for an ad break.                                         |
+| **Stitcher**                                      | The service that inserts the selected advertisement into the stream.                                             |
+| **Slate / silent bleed**                          | A holding card replacing an ad; “silent bleed” describes lost ad opportunities while playback remains available. |
+| **SSP** — supply-side platform                    | A platform helping a publisher sell its ad inventory; the demo distinguishes four suppliers.                     |
+| **Codec / cohort**                                | A video encoding format, such as HEVC; a cohort is a group sharing supplier, device, and codec.                  |
+| **CPM**                                           | Price per thousand ad impressions, used here to value unmonetized opportunities.                                 |
+| **ASOF JOIN**                                     | A time-based database join that links each delivery attempt to its preceding matching cue.                       |
+| **MCP** — Model Context Protocol                  | The tool interface through which the agent asks ClickHouse questions.                                            |
+| **SSE** — server-sent events                      | A connection that delivers investigation updates to the browser as they happen.                                  |
+
+## How it works
 
 ```mermaid
 flowchart TD
-    A[Synthetic broadcast stream<br/>+ player telemetry] --> B[Frame sampler · ffmpeg]
-    B --> C[Gemini vision<br/>slate / ad / content classification]
-    C --> D[(ClickHouse<br/>slate_observations)]
-    A --> E[(ClickHouse<br/>scte35_cue_events<br/>ssai_stitch_attempts<br/>advertiser_inventory)]
-    F[Operator prompt] --> G[Gemini on Vertex AI]
-    G -->|list_tables / describe_table| H[mcp-clickhouse]
-    G -->|run_select_query| H
-    H --> D
-    H --> E
-    G --> I[Root cause + grounded loss figure]
-    I --> J[War-room UI<br/>live SQL trace, timings, remediation proposal]
-    J --> K{Operator approves?}
-    K -->|yes| L[Remediation payload emitted]
+    A[Operator selects a synthetic scenario] --> B[Gemini reasoning on Vertex AI]
+    B -->|list_tables / run_query| C[Official mcp-clickhouse server]
+    C --> D[(ClickHouse: cues, delivery attempts, rate cards)]
+    B -->|classify_frame| E[Server selects mapped clip and sample time]
+    E --> F[ffmpeg extracts frame]
+    F --> G[Gemini vision on Vertex AI]
+    B -->|collect_diagnosis_evidence| H[Server renders canonical SQL]
+    H --> C
+    C --> I[Server checks evidence and computes loss]
+    G --> I
+    I --> J[Grounded diagnosis and remediation proposal]
+    J --> K[UI: query trace, frame, results and evidence export]
 ```
 
-The agent loop runs: schema discovery → visual anomaly window identification → `ASOF JOIN`
-correlation → dimension isolation → loss computation → remediation proposal.
+The model chooses exploratory questions and when to request finalization. The server owns the
+canonical evidence query, incident decision, arithmetic, and final diagnosis. Vision confirms the
+scenario's mapped sample; it does not discover a live stream or determine the loss amount.
 
-**The agent reaches ClickHouse only through the official
-[`mcp-clickhouse`](https://github.com/ClickHouse/mcp-clickhouse) server** over SSE — never through a
-direct client. The war-room UI streams each tool call as it happens, with its actual SQL, rows
-scanned, and execution time.
+**All agent database calls use the official `mcp-clickhouse` server over SSE.** Dashboard metrics
+come from the same investigation evidence, not a separate direct database client. Frame results are
+returned to the investigation and cached in memory. The schema includes `slate_observations`, but
+the current runtime does **not** write classifications to it.
 
-## Tech Stack
+### Why ClickHouse and Gemini
 
-### Runtime and language
+- **ClickHouse** stores 101.4 million synthetic delivery attempts. Its `ASOF JOIN` matches attempts
+  to cues; conditional aggregation counts failed opportunities; `quantileTDigest` measures p95
+  auction latency; a rate-card join supplies prices. Channel/time filters narrow the work.
+- **Gemini reasoning** uses `@google/genai` with `vertexai: true` to select tools and investigate.
+  **Gemini vision** classifies actual extracted pixels as slate, ad, or content.
+- **The server's evidence gates** require enough distinct cues, a high failure rate, and separation
+  from peer groups. Positive diagnoses also require visual slate confirmation. See
+  [decision constants](server/src/services/incident.constants.ts) and the [evaluation harness](eval/README.md).
 
-| Technology     | Version     | Why it is here                                                                                   |
-| -------------- | ----------- | ------------------------------------------------------------------------------------------------ |
-| **Node.js**    | 24.19.0 LTS | Server runtime. Pinned via `engines` + `.nvmrc`, with `engine-strict` so a mismatch fails loudly |
-| **TypeScript** | 6.0         | One language across API and UI; domain and API types are never `any`                             |
-| **pnpm**       | 11.22       | Workspace manager. The `catalog:` field is what keeps one version of any technology repo-wide    |
+The UI shows executed SQL, returned rows, and application-measured tool-call duration. **Rows
+scanned are shown only when MCP supplies them.** The pinned MCP version's historical captures omit
+that statistic. Direct database benchmarks report scan counts and database execution time
+separately; those measurements are not substituted into a live trace. Subsecond SQL timings are
+not a claim that a complete multi-turn investigation finishes in under a second.
 
-### Data layer
+### Current scope and limitations
 
-| Technology               | Role                                                                                                                                                                                                              |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **ClickHouse**           | Columnar store for cue events, stitch attempts, frame observations and the rate card. Chosen for `ASOF JOIN` — pairing each cue with the stitch attempt that answered it is a temporal join, not an equality join |
-| **`mcp-clickhouse`**     | The official MCP server. **The agent's only data path.** Exposes `list_tables`, `describe_table` and `run_select_query` as tools Gemini can call, over SSE                                                        |
-| **`@clickhouse/client`** | Direct reads for dashboard panels only. The agent never uses it                                                                                                                                                   |
+- One channel, six fixed demo scenarios, and one primary failure mechanism: late ad responses.
+- Synthetic telemetry, seeded rate cards, and bundled synthetic clips—not a production stream feed.
+- Scenario-bound visual confirmation, not telemetry-row-to-video-frame synchronization.
+- Business counts, rates, latency, and pricing come from ClickHouse; visual confidence comes from
+  Gemini vision, and decision thresholds are server constants. These are distinct evidence sources.
+- No real rerouting, billing integration, operator authentication, or durable distributed run cache.
+- No measured customer savings, manual-investigation speedup, or hosted per-run cost is claimed.
 
-### Why ClickHouse
-
-ClickHouse is not only the place where GhostSlate runs an `ASOF JOIN`. It is the analytical engine
-that turns high-volume SSAI telemetry into an auditable revenue diagnosis:
-
-- **Temporal correlation:** `ASOF JOIN` pairs stitch attempts with the cue boundary they answered,
-  preserving one-to-one temporal matching across broadcast events.
-- **Columnar scale:** a partitioned `MergeTree` stores the 101.4M-row synthetic telemetry baseline,
-  while time and channel filters keep forensic windows fast through partition pruning.
-- **Conditional aggregation:** `countIf` separates filled, slate-fallback, timeout, and hard-error
-  outcomes without confusing distinct failure modes.
-- **Latency analysis:** `quantileTDigest` computes p95 auction latency so the agent can compare SSP
-  behavior with the stitcher deadline instead of relying on averages.
-- **Cohort isolation:** aggregations across SSP, device class, and codec expose the failing cohort
-  while sibling cohorts and diffuse platform noise remain visible as controls.
-- **Evidence protection:** cue-count guards, status/latency invariants, duplicate-match checks,
-  and negative-control queries prevent small samples or malformed telemetry from becoming a claimed
-  root cause.
-- **Grounded economics:** a ClickHouse rate-card join returns the CPM and unmonetized impression
-  count that the server uses to compute the loss figure.
-- **Performance proof:** benchmark queries record execution time, rows read, bytes read, memory,
-  and `EXPLAIN` plans so the war-room can show that the investigation remains interactive at scale.
-
-The agent reaches these capabilities through the official `mcp-clickhouse` server. Gemini chooses
-which read-only question to ask; ClickHouse performs the temporal matching, aggregation, validation,
-and attribution; the server renders the result into a grounded diagnosis.
-
-### AI layer
-
-| Technology              | Role                                                                                                                                                         |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Gemini on Vertex AI** | Both halves of the product: **vision** classifies sampled frames, **reasoning** drives the tool-calling investigation loop. One model family, two modalities |
-| **`@google/genai`**     | Vertex AI SDK. Configured with `vertexai: true`, so it authenticates through Google Cloud rather than an API key                                             |
-| **ffmpeg**              | Samples frames from the player at the timestamps under investigation                                                                                         |
-
-### Application
-
-| Technology          | Role                                                                                                                                             |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Express 5**       | API surface. Also the security boundary — it holds every credential                                                                              |
-| **SSE**             | Streams the agent's trace to the UI live. An investigation spans tens of seconds; the operator watches it think rather than waiting on a spinner |
-| **Zod**             | Decodes external shapes once at the API boundary                                                                                                 |
-| **Pino**            | Structured logging                                                                                                                               |
-| **React 19 + Vite** | The war-room UI. Plain React, no meta-framework                                                                                                  |
-| **Tailwind CSS v4** | Styling, driven entirely by the design tokens described below                                                                                    |
-| **Recharts**        | Time-series panels                                                                                                                               |
-
-### Tooling and infrastructure
-
-| Technology                                   | Role                                                                                                                       |
-| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| **Vitest**                                   | One test runner for both packages, version shared via catalog                                                              |
-| **Oxlint + Oxfmt + Husky**                   | Fast linting and formatting, enforced pre-commit via lint-staged                                                           |
-| **Docker Compose**                           | Local development — ClickHouse, MCP server and app in one command                                                          |
-| **Google Cloud Run**                         | Deployment target. One container serves the built UI _and_ the API                                                         |
-| **Python 3** (`clickhouse-connect`, `faker`) | Anomaly injection only. The bulk synthetic baseline is generated inside ClickHouse with `INSERT ... SELECT FROM numbers()` |
-
-### How it adds up
-
-The pieces are chosen so each one closes a specific gap, and the seams between them are the product:
-
-- **A stream nobody is watching** → ffmpeg samples frames → **Gemini vision** turns pixels into a
-  classification row. This is the only step that can see what logs cannot, and its output lands in
-  ClickHouse as data the agent can query like any other table.
-- **A classification with no explanation** → **ClickHouse** holds the cue markers and stitcher
-  outcomes alongside it. `ASOF JOIN` is what makes "which auction answered this cue?" a query
-  instead of a guess.
-- **A query engine an LLM cannot safely drive** → **`mcp-clickhouse`** exposes schema discovery and
-  read-only SELECT as tools with defined shapes. Gemini chooses _which_ question to ask; MCP
-  constrains _how_ it can ask. The database account behind it is read-only.
-- **A model that could invent a number** → the rate-card table makes the loss figure a computation
-  over queried values. Grounding stops being a prompt instruction and becomes a data-flow property.
-- **A black box nobody would trust** → **SSE** streams every tool call, its SQL, and its timing to
-  the UI as it happens. An operator approves the remediation because they watched the reasoning,
-  not because a model asserted a conclusion.
-- **A credential problem** → React cannot hold Google Cloud or ClickHouse secrets, so **Express** is
-  required rather than optional. It serves the built UI and the API from one container, which is
-  also what keeps deployment to a single service on **Cloud Run**.
-
-## Local Setup
+## Local setup
 
 ### Prerequisites
 
-- **Node 24.19.0 LTS** — `nvm use` picks it up from `.nvmrc`
-- **pnpm 11+** — `corepack enable && corepack prepare pnpm@11.22.0 --activate`
-- **Docker** and Docker Compose
-- **ffmpeg** — only needed if you want to regenerate the demo media
-- A **Google Cloud project** with the Vertex AI API enabled
+- Node **24.19.0** (`nvm use`) and pnpm **11.22.0**.
+- Docker with Compose; allow disk and memory for the 101.4M-row dataset.
+- **ffmpeg on your PATH** for runtime frame extraction when running the API on your host.
+- Google Cloud CLI (`gcloud`), a billing-enabled project with Vertex AI enabled, and an identity
+  permitted to invoke Gemini. Live investigations make billable Google Cloud calls.
 
 ### 1. Clone and configure
 
 ```bash
 git clone https://github.com/jaswalsaurabh/ghostslate.git
 cd ghostslate
+nvm use
+corepack enable
+corepack prepare pnpm@11.22.0 --activate
 cp .env.example .env
 ```
 
-Edit `.env` and set at minimum:
+Edit `.env`: set `GCP_PROJECT_ID`, select `GCP_REGION` (default `us-central1`), and set
+`MCP_SERVER_URL=http://localhost:8000` for host development. Keep the documented local ClickHouse
+defaults for this path. Never reuse local development passwords in a public deployment.
 
-| Variable                    | Notes                                                                                                |
-| --------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `GCP_PROJECT_ID`            | Your Google Cloud project                                                                            |
-| `GCP_REGION`                | Defaults to `us-central1`                                                                            |
-| `CLICKHOUSE_ADMIN_PASSWORD` | Replace the local default before running anywhere but your own machine                               |
-| `CLICKHOUSE_AGENT_PASSWORD` | Password for the read-only agent account                                                             |
-| `MCP_SERVER_URL`            | `http://localhost:8000` for local dev; `http://mcp-clickhouse:8000` when the app runs inside Compose |
+The Node development command does not automatically load `.env`. In the **same terminal** used
+for the remaining commands, export your trusted, locally edited file:
 
-The remaining variables have working local defaults and are documented inline in
-[`.env.example`](.env.example).
+```bash
+set -a
+. ./.env
+set +a
+```
+
+This executes shell assignments; do not source an untrusted file. See [.env.example](.env.example)
+for all settings. Credentials stay on the server, never in frontend environment variables.
 
 ### 2. Authenticate to Google Cloud
 
-The Vertex AI SDK uses Application Default Credentials — there is no API key to paste.
-
 ```bash
+gcloud config set project "$GCP_PROJECT_ID"
 gcloud auth application-default login
-gcloud config set project YOUR_PROJECT_ID
+gcloud auth application-default set-quota-project "$GCP_PROJECT_ID"
 ```
 
-### 3. Start the infrastructure
+Application Default Credentials (ADC) let the SDK authenticate without embedding a key in the app.
+Enable the Vertex AI API and grant the invoking identity appropriate access before continuing.
+
+### 3. Start and seed the database
 
 ```bash
 docker compose -f infra/docker-compose.yml up -d clickhouse mcp-clickhouse incident-injector
+docker compose -f infra/docker-compose.yml logs -f incident-injector
 ```
 
-This brings up ClickHouse (`:8123`) and the MCP server (`:8000`), both bound to localhost only. On
-first start, the containers automatically apply the schema, provision the read-only
-`ghostslate_agent` user, seed the rate cards, generate the **101.4M-row baseline telemetry**, and
-apply the deterministic incident mutations. The incident injector is a one-shot idempotent job;
-it exits after the mutations are recorded in `ghostslate_eval.injected_incidents`.
-Initial seeding takes about 1–2 minutes. Subsequent starts are instant because the dataset is
-persisted in a named Docker volume (`clickhouse_data`). To re-seed from scratch after editing seed
-files, run `docker compose -f infra/docker-compose.yml down -v` first.
-
-### 4. Verify ClickHouse status
-
-Check that all four tables are present and populated:
+Wait for the one-shot injector to finish successfully before investigating. On an empty volume,
+Compose applies the schema, creates a read-only agent account, seeds rate cards and baseline rows,
+then injects the synthetic incidents. Initial startup can take several minutes depending on your
+machine. Existing data persists in the `clickhouse_data` volume.
 
 ```bash
 docker exec ghostslate-clickhouse clickhouse-client \
@@ -250,191 +214,102 @@ docker exec ghostslate-clickhouse clickhouse-client \
   --query "SELECT table, total_rows FROM system.tables WHERE database = 'ghostslate'"
 ```
 
-You should see `advertiser_inventory` (4 rows), `scte35_cue_events` (14,400 rows), `ssai_stitch_attempts` (101,400,000 rows), and `slate_observations` (0 rows).
+Expect 4 inventory rows, 14,400 cues, 101,400,000 attempts, and 0 `slate_observations` rows.
+The last table remains empty in the current runtime. For mutation verification, see the
+[generator guide](tools/generator/README.md).
 
-#### If you are deploying to ClickHouse Cloud
-
-The Docker Compose init hook runs locally only. For ClickHouse Cloud (the production target), create the read-only `ghostslate_agent` user and grant `SELECT ON ghostslate.* TO ghostslate_agent` via the Cloud console, then apply the three files in order using `clickhouse-client`:
-
-The native `clickhouse-client` commands below use secure native port `9440`. The official
-`mcp-clickhouse` HTTP driver uses secure HTTPS port `8443`, as shown in the injector command.
+### 4. Start the app
 
 ```bash
-# Apply schema, rate cards, and baseline telemetry to ClickHouse Cloud
-clickhouse-client --host "$CLICKHOUSE_HOST" --port 9440 --secure \
-  --user default --password "$CLICKHOUSE_ADMIN_PASSWORD" \
-  --multiquery < sql/schema/001_initial_tables.sql
-
-clickhouse-client --host "$CLICKHOUSE_HOST" --port 9440 --secure \
-  --user default --password "$CLICKHOUSE_ADMIN_PASSWORD" \
-  --multiquery < sql/seed/002-advertiser-inventory.sql
-
-clickhouse-client --host "$CLICKHOUSE_HOST" --port 9440 --secure \
-  --user default --password "$CLICKHOUSE_ADMIN_PASSWORD" \
-  --multiquery < sql/seed/003-baseline-telemetry.sql
-
-# Apply the deterministic incident mutations (run once after the baseline)
-tools/generator/.venv/bin/pip install -r tools/generator/requirements.txt
-CLICKHOUSE_HOST="$CLICKHOUSE_HOST" CLICKHOUSE_PORT=8443 CLICKHOUSE_SECURE=true \
-export CLICKHOUSE_ADMIN_USER=default CLICKHOUSE_ADMIN_PASSWORD
-tools/generator/.venv/bin/python tools/generator/inject.py
-```
-
-Seeding 101.4M rows over network to Cloud takes longer than local Docker; execute it once ahead of deployment. Run `sql/checks/baseline-assertions.sql` against the Cloud instance to verify all 16 assertions and confirm the determinism fingerprint matches local exactly.
-
-### 5. Run the app
-
-```bash
-pnpm install
+pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-The UI is at **http://localhost:5173**, the API at **http://localhost:8080**. Confirm the API is
-healthy:
+Open [the local UI](http://localhost:5173). The API is at [localhost:8080](http://localhost:8080).
+In another terminal, check `curl http://localhost:8080/api/health`: verify **`mcp.connected: true`**,
+not just `status: "ok"`. This checks MCP connectivity, not a full Vertex AI investigation.
+Then follow the [demo walkthrough](#demo-walkthrough).
 
-```bash
-curl http://localhost:8080/api/health
-```
-
-### Running everything in Docker instead
-
-To run the app as a container alongside the other services:
-
-```bash
-docker compose -f infra/docker-compose.yml up --build
-```
-
-The war room is then served at **http://localhost:8080**. Two things this path needs that local dev
-does not: `MCP_SERVER_URL` must be `http://mcp-clickhouse:8000` (Compose service name, not
-`localhost`), and Google credentials must be available inside the container — mount your ADC file
-and set `GOOGLE_APPLICATION_CREDENTIALS`.
-
-### Regenerating demo media
-
-The repo ships pre-generated synthetic clips in `web/public/media`. To rebuild them:
-
-```bash
-./tools/generate-test-media.sh
-```
-
-This composes SVG broadcast cards into short clips with ffmpeg. **No real broadcast footage is used
-anywhere in this project.**
+For the API/UI inside Docker, use the [credential-mounted Docker instructions](infra/README.md#local-app-in-docker).
+For ClickHouse Cloud, use the [Cloud data setup](infra/README.md#seed-clickhouse-cloud).
 
 ### Common issues
 
-| Symptom                                 | Cause                                                                                                                                        |
-| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Agent can't reach ClickHouse            | `MCP_SERVER_URL` points at `localhost` from inside a container — use the Compose service name                                                |
-| `403` / `PERMISSION_DENIED` from Gemini | Vertex AI API not enabled, or ADC not set up for the right project                                                                           |
-| Tables missing or row counts wrong      | The data volume was created by an earlier run. `docker compose -f infra/docker-compose.yml down -v`, then `up -d` to re-run the init scripts |
-| `ERR_PNPM_UNSUPPORTED_ENGINE`           | Wrong Node version. `nvm use` reads `.nvmrc`                                                                                                 |
+| Symptom                              | Check                                                                                                                       |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| Agent cannot reach MCP               | Host API: `http://localhost:8000`; container API: `http://mcp-clickhouse:8000`. Verify matching bearer tokens.              |
+| Wrong project or missing credentials | Export `.env` into the host terminal, authenticate ADC, and verify Vertex AI access. Docker needs its own credential mount. |
+| Frame extraction fails               | Host API needs ffmpeg on PATH. The Docker image already includes it.                                                        |
+| No expected incident                 | Wait for the injector and verify its ledger; baseline seeding alone does not create the incident.                           |
+| Wrong Node version                   | Run `nvm use` before installing or starting the app.                                                                        |
 
-## Architecture
+**Reset warning:** `docker compose -f infra/docker-compose.yml down -v` permanently deletes this
+stack's database volume, including injected data and the ledger. Use it only for a deliberate local
+reset, never as the first troubleshooting step. Back up any data you need first.
 
-```
-web/      Vite + React + TypeScript. Presentation only.
-server/   Express API — agent orchestration, MCP client, ClickHouse reads, SSE, ffmpeg.
-sql/      Schema DDL and benchmarked analytical queries.
-tools/    Synthetic media and data generation.
-eval/     Ground-truth incident cases.
-infra/    Dockerfile, docker-compose, Cloud Run configuration.
-```
+## Technical reference and development
 
-`server/` layers as route → controller → service. Routes wire middleware, controllers translate
-results to HTTP, services own logic and data access and never see `req`/`res`. Services raise typed
-domain errors that the HTTP layer maps to status codes in one place.
+| Component                         | Current role                                                                  |
+| --------------------------------- | ----------------------------------------------------------------------------- |
+| Node 24 / TypeScript / pnpm       | Server runtime, typed application code, workspace management.                 |
+| Express 5 / Zod / Pino            | HTTP boundary, input decoding, structured logs.                               |
+| React 19 / Vite / Tailwind v4     | Investigation UI with shared primitives and semantic design tokens.           |
+| Official `mcp-clickhouse`         | SSE tool server; agent calls `list_tables` and `run_query`.                   |
+| Gemini / `@google/genai` / ffmpeg | Vertex AI reasoning and vision; local frame extraction.                       |
+| Python / `clickhouse-connect`     | Offline/admin incident injection; baseline generation runs inside ClickHouse. |
+| Docker / Cloud Run                | Local services and production deployment configuration.                       |
 
-### API surface
+Dependency versions live in [package manifests](package.json) and the
+[workspace catalog and overrides](pnpm-workspace.yaml), rather than a second version table here.
 
-| Endpoint                       | Method | Purpose                                                       |
-| ------------------------------ | ------ | ------------------------------------------------------------- |
-| `/api/health`                  | GET    | Service and dependency health                                 |
-| `/api/investigation-scenarios` | GET    | Return the server-owned six-case investigation catalog        |
-| `/api/vision/classify`         | POST   | Classify a scenario-authorized frame via Gemini vision        |
-| `/api/investigate/spike`       | POST   | Run an investigation, streaming the agent trace back over SSE |
-
-### Data model
-
-| Table                  | Holds                                                           |
-| ---------------------- | --------------------------------------------------------------- |
-| `scte35_cue_events`    | Cue markers — splice event, cue time, expected break duration   |
-| `ssai_stitch_attempts` | Stitcher outcomes — status, SSP, auction latency, device, codec |
-| `slate_observations`   | Frame classifications written by the vision pipeline            |
-| `advertiser_inventory` | Rate card — CPM and fill target, which grounds the loss figure  |
-
-`LowCardinality` is applied to the dimension columns the correlation query groups by. The schema
-lives in [`sql/`](sql/), not in application code.
-
-### A note on the ASOF JOIN
-
-`ASOF JOIN` returns exactly one matched row per left row, so a percentage computed per
-`splice_event_id` can only ever be 0% or 100%. The correlation query therefore aggregates _across_
-cues, with a `HAVING cues >= 20` guard so noise cannot surface as a root cause. This is the
-highest-risk logic in the repo and is covered by tests against a fixture with a known ratio.
-
-### Security boundary
-
-No credentials reach the browser. The web app talks only to the API; the API holds every secret and
-talks to ClickHouse, MCP and Vertex AI. The agent's database account is read-only by design — its
-input path is untrusted text reaching a SQL engine, and a role that cannot write is the only durable
-defence.
-
-### Design system
-
-The UI is built on a three-tier token architecture — primitive → semantic → component — with runtime
-theme switching and no hardcoded colours in components. The full reference is in
-[`.agent/design-system.md`](.agent/design-system.md).
-
-## Development
+| API                                                      | Behaviour                                                                    |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `GET /api/health`                                        | Service status and MCP connectivity.                                         |
+| `GET /api/investigation-scenarios`                       | Server-owned scenario catalog.                                               |
+| `POST /api/vision/classify`                              | Scenario-authorized frame classification.                                    |
+| `POST /api/investigate/spike`                            | Starts or attaches to a run; returns JSON containing `runKey` and `created`. |
+| `GET /api/investigate/runs/:runKey/stream`               | Streams that session's run via SSE.                                          |
+| `GET /api/investigate/runs/:runKey/remediation`          | Returns proposal state.                                                      |
+| `POST /api/investigate/runs/:runKey/remediation/approve` | Local mock approval; rejected in production.                                 |
 
 ```bash
-pnpm dev            # web + API in watch mode
-pnpm dev:clickhouse-cloud # local web + API with MCP connected to ClickHouse Cloud
-pnpm build          # build both packages
-pnpm test           # vitest across the workspace
+pnpm dev
+pnpm build
+pnpm test
 pnpm typecheck
-pnpm lint           # pnpm lint:fix to autofix
-pnpm format
+pnpm lint
 pnpm format:check
+pnpm check:lines
 pnpm dedupe:check
 ```
 
-To run the local UI and API against ClickHouse Cloud through the official local
-`mcp-clickhouse` container, export `CLICKHOUSE_CLOUD_HOST`,
-`CLICKHOUSE_CLOUD_USER`, `CLICKHOUSE_CLOUD_PASSWORD`, and
-`CLICKHOUSE_MCP_AUTH_TOKEN`, then run `pnpm dev:clickhouse-cloud`. The command
-uses port `18000` for the temporary MCP container and leaves the existing
-`pnpm dev` path unchanged. The Cloud user must be read-only.
+`pnpm dev:clickhouse-cloud` starts a local MCP container for an existing seeded Cloud database;
+export `CLICKHOUSE_CLOUD_HOST`, `CLICKHOUSE_CLOUD_USER`, `CLICKHOUSE_CLOUD_PASSWORD`, and
+`CLICKHOUSE_MCP_AUTH_TOKEN` first. The Cloud account must be read-only.
 
-**Dependency discipline.** One version of any technology, repo-wide. Shared versions are declared
-once in `pnpm-workspace.yaml` under `catalog:` and referenced as `"catalog:"`, never as a literal
-range; `pnpm.overrides` collapses transitive duplicates. Run `pnpm dedupe --check` before any commit
-that touches dependencies.
+- [Project overview](PROJECT-OVERVIEW.md): architecture, scope, lessons learned, submission checklist.
+- [SQL guide](sql/README.md): schema, canonical queries, pricing periods, benchmarks.
+- [Evaluation guide](eval/README.md): offline tests and provenance of captured live runs.
+- [Infrastructure guide](infra/README.md): Docker credentials, Cloud setup, deployment limitations.
+- [Security](SECURITY.md): threat model, production controls, and reporting.
+- [Engineering rules](AGENTS.md) and [design system](.agent/design-system.md): contributor conventions.
 
-**Testing.** Tests guard the logic that produces the diagnosis — the `ASOF JOIN` aggregation, the
-grounding rule, loss attribution, small-sample guarding, and the negative control. React rendering,
-HTTP wiring and the SSE transport are not unit-tested; they fail loudly and are covered by the demo
-path. Coverage percentage is not a goal.
+Demo clips are bundled in `web/public/media`. Regenerate them with
+`./tools/generate-test-media.sh`; see its local tool requirements before running it.
 
-Engineering conventions for contributors and coding agents live in [`AGENTS.md`](AGENTS.md).
+## Hackathon status
 
-## Status
+Built for the **Agentic Cinema hackathon, ClickHouse track**. The repository contains the
+investigation implementation, official MCP integration, Vertex AI reasoning and vision, six-case
+evaluation harness, evidence export, and deployment configuration. Historical live-run evidence is
+linked above; the offline test suite itself does not prove current hosted operation.
 
-Built for the Agentic Cinema hackathon, ClickHouse track. The investigation path, MCP transport,
-Vertex AI vision and reasoning, evidence gates, remediation approval, synthetic data generator,
-evaluation harness, and war-room UI are implemented. A server-owned catalog drives six one-channel
-cases: primary incident, negative control, small-sample guard, latency-confounder isolation,
-set-top-box error rejection, and a black-screen timeout variant. See [`infra/README.md`](infra/README.md)
-for the Cloud Run deployment and smoke-test procedure.
-
-## Contributing
-
-Issues and pull requests are welcome. Please read [`AGENTS.md`](AGENTS.md) first — it is the
-engineering contract for this repo and covers layering, dependency rules, testing scope and the
-complexity budget.
+Before submission, publish verified hosted-app and public demonstration-video links, rehearse the
+fresh-checkout and hosted flows, and confirm the [official submission requirements](https://agentic-cinema.devpost.com/rules).
+The [overview checklist](PROJECT-OVERVIEW.md#9-submission-readiness) separates repository evidence
+from external release gates. No claim of completed deployment verification is made here.
 
 ## License
 
-[MIT](LICENSE) © 2026 Saurabh Jaswal
-
-Demo media is synthetic. No real broadcast footage is used anywhere in this project.
+[MIT](LICENSE) © 2026 Saurabh Jaswal. Contributions should follow [AGENTS.md](AGENTS.md).
+Demo media is synthetic; no real broadcast footage is used.

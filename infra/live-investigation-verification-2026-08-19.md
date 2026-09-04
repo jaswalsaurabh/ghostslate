@@ -1,5 +1,11 @@
 # GhostSlate Live Gemini → MCP → ClickHouse Verification Record
 
+> Historical capture context, clarified 4 September 2026: the runs below describe their recorded
+> revision and retain the original SQL, model text, and results. Current scenario media mappings,
+> sample times, and production approval restrictions differ. This is not a current Cloud Run
+> availability check. Follow the [current verification guide](README.md#hosted-verification-and-demo-gates)
+> and [evaluation provenance](../eval/README.md) for later captures and release gates.
+
 **Date:** 19 August 2026  
 **Status:** Verified & Empirically Grounded  
 **Scope:** Real runtime verification of Google Gemini 2.5 Flash via Vertex AI, the official `mcp-clickhouse` 0.4.1 SSE server, ClickHouse Server 24.8 (101.4M rows), and ffmpeg visual frame extraction.

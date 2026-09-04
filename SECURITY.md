@@ -48,6 +48,11 @@ The current remediation emission is a demo-only in-memory/log event. Before it i
 real external system, require authenticated operators, authorization for the target channel, and an
 auditable approval token. Rate limiting and CSRF checks are not substitutes for authorization.
 
+Emission is available only outside production; the current production guard rejects approval
+regardless of `REMEDIATION_ENABLED`. Proposal review does not execute a reroute. Run and frame
+caches are process-local, not durable or shared across replicas. See the
+[deployment guide](infra/README.md) for the single-instance intent and current workflow mismatch.
+
 ## Production configuration
 
 - Set `NODE_ENV=production` and set `TRUST_PROXY_HOPS` to the exact trusted proxy topology. Re-verify
