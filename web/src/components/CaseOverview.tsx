@@ -160,7 +160,10 @@ export function CaseOverview({
       ? 'before:bg-status-critical'
       : outcome === 'no_incident'
         ? 'before:bg-status-success'
-        : 'before:bg-border-strong';
+        : 'before:bg-hero-accent';
+
+  const cardBorder = outcome ? 'border-border-subtle' : 'border-hero-border';
+  const heroSurface = outcome ? '' : 'hero-initial-gradient';
 
   const outcomeBannerBg =
     outcome === 'incident'
@@ -186,14 +189,16 @@ export function CaseOverview({
   });
   const eyebrowParts = activeCase.eyebrow.split(' · ');
   const channelId = eyebrowParts.pop();
+  const channelTitleSuffix = ' channel';
+  const titleEndsWithChannel = title.endsWith(channelTitleSuffix);
 
   return (
     <section
       aria-labelledby="incident-title"
-      className={`relative overflow-hidden rounded-2xl border border-border-subtle bg-surface-panel shadow-panel before:absolute before:inset-y-0 before:left-0 before:w-0.75 before:z-content ${outcomeCardAccent}`}
+      className={`relative overflow-hidden rounded-2xl border bg-surface-panel shadow-panel before:absolute before:inset-y-0 before:left-0 before:z-content before:w-0.75 ${cardBorder} ${outcomeCardAccent}`}
     >
       {/* Tier 1: Incident Hero Banner */}
-      <div className={`p-5 sm:p-6 ${outcomeBannerBg}`}>
+      <div className={`bg-hero-surface p-5 sm:p-6 ${heroSurface} ${outcomeBannerBg}`}>
         <div className="flex flex-wrap items-center justify-between gap-3 max-sm:flex-col max-sm:items-start">
           <div className="font-mono text-forensic-meta font-bold tracking-eyebrow text-text-muted break-keep whitespace-nowrap max-w-full truncate">
             <span className="uppercase">{eyebrowParts.join(' · ')}</span>
@@ -233,11 +238,18 @@ export function CaseOverview({
         </div>
         <h1
           id="incident-title"
-          className="mb-1.5 mt-2.5 text-incident-title font-bold leading-title tracking-incident text-text-primary max-sm:text-mobile-title"
+          className="mb-1.5 mt-2.5 text-incident-title font-extrabold leading-title tracking-incident text-hero-text max-sm:text-mobile-title"
         >
-          {title}
+          {titleEndsWithChannel ? (
+            <>
+              {title.slice(0, -channelTitleSuffix.length)}{' '}
+              <span className="text-hero-accent">channel</span>
+            </>
+          ) : (
+            title
+          )}
         </h1>
-        <p className="m-0 max-w-4xl font-sans text-section leading-relaxed text-text-secondary">
+        <p className="m-0 max-w-4xl font-sans text-section leading-relaxed text-hero-supporting">
           {summary.highlight ? (
             <b
               className={`font-bold ${

@@ -61,7 +61,7 @@
     --gs-text-detail: 0.75rem;
     --gs-text-section: 0.8125rem;
     --gs-text-mobile-title: 1.1875rem;
-    --gs-text-incident-title: 1.375rem;
+    --gs-text-incident-title: clamp(2rem, 4vw, 3rem);
     --gs-text-metric: 1.5rem;
 
     /* Scoped forensic investigation typography scale. */

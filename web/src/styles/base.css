@@ -124,6 +124,11 @@
     color: var(--color-text-primary) !important;
   }
 
+  .hero-initial-gradient {
+    background-color: var(--color-hero-surface);
+    background-image: linear-gradient(110deg, var(--color-hero-gradient-tint), transparent 55%);
+  }
+
   .war-room-workspace {
     display: grid;
     grid-template-columns:

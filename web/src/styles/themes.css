@@ -4,6 +4,12 @@
   --color-surface-header: var(--gs-neutral-0);
   --color-surface-panel: var(--gs-neutral-0);
   --color-surface-card: var(--gs-sand-25);
+  --color-hero-surface: var(--gs-sand-50);
+  --color-hero-text: var(--gs-neutral-950);
+  --color-hero-accent: var(--gs-cyan-700);
+  --color-hero-border: color-mix(in oklab, var(--gs-cyan-700) 35%, transparent);
+  --color-hero-gradient-tint: color-mix(in srgb, var(--gs-cyan-700) 10%, transparent);
+  --color-hero-supporting: var(--gs-neutral-600);
   --color-surface-hover: var(--gs-sand-100);
   --color-surface-scrim: color-mix(in oklab, var(--gs-sand-50) 80%, transparent);
   --color-surface-overlay: color-mix(in oklab, var(--gs-neutral-1000) 70%, transparent);
