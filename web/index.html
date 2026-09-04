@@ -1,7 +1,13 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      document.documentElement.dataset.theme = window.matchMedia('(prefers-color-scheme: light)')
+        .matches
+        ? 'light'
+        : 'dark';
+    </script>
     <link rel="icon" type="image/png" href="/brand/ghostslate-mark.png" />
     <link rel="apple-touch-icon" href="/brand/ghostslate-mark.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

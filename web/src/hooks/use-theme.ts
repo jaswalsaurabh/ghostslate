@@ -1,33 +1,34 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export type Theme = 'dark' | 'light';
 
-const STORAGE_KEY = 'ghostslate-theme';
-
 function getInitialTheme(): Theme {
   if (typeof window === 'undefined') return 'dark';
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved === 'light' || saved === 'dark') return saved;
-  return 'dark';
+  return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
 }
 
 export function useTheme() {
   const [theme, setThemeState] = useState<Theme>(getInitialTheme);
 
-  const setTheme = useCallback((nextTheme: Theme) => {
-    setThemeState(nextTheme);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, nextTheme);
-    }
+  const toggleTheme = useCallback(() => {
+    setThemeState((currentTheme) => (currentTheme === 'dark' ? 'light' : 'dark'));
   }, []);
 
-  const toggleTheme = useCallback(() => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
-  }, [theme, setTheme]);
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: light)');
+    const handleThemeChange = (event: MediaQueryListEvent) => {
+      setThemeState(event.matches ? 'light' : 'dark');
+    };
+
+    setThemeState(mediaQuery.matches ? 'light' : 'dark');
+    mediaQuery.addEventListener('change', handleThemeChange);
+    return () => mediaQuery.removeEventListener('change', handleThemeChange);
+  }, []);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme;
   }, [theme]);
 
-  return { theme, setTheme, toggleTheme };
+  return { theme, toggleTheme };
 }
