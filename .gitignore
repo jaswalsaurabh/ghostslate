@@ -165,3 +165,5 @@ mock-*.html
 !tools/
 !tools/generator/
 !tools/generator/README.md
+
+output

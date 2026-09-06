@@ -148,7 +148,7 @@ The deployment guide records bootstrap/networking gaps instead of claiming one-c
 
 **One active application instance is the intended demo topology.** In-memory run state cannot
 support transparent cross-instance replay. The current deployment workflow still permits three
-instances; reconcile that before relying on hosted reconnect/deduplication guarantees. A
+instances, so cross-instance reconnect and deduplication are not guaranteed. A
 single-instance cap also does not make state durable across restarts or overlapping revisions.
 
 No Redis or rollup table is justified by the demonstrated workload. Measured incident-window SQL
@@ -163,34 +163,3 @@ is already interactive; adding infrastructure merely to showcase it would increa
 - Visible filler confirms the symptom, not the financial amount; telemetry and rate cards own that.
 - Evidence provenance matters: model exploration, canonical queries, vision output, and historical
   benchmarks have different roles and must not be presented interchangeably.
-
-## 9. Submission readiness
-
-The [official rules](https://agentic-cinema.devpost.com/rules) govern submission; `AGENTS.md` also
-contains stricter project-specific choices, including Cloud Run deployment and synthetic media.
-The checklist below is not a claim that external submission work has been completed.
-
-- [x] MIT license present and linked prominently.
-- [x] Official MCP calls and Vertex AI reasoning/vision call sites present in the implementation.
-- [x] Historical live-run evidence and six-case offline evaluation documented.
-- [x] Synthetic data, media, limitations, technical choices, and lessons explained.
-- [ ] Publish and verify the hosted project URL; add it to the README and submission form.
-- [ ] Rehearse the cold-clone setup and all six hosted scenarios against the submitted revision.
-- [ ] Resolve the deployment gates in the infrastructure guide and capture hosted runtime evidence.
-- [ ] Publish an English demonstration video of at most three minutes on YouTube or Vimeo and link it.
-- [ ] Confirm repository visibility, contest-period originality, and all required Devpost fields.
-
-## 10. Three-minute demonstration outline
-
-1. **0:00** — Explain the operator's problem: playback can succeed while ads fail. Show the
-   synthetic primary scenario; do not present a simulated indicator as a measured external monitor.
-2. **0:25** — Start the investigation using the scenario prompt. Avoid an unsupported percentage
-   revenue-drop claim.
-3. **0:40** — Show actual MCP SQL and returned evidence, then the classified holding-screen frame.
-4. **1:35** — Explain the affected group and the calculated demo exposure in everyday language.
-5. **2:10** — Show the negative control declining to assert a cause or loss.
-6. **2:40** — Review the proposed response and evidence export. Explain that production approval
-   is blocked; if showing local mock approval, label the environment and simulation explicitly.
-
-These are editing targets, not measured investigation durations. Record real runs and clearly label
-cuts or cached replay. Keep historical transcripts unchanged; capture a new run for current behaviour.

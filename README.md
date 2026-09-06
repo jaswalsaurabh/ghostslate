@@ -287,7 +287,7 @@ pnpm dedupe:check
 export `CLICKHOUSE_CLOUD_HOST`, `CLICKHOUSE_CLOUD_USER`, `CLICKHOUSE_CLOUD_PASSWORD`, and
 `CLICKHOUSE_MCP_AUTH_TOKEN` first. The Cloud account must be read-only.
 
-- [Project overview](PROJECT-OVERVIEW.md): architecture, scope, lessons learned, submission checklist.
+- [Project overview](PROJECT-OVERVIEW.md): architecture, scope, and lessons learned.
 - [SQL guide](sql/README.md): schema, canonical queries, pricing periods, benchmarks.
 - [Evaluation guide](eval/README.md): offline tests and provenance of captured live runs.
 - [Infrastructure guide](infra/README.md): Docker credentials, Cloud setup, deployment limitations.
@@ -303,11 +303,6 @@ Built for the **Agentic Cinema hackathon, ClickHouse track**. The repository con
 investigation implementation, official MCP integration, Vertex AI reasoning and vision, six-case
 evaluation harness, evidence export, and deployment configuration. Historical live-run evidence is
 linked above; the offline test suite itself does not prove current hosted operation.
-
-Before submission, publish verified hosted-app and public demonstration-video links, rehearse the
-fresh-checkout and hosted flows, and confirm the [official submission requirements](https://agentic-cinema.devpost.com/rules).
-The [overview checklist](PROJECT-OVERVIEW.md#9-submission-readiness) separates repository evidence
-from external release gates. No claim of completed deployment verification is made here.
 
 ## License
 

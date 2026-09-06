@@ -3,7 +3,7 @@
 > Historical capture context, clarified 4 September 2026: the runs below describe their recorded
 > revision and retain the original SQL, model text, and results. Current scenario media mappings,
 > sample times, and production approval restrictions differ. This is not a current Cloud Run
-> availability check. Follow the [current verification guide](README.md#hosted-verification-and-demo-gates)
+> availability check. Follow the [current verification guide](README.md#hosted-verification)
 > and [evaluation provenance](../eval/README.md) for later captures and release gates.
 
 **Date:** 19 August 2026  

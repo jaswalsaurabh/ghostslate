@@ -166,13 +166,12 @@ digest. It requires the Google project/region, registry, WIF provider, publisher
 service accounts, secret names, and `GCP_PUBLIC_URL` repository/environment variables named in that
 file. Configure its `production` environment and permissions before dispatching it.
 
-**Release gate:** that workflow currently sets concurrency 20 and maximum instances 3, unlike the
-single-instance demo command above. Reconcile the workflow before using it for judging; otherwise
-it can overwrite the intended topology and break cross-request replay. Its HTTP health smoke test
-alone does not verify MCP connectivity or a complete investigation. Documentation changes do not
-change those workflow settings.
+The workflow currently sets concurrency 20 and maximum instances 3, unlike the single-instance
+demo command above. Deploying through it can overwrite the intended topology and break
+cross-request replay. Its HTTP health smoke test alone does not verify MCP connectivity or a
+complete investigation.
 
-## Hosted verification and demo gates
+## Hosted verification
 
 Set `GHOSTSLATE_PUBLIC_URL` to the real HTTPS origin, then check:
 
@@ -187,12 +186,12 @@ offline benchmark scan counts for unavailable live metrics.
 
 Confirm SSE reconnect and retained-run replay on the deployed topology. Verify production
 **rejects remediation approval**; `REMEDIATION_ENABLED` does not override the unconditional
-production guard. Show proposal review—not a successful production approval—in the demo.
+production guard.
 
-Record the deployed revision, UTC verification time, and evidence export. Add verified hosted and
-video URLs to the main README only after they exist. Historical captures do not establish current
-hosted health. Cloud Armor configuration, private MCP connectivity, and deployment-topology
-alignment remain release checks rather than implied guarantees.
+Verification evidence includes the deployed revision, UTC verification time, and investigation
+export. Historical captures do not establish current hosted health. Cloud Armor configuration,
+private MCP connectivity, and deployment-topology alignment require verification on the deployed
+environment.
 
 ## Security boundary
 

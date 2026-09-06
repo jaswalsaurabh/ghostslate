@@ -81,9 +81,9 @@ pnpm test
 ## Current-runtime verification
 
 Historical captures demonstrate behaviour at their recorded dates; replay passing today is not a
-new live Gemini call or proof of a deployed Cloud Run service. Re-run the six scenarios on the
-submitted revision and retain a new evidence export for hosted verification. See the
-[deployment gates](../infra/README.md#hosted-verification-and-demo-gates).
+new live Gemini call or proof of a deployed Cloud Run service. Current-runtime evidence consists
+of live scenario runs and evidence exports tied to the deployed revision. See
+[hosted verification](../infra/README.md#hosted-verification).
 
 Local approval emits a mock event only. Production must reject approval; a staged remediation
 proposal in a captured transcript is not evidence of a real reroute or successful production approval.
